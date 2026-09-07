@@ -9,7 +9,12 @@ const LABELS = { trend: "Trend", low: "Tiefstpreis", avg30: "Ø 30 Tage" };
 // Alles in EUR. Bevorzugte Quelle: Cardmarket (englische Karte).
 export default function PriceSection({ card, history }) {
   const breakdown = card.price_breakdown ?? [];
-  const byType = Object.fromEntries(breakdown.map((b) => [b.price_type, b.price]));
+  const pick = (variant) =>
+    Object.fromEntries(
+      breakdown.filter((b) => (b.variant ?? "normal") === variant).map((b) => [b.price_type, b.price])
+    );
+  const byType = pick("normal");
+  const holo = pick("holo");
   const headline = card.latest_price?.price ?? byType.trend ?? null;
   const basis = card.latest_price?.source ?? (breakdown.length ? "cardmarket" : null);
 
@@ -40,6 +45,14 @@ export default function PriceSection({ card, history }) {
           ) : null
         )}
       </div>
+
+      {holo.trend != null && (
+        <div className="flex items-baseline gap-4 flex-wrap mt-2 text-sm">
+          <span className="text-subtle text-xs">Holo-Variante:</span>
+          <span className="font-mono">Trend {eur(holo.trend)}</span>
+          {holo.low != null && <span className="font-mono text-subtle">Tiefst {eur(holo.low)}</span>}
+        </div>
+      )}
 
       {headline == null && (
         <p className="text-subtle text-sm mt-2">
@@ -89,6 +102,11 @@ export default function PriceSection({ card, history }) {
             Bei wenigen Karten hat Cardmarket keinen Wert; dann wird der
             TCGplayer-Marktpreis (USA) zum Tageskurs in Euro umgerechnet und
             entsprechend gekennzeichnet.
+          </p>
+          <p>
+            <b>Varianten:</b> Für Holo gibt es einen eigenen Wert, wenn die
+            Quelle ihn liefert. Reverse Holo wird von der kostenlosen Quelle
+            nicht getrennt bepreist – dort greift der Standard-Wert.
           </p>
           <p>
             eBay-Verkaufspreise sind hier (noch) nicht dabei: dafür gibt es

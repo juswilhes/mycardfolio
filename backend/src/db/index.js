@@ -150,6 +150,12 @@ const addCiColumn = (name, type) => {
 addCiColumn("shipping_cost", "REAL");
 addCiColumn("currency", "TEXT DEFAULT 'EUR'");
 addCiColumn("language", "TEXT DEFAULT 'en'"); // Sprache der Druckvariante: 'de' | 'en'
+addCiColumn("variant", "TEXT DEFAULT 'normal'"); // 'normal' | 'holo' | 'reverse' | 'first_edition'
+
+const psColumns = new Set(db.prepare(`PRAGMA table_info(price_snapshots)`).all().map((c) => c.name));
+if (!psColumns.has("variant")) {
+  db.exec(`ALTER TABLE price_snapshots ADD COLUMN variant TEXT DEFAULT 'normal'`);
+}
 
 // sales: Kaufdatum + ursprüngliche Kaufnotiz mitführen, damit ein Verkauf
 // rückgängig gemacht werden kann und die Karte 1:1 zurückkommt.
@@ -162,6 +168,7 @@ const addSalesColumn = (name, type) => {
 };
 addSalesColumn("purchase_date", "TEXT");
 addSalesColumn("purchase_notes", "TEXT");
+addSalesColumn("variant", "TEXT DEFAULT 'normal'");
 
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(

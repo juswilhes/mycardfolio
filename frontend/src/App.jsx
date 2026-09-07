@@ -7,6 +7,7 @@ import Sets from "./pages/Sets.jsx";
 import SetDetail from "./pages/SetDetail.jsx";
 import CardInfo from "./pages/CardInfo.jsx";
 import Sales from "./pages/Sales.jsx";
+import Stats from "./pages/Stats.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 
 export default function App() {
@@ -54,6 +55,14 @@ export default function App() {
             >
               Verkauft
             </NavLink>
+            <NavLink
+              to="/statistik"
+              className={({ isActive }) =>
+                isActive ? "text-ink font-medium" : "text-subtle hover:text-ink"
+              }
+            >
+              Statistik
+            </NavLink>
           </nav>
           {/* Ein Klick ruft toggleTheme() aus dem Hook auf, der Rest passiert automatisch */}
           <button
@@ -72,6 +81,7 @@ export default function App() {
           <Route path="/card/:cardId" element={<CardDetail />} />
           <Route path="/add" element={<AddCard />} />
           <Route path="/verkauft" element={<Sales />} />
+          <Route path="/statistik" element={<Stats />} />
           <Route path="/sets" element={<Sets />} />
           <Route path="/sets/:setId" element={<SetDetail />} />
           <Route path="/database/:externalId" element={<CardInfo />} />

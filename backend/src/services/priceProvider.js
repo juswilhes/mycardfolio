@@ -96,25 +96,43 @@ async function fetchJson(url, tries = 2) {
 }
 
 const cardRow = db.prepare(`
-  SELECT c.external_id, c.number, c.name, s.name AS set_name
+  SELECT c.external_id, c.number, c.name, c.set_id, s.name AS set_name
   FROM cards c LEFT JOIN card_sets s ON s.id = c.set_id
   WHERE c.external_id = ? AND c.game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
 
-async function tcgdexSetId(setName) {
-  if (!setName) return null;
-  const key = norm(setName);
-  if (SET_ID_OVERRIDES[key]) return SET_ID_OVERRIDES[key];
+// TCGdex-Set-IDs sind unseren sehr ähnlich: "swsh12pt5gg" -> "swsh12.5gg",
+// "sv3" -> "sv03", "sv3pt5" -> "sv03.5". Kandidaten bilden und gegen die
+// TCGdex-Set-Liste prüfen.
+function candidateSetIds(ourId) {
+  if (!ourId) return [];
+  const ids = new Set([ourId]);
+  const dotted = ourId.replace("pt5", ".5").replace(/pt(\d)/, ".$1");
+  ids.add(dotted);
+  for (const base of [ourId, dotted]) {
+    const m = base.match(/^([a-z]+)(\d)([^0-9].*|$)/);
+    if (m) ids.add(`${m[1]}0${m[2]}${m[3]}`);
+  }
+  return [...ids];
+}
+
+async function tcgdexSetId(setName, ourSetId) {
   if (!cache.sets) {
     cache.sets = await fetchJson(`${API}/sets`);
     persistCache();
   }
-  const hit = (cache.sets ?? []).find((s) => norm(s.name) === key);
-  return hit?.id ?? null;
+  const sets = cache.sets ?? [];
+
+  for (const cand of candidateSetIds(ourSetId)) {
+    if (sets.some((s) => s.id === cand)) return cand;
+  }
+  const key = norm(setName);
+  if (SET_ID_OVERRIDES[key]) return SET_ID_OVERRIDES[key];
+  return sets.find((s) => norm(s.name) === key)?.id ?? null;
 }
 
-async function tcgdexCardId(setName, number, cardName) {
-  const sid = await tcgdexSetId(setName);
+async function tcgdexCardId(setName, number, cardName, ourSetId) {
+  const sid = await tcgdexSetId(setName, ourSetId);
   if (!sid) return null;
   if (!cache.setCards[sid]) {
     const set = await fetchJson(`${API}/sets/${sid}`);
@@ -138,19 +156,32 @@ export async function getCardmarketPrices(externalId) {
 
   let value = { prices: [], meta: null };
   try {
-    const tid = await tcgdexCardId(row.set_name, row.number, row.name);
+    const tid = await tcgdexCardId(row.set_name, row.number, row.name, row.set_id);
     if (tid) {
       const full = await fetchJson(`${API}/cards/${tid}`);
       const cm = full?.pricing?.cardmarket;
       const tp = full?.pricing?.tcgplayer;
 
-      const eur = (priceType, price) =>
+      const eur = (variant, priceType, price) =>
         price != null && price > 0
-          ? { source: "cardmarket", price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 }
+          ? {
+              source: "cardmarket",
+              variant,
+              price_type: priceType,
+              currency: "EUR",
+              price: Math.round(price * 100) / 100,
+            }
           : null;
 
       const cmRows = cm
-        ? [eur("trend", cm.trend), eur("low", cm.low), eur("avg30", cm.avg30)].filter(Boolean)
+        ? [
+            eur("normal", "trend", cm.trend),
+            eur("normal", "low", cm.low),
+            eur("normal", "avg30", cm.avg30),
+            eur("holo", "trend", cm["trend-holo"]),
+            eur("holo", "low", cm["low-holo"]),
+            eur("holo", "avg30", cm["avg30-holo"]),
+          ].filter(Boolean)
         : [];
 
       if (cmRows.length) {
@@ -166,7 +197,13 @@ export async function getCardmarketPrices(externalId) {
           const rate = await usdToEur();
           value = {
             prices: [
-              { source: "tcgplayer", price_type: "trend", currency: "EUR", price: Math.round(usd * rate * 100) / 100 },
+              {
+                source: "tcgplayer",
+                variant: "normal",
+                price_type: "trend",
+                currency: "EUR",
+                price: Math.round(usd * rate * 100) / 100,
+              },
             ],
             meta: { basis: "tcgplayer", productId: null, updated: tp.updated ?? null, usdRate: rate },
           };

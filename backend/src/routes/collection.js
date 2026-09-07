@@ -5,8 +5,8 @@ import {
   upsertCardRow,
   recordPrices,
   listCollection,
-  latestPriceForCard,
-  cardmarketBreakdownForCard,
+  latestTrend,
+  cardmarketBreakdown,
 } from "../services/cardService.js";
 import { getCardByExternalIdLocal } from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
@@ -16,9 +16,9 @@ const router = Router();
 
 const insertCollectionItem = db.prepare(`
   INSERT INTO collection_items
-    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language)
+    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language, variant)
   VALUES
-    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language)
+    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language, @variant)
 `);
 
 const updateCollectionItem = db.prepare(`
@@ -26,7 +26,8 @@ const updateCollectionItem = db.prepare(`
     quantity = @quantity, condition = @condition,
     purchase_price = @purchase_price, shipping_cost = @shipping_cost,
     purchase_date = @purchase_date, notes = @notes,
-    language = COALESCE(@language, language)
+    language = COALESCE(@language, language),
+    variant = COALESCE(@variant, variant)
   WHERE id = @id
 `);
 
@@ -38,6 +39,8 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 const langOrNull = (v) => (v === "de" || v === "en" ? v : null);
+const VARIANTS = ["normal", "holo", "reverse", "first_edition"];
+const variantOrNull = (v) => (VARIANTS.includes(v) ? v : null);
 
 // Cardmarket-Preis im Hintergrund nachziehen (blockiert die Antwort nie).
 function refreshPriceInBackground(cardId, externalId) {
@@ -50,15 +53,12 @@ function refreshPriceInBackground(cardId, externalId) {
 
 // GET /api/collection -> Sammlung inkl. aktuellem Cardmarket-Preis (EUR)
 router.get("/", (_req, res) => {
-  const items = listCollection.all().map((item) => {
-    const breakdown = cardmarketBreakdownForCard.all(item.card_id);
-    return {
-      ...item,
-      latest_price: latestPriceForCard.get(item.card_id) ?? null,
-      price_breakdown: breakdown,
-      cardmarket_url: cardmarketUrl(item.cardmarket_product_id),
-    };
-  });
+  const items = listCollection.all().map((item) => ({
+    ...item,
+    latest_price: latestTrend(item.card_id, item.variant || "normal"),
+    price_breakdown: cardmarketBreakdown(item.card_id),
+    cardmarket_url: cardmarketUrl(item.cardmarket_product_id),
+  }));
   res.json(items);
 });
 
@@ -74,6 +74,7 @@ router.post("/", async (req, res) => {
     purchaseDate,
     notes,
     language,
+    variant,
   } = req.body;
   if (!externalId) return res.status(400).json({ error: "externalId fehlt" });
 
@@ -99,6 +100,7 @@ router.post("/", async (req, res) => {
       purchase_date: purchaseDate || null,
       notes: notes || null,
       language: langOrNull(language) ?? "en",
+      variant: variantOrNull(variant) ?? "normal",
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -111,7 +113,8 @@ router.post("/", async (req, res) => {
 
 // PATCH /api/collection/:id
 router.patch("/:id", (req, res) => {
-  const { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes, language } = req.body;
+  const { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes, language, variant } =
+    req.body;
   const info = updateCollectionItem.run({
     id: Number(req.params.id),
     quantity: num(quantity) ?? 1,
@@ -121,6 +124,7 @@ router.patch("/:id", (req, res) => {
     purchase_date: purchaseDate || null,
     notes: notes || null,
     language: langOrNull(language),
+    variant: variantOrNull(variant),
   });
   if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
   recordPortfolioSnapshot();

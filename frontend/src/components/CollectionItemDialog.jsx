@@ -21,6 +21,15 @@ const CONDITION_LABELS = {
 };
 export const conditionLabel = (v) => CONDITION_LABELS[v] ?? v ?? "—";
 
+export const VARIANTS = [
+  ["normal", "Normal"],
+  ["holo", "Holo"],
+  ["reverse", "Reverse Holo"],
+  ["first_edition", "1st Edition"],
+];
+const VARIANT_LABELS = Object.fromEntries(VARIANTS);
+export const variantLabel = (v) => VARIANT_LABELS[v] ?? "Normal";
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 // Dialog zum Erfassen ODER Bearbeiten eines Sammlungs-Eintrags.
@@ -38,6 +47,7 @@ export default function CollectionItemDialog({
   const [form, setForm] = useState({
     quantity: initial?.quantity ?? 1,
     condition: initial?.condition ?? "near_mint",
+    variant: initial?.variant ?? "normal",
     language: initial?.language ?? "de",
     purchasePrice: initial?.purchase_price != null ? String(initial.purchase_price) : "",
     shippingCost: initial?.shipping_cost != null ? String(initial.shipping_cost) : "",
@@ -64,6 +74,7 @@ export default function CollectionItemDialog({
     onConfirm({
       quantity: qty,
       condition: form.condition,
+      variant: form.variant,
       language: form.language,
       purchasePrice: form.purchasePrice === "" ? null : price,
       shippingCost: form.shippingCost === "" ? null : shipping,
@@ -112,6 +123,17 @@ export default function CollectionItemDialog({
               className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
             >
               {CONDITIONS.map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-subtle col-span-2">
+            Variante
+            <select
+              value={form.variant} onChange={set("variant")}
+              className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+            >
+              {VARIANTS.map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>

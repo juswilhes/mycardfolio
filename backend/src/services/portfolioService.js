@@ -91,20 +91,20 @@ const collectionItemFull = db.prepare(`
 
 const insertSale = db.prepare(`
   INSERT INTO sales
-    (card_id, external_id, name, set_name, number, image_small, quantity, condition, language,
+    (card_id, external_id, name, set_name, number, image_small, quantity, condition, language, variant,
      purchase_price, shipping_cost, purchase_date, purchase_notes,
      sale_price, sale_shipping, sale_fees, sold_on, notes)
   VALUES
-    (@card_id, @external_id, @name, @set_name, @number, @image_small, @quantity, @condition, @language,
+    (@card_id, @external_id, @name, @set_name, @number, @image_small, @quantity, @condition, @language, @variant,
      @purchase_price, @shipping_cost, @purchase_date, @purchase_notes,
      @sale_price, @sale_shipping, @sale_fees, @sold_on, @notes)
 `);
 
 const restoreCollectionItem = db.prepare(`
   INSERT INTO collection_items
-    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language)
+    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language, variant)
   VALUES
-    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language)
+    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language, @variant)
 `);
 const saleById = db.prepare(`SELECT * FROM sales WHERE id = ?`);
 
@@ -126,6 +126,7 @@ export function sellCollectionItem(id, sale) {
       quantity: item.quantity,
       condition: item.condition,
       language: item.language,
+      variant: item.variant ?? "normal",
       purchase_price: item.purchase_price,
       shipping_cost: item.shipping_cost,
       purchase_date: item.purchase_date,
@@ -156,6 +157,7 @@ export function undoSale(id) {
       purchase_date: s.purchase_date,
       notes: s.purchase_notes,
       language: s.language ?? "en",
+      variant: s.variant ?? "normal",
     });
     deleteSaleRow.run(Number(id));
   });

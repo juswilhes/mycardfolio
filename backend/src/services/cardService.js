@@ -12,13 +12,13 @@ const upsertCard = db.prepare(`
 `);
 
 const insertSnapshot = db.prepare(`
-  INSERT INTO price_snapshots (card_id, source, price_type, currency, price, fetched_at)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO price_snapshots (card_id, source, price_type, currency, price, variant, fetched_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
 
 const snapshotToday = db.prepare(`
   SELECT id FROM price_snapshots
-  WHERE card_id = ? AND source = ? AND price_type = ? AND substr(fetched_at, 1, 10) = ?
+  WHERE card_id = ? AND source = ? AND price_type = ? AND variant = ? AND substr(fetched_at, 1, 10) = ?
   LIMIT 1
 `);
 
@@ -50,8 +50,9 @@ export function recordPrices(cardId, prices = [], meta = null) {
   const day = new Date().toISOString().slice(0, 10);
   const now = new Date().toISOString();
   for (const p of prices) {
-    if (snapshotToday.get(cardId, p.source, p.price_type, day)) continue;
-    insertSnapshot.run(cardId, p.source, p.price_type, p.currency, p.price, now);
+    const variant = p.variant ?? "normal";
+    if (snapshotToday.get(cardId, p.source, p.price_type, variant, day)) continue;
+    insertSnapshot.run(cardId, p.source, p.price_type, p.currency, p.price, variant, now);
   }
   if (meta && (meta.productId != null || meta.updated != null)) {
     setCardmarketMeta.run(meta.productId ?? null, meta.updated ?? null, cardId);
@@ -60,8 +61,9 @@ export function recordPrices(cardId, prices = [], meta = null) {
 
 export const listCollection = db.prepare(`
   SELECT ci.id AS collection_item_id, ci.quantity, ci.condition,
-         ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency, ci.notes, ci.language,
-         c.id AS card_id, c.external_id, c.name, c.set_name, c.number, c.rarity,
+         ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency, ci.notes,
+         ci.language, ci.variant,
+         c.id AS card_id, c.external_id, c.name, c.set_name, c.set_id, c.number, c.rarity,
          c.artist, c.image_small, c.image_large,
          c.cardmarket_product_id, c.cardmarket_updated
   FROM collection_items ci
@@ -69,30 +71,43 @@ export const listCollection = db.prepare(`
   ORDER BY ci.created_at DESC
 `);
 
-// Aktueller Referenzpreis = Trend in EUR. Bevorzugt Cardmarket; nur wenn
-// Cardmarket für die Karte gar nichts hat, der aus USD umgerechnete
-// TCGplayer-Wert. Immer genau EIN Wert pro Karte -> saubere Portfolio-Summe.
-export const latestPriceForCard = db.prepare(`
-  SELECT price, currency, price_type, source, fetched_at
+const trendRows = db.prepare(`
+  SELECT price, currency, price_type, source, variant, fetched_at
   FROM price_snapshots
   WHERE card_id = ? AND price_type = 'trend'
   ORDER BY (source = 'cardmarket') DESC, fetched_at DESC
-  LIMIT 1
 `);
 
-// Jüngster Wert je Preistyp (trend / low / avg30) für die Aufschlüsselung.
-export const cardmarketBreakdownForCard = db.prepare(`
-  SELECT price_type, price, currency, MAX(fetched_at) AS fetched_at
+// Aktueller Referenzpreis (Trend, EUR) für eine Karte + Variante. Fällt auf
+// 'normal' zurück, wenn es für die Variante keinen eigenen Preis gibt.
+export function latestTrend(cardId, variant = "normal") {
+  const rows = trendRows.all(cardId);
+  return (
+    rows.find((r) => r.variant === variant) ??
+    rows.find((r) => r.variant === "normal") ??
+    rows[0] ??
+    null
+  );
+}
+// alter Name, für bestehende Aufrufer
+export const latestPriceForCard = { get: (cardId) => latestTrend(cardId, "normal") };
+
+const cmBreakdownRows = db.prepare(`
+  SELECT variant, price_type, price, currency, MAX(fetched_at) AS fetched_at
   FROM price_snapshots
   WHERE card_id = ? AND source = 'cardmarket'
-  GROUP BY price_type
+  GROUP BY variant, price_type
 `);
+export function cardmarketBreakdown(cardId) {
+  return cmBreakdownRows.all(cardId);
+}
+export const cardmarketBreakdownForCard = { all: cardmarketBreakdown };
 
-// Trend-Verlauf (EUR) für den Graphen.
+// Trend-Verlauf (EUR, Variante 'normal') für den Graphen.
 export const priceHistoryForCard = db.prepare(`
   SELECT price, currency, price_type, source, fetched_at
   FROM price_snapshots
-  WHERE card_id = ? AND price_type = 'trend'
+  WHERE card_id = ? AND price_type = 'trend' AND variant = 'normal'
   ORDER BY fetched_at ASC
 `);
 
@@ -117,17 +132,19 @@ export const priceHistoryByExternalId = db.prepare(`
   SELECT ps.price, ps.currency, ps.price_type, ps.source, ps.fetched_at
   FROM price_snapshots ps
   JOIN cards c ON c.id = ps.card_id
-  WHERE c.external_id = ? AND ps.price_type = 'trend'
+  WHERE c.external_id = ? AND ps.price_type = 'trend' AND ps.variant = 'normal'
   ORDER BY ps.fetched_at ASC
 `);
 
-export const cardmarketBreakdownByExternalId = db.prepare(`
-  SELECT ps.price_type, ps.price, ps.currency, MAX(ps.fetched_at) AS fetched_at
-  FROM price_snapshots ps
-  JOIN cards c ON c.id = ps.card_id
-  WHERE c.external_id = ? AND ps.source = 'cardmarket'
-  GROUP BY ps.price_type
+const cardIdForExternal = db.prepare(`
+  SELECT id FROM cards WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
+
+export function cardmarketBreakdownByExternal(externalId) {
+  const row = cardIdForExternal.get(externalId);
+  return row ? cardmarketBreakdown(row.id) : [];
+}
+export const cardmarketBreakdownByExternalId = { all: cardmarketBreakdownByExternal };
 
 export const cardMetaByExternalId = db.prepare(`
   SELECT id, cardmarket_product_id, cardmarket_updated
@@ -135,11 +152,23 @@ export const cardMetaByExternalId = db.prepare(`
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
 
-export const latestPriceByExternalId = db.prepare(`
-  SELECT ps.price, ps.currency, ps.price_type, ps.source, ps.fetched_at
-  FROM price_snapshots ps
-  JOIN cards c ON c.id = ps.card_id
-  WHERE c.external_id = ? AND ps.price_type = 'trend'
-  ORDER BY (ps.source = 'cardmarket') DESC, ps.fetched_at DESC
-  LIMIT 1
+export function latestTrendByExternal(externalId, variant = "normal") {
+  const row = cardIdForExternal.get(externalId);
+  return row ? latestTrend(row.id, variant) : null;
+}
+export const latestPriceByExternalId = { get: (externalId) => latestTrendByExternal(externalId, "normal") };
+
+// Fortschritt je Set: wie viele verschiedene Karten aus dem Set besitzt du?
+export const setProgress = db.prepare(`
+  SELECT c.set_id, COUNT(DISTINCT c.id) AS owned
+  FROM collection_items ci JOIN cards c ON c.id = ci.card_id
+  WHERE c.set_id IS NOT NULL
+  GROUP BY c.set_id
+`);
+
+// external_ids aller Karten eines Sets, die du besitzt
+export const ownedInSet = db.prepare(`
+  SELECT DISTINCT c.external_id
+  FROM collection_items ci JOIN cards c ON c.id = ci.card_id
+  WHERE c.set_id = ?
 `);

@@ -106,6 +106,18 @@ export async function getCardsForSet(setId) {
   return res.json();
 }
 
+export async function getSetProgress() {
+  const res = await fetch(`${BASE}/sets/progress`);
+  if (!res.ok) throw new Error("Fortschritt konnte nicht geladen werden");
+  return res.json();
+}
+
+export async function getOwnedInSet(setId) {
+  const res = await fetch(`${BASE}/sets/${setId}/owned`);
+  if (!res.ok) throw new Error("Besitz konnte nicht geladen werden");
+  return res.json();
+}
+
 export async function getCardInfo(externalId) {
   const res = await fetch(`${BASE}/cards/external/${externalId}`);
   if (!res.ok) throw new Error("Karteninfo konnte nicht geladen werden");

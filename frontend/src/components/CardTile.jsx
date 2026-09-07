@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteCollectionItem } from "../api.js";
+import { variantLabel } from "./CollectionItemDialog.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -43,6 +44,7 @@ export default function CardTile({ item, onChanged }) {
         <p className="font-medium truncate">{item.name}</p>
         <p className="text-subtle text-xs mt-0.5 truncate">
           {[item.rarity, item.set_name].filter(Boolean).join(" · ")} · {qty}×
+          {item.variant && item.variant !== "normal" ? ` · ${variantLabel(item.variant)}` : ""}
         </p>
       </div>
 
