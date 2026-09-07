@@ -59,6 +59,9 @@ export default function CardTile({ item, onChanged }) {
               <span className={gain >= 0 ? "text-mint ml-2" : "text-rose ml-2"}>
                 {gain >= 0 ? "+" : "−"}
                 {eur(Math.abs(gain))}
+                {cost > 0 && (
+                  <> ({gain >= 0 ? "+" : "−"}{Math.abs((gain / cost) * 100).toFixed(1)} %)</>
+                )}
               </span>
             )}
           </p>

@@ -21,6 +21,18 @@ export default function PortfolioAddedAnimation({ card, onDone }) {
     []
   );
 
+  // Ziel = Mitte des Reiters "Sammlung" in der Kopfzeile, relativ zur
+  // Bildschirmmitte (dort startet die Karte).
+  const target = useMemo(() => {
+    const el = typeof document !== "undefined" && document.getElementById("nav-sammlung");
+    if (!el) return { x: "0px", y: "-42vh" };
+    const r = el.getBoundingClientRect();
+    return {
+      x: `${Math.round(r.left + r.width / 2 - window.innerWidth / 2)}px`,
+      y: `${Math.round(r.top + r.height / 2 - window.innerHeight / 2)}px`,
+    };
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(onDone, 1650);
     return () => clearTimeout(t);
@@ -34,7 +46,7 @@ export default function PortfolioAddedAnimation({ card, onDone }) {
           18%  { transform: translateY(0) scale(1.08) rotate(4deg); opacity: 1; }
           32%  { transform: translateY(0) scale(1) rotate(0deg); }
           70%  { transform: translate(0,0) scale(1) rotate(0deg); opacity: 1; }
-          100% { transform: translate(-42vw,-40vh) scale(.12) rotate(-8deg); opacity: 0; }
+          100% { transform: translate(var(--pf-tx,-42vw), var(--pf-ty,-40vh)) scale(.1) rotate(-6deg); opacity: 0; }
         }
         @keyframes pf-particle {
           0%   { transform: translate(0,0) scale(.2) rotate(0deg); opacity: 0; }
@@ -85,7 +97,11 @@ export default function PortfolioAddedAnimation({ card, onDone }) {
           src={card.image_large ?? card.image_small}
           alt=""
           className="pf-anim w-40 rounded-2xl shadow-2xl"
-          style={{ animation: "pf-card 1.65s cubic-bezier(.2,.8,.2,1) forwards" }}
+          style={{
+            "--pf-tx": target.x,
+            "--pf-ty": target.y,
+            animation: "pf-card 1.65s cubic-bezier(.2,.8,.2,1) forwards",
+          }}
         />
 
         <div

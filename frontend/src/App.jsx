@@ -23,6 +23,7 @@ export default function App() {
             <NavLink
               to="/"
               end
+              id="nav-sammlung"
               className={({ isActive }) =>
                 isActive ? "text-ink font-medium" : "text-subtle hover:text-ink"
               }
