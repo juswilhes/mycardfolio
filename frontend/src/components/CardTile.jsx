@@ -2,13 +2,20 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteCollectionItem } from "../api.js";
 
-// EIN Element der Sammlungsliste: Bild links, Name/Set in der Mitte,
-// Preis rechts. Klick führt zur Detailseite dieser Karte (/card/:cardId).
-// Beim Hovern erscheint rechts ein ✕ zum schnellen Entfernen.
+const eur = (n) => `${Number(n).toFixed(2)} €`;
+
+// EIN Element der Sammlungsliste: Bild, Name/Set, rechts aktueller Wert
+// plus (falls hinterlegt) Einstand und Gewinn/Verlust.
 export default function CardTile({ item, onChanged }) {
   const price = item.latest_price;
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const qty = item.quantity ?? 1;
+  const hasCost = item.purchase_price != null || item.shipping_cost != null;
+  const cost = hasCost ? ((item.purchase_price ?? 0) + (item.shipping_cost ?? 0)) * qty : null;
+  const value = price ? price.price * qty : null;
+  const gain = cost != null && value != null ? value - cost : null;
 
   async function remove(e) {
     e.preventDefault();
@@ -35,17 +42,26 @@ export default function CardTile({ item, onChanged }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{item.name}</p>
         <p className="text-subtle text-xs mt-0.5">
-          {item.set_name} · {item.quantity}×
+          {item.set_name} · {qty}×
         </p>
       </div>
 
-      <div className="text-right shrink-0">
+      <div className="text-right shrink-0 tabular-nums">
         {price ? (
-          <p className="font-mono font-medium">
-            {price.price.toFixed(2)} {price.currency}
-          </p>
+          <p className="font-mono font-medium">{eur(value)}</p>
         ) : (
           <p className="text-subtle text-sm">kein Preis</p>
+        )}
+        {cost != null && (
+          <p className="text-xs mt-0.5">
+            <span className="text-subtle">Einstand {eur(cost)}</span>
+            {gain != null && (
+              <span className={gain >= 0 ? "text-mint ml-2" : "text-rose ml-2"}>
+                {gain >= 0 ? "+" : "−"}
+                {eur(Math.abs(gain))}
+              </span>
+            )}
+          </p>
         )}
       </div>
 
