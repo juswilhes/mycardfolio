@@ -15,7 +15,7 @@ export default function App() {
     <div className="min-h-screen">
       <header className="border-b border-line px-6 py-4 flex items-center justify-between">
         <Link to="/" aria-label="mycardfolio – Startseite">
-          <Logo className="h-8" />
+          <Logo className="h-11" />
         </Link>
         <div className="flex items-center gap-6">
           <nav className="flex gap-6 text-sm">
