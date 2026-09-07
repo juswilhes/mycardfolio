@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 
 export const CONDITIONS = [
-  ["sealed", "Sealed (versiegelt)"],
+  ["sealed", "Sealed"],
   ["mint", "Mint"],
   ["near_mint", "Near Mint"],
-  ["lightly_played", "Lightly Played"],
-  ["moderately_played", "Moderately Played"],
-  ["heavily_played", "Heavily Played"],
-  ["damaged", "Damaged"],
+  ["excellent", "Excellent"],
+  ["good", "Good"],
+  ["light_played", "Light Played"],
+  ["played", "Played"],
+  ["poor", "Poor"],
 ];
 
-const CONDITION_LABELS = Object.fromEntries(CONDITIONS);
+// inkl. alter Werte, damit früher gespeicherte Einträge lesbar bleiben
+const CONDITION_LABELS = {
+  ...Object.fromEntries(CONDITIONS),
+  lightly_played: "Light Played",
+  moderately_played: "Played",
+  heavily_played: "Played",
+  damaged: "Poor",
+};
 export const conditionLabel = (v) => CONDITION_LABELS[v] ?? v ?? "—";
 
 const today = () => new Date().toISOString().slice(0, 10);

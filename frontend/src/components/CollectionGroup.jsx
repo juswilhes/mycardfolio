@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import CardTile from "./CardTile.jsx";
+import { deleteCollectionItem } from "../api.js";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -14,6 +15,8 @@ const entryCost = (e) =>
 // aufklappbarer Auflistung der einzelnen Käufe.
 export default function CollectionGroup({ group, onChanged }) {
   const [open, setOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+  const [busy, setBusy] = useState(false);
   const { entries } = group;
 
   if (entries.length === 1) {
@@ -29,20 +32,35 @@ export default function CollectionGroup({ group, onChanged }) {
   const pricedQty = withCost.reduce((s, e) => s + (e.quantity ?? 1), 0);
   const gain = withCost.length && price != null ? price * pricedQty - cost : null;
 
+  async function removeEntry(id) {
+    setBusy(true);
+    try {
+      await deleteCollectionItem(id);
+      setConfirmId(null);
+      onChanged?.();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="border-b border-line">
-      <div
-        className="flex items-center gap-4 py-4 cursor-pointer"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <img src={group.image_small} alt="" className="w-12 h-auto rounded shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{group.name}</p>
-          <p className="text-subtle text-xs mt-0.5">
-            {group.set_name} · {qty}× · {entries.length} Käufe
-            <span className="ml-1">{open ? "▲" : "▼"}</span>
-          </p>
-        </div>
+      <div className="flex items-center gap-4 py-4">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-4 flex-1 min-w-0 text-left"
+        >
+          <img src={group.image_small} alt="" className="w-12 h-auto rounded shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{group.name}</p>
+            <p className="text-subtle text-xs mt-0.5 truncate">
+              {[group.rarity, group.set_name].filter(Boolean).join(" · ")} · {qty}× ·{" "}
+              {entries.length} Käufe
+            </p>
+          </div>
+        </button>
+
         <div className="text-right shrink-0 tabular-nums">
           {value != null ? (
             <p className="font-mono font-medium">{eur(value)}</p>
@@ -64,30 +82,63 @@ export default function CollectionGroup({ group, onChanged }) {
             </p>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? "Käufe einklappen" : "Käufe anzeigen"}
+          className="shrink-0 w-7 h-7 rounded-full text-subtle hover:bg-line hover:text-ink transition text-xs"
+        >
+          {open ? "▲" : "▼"}
+        </button>
       </div>
 
       {open && (
-        <div className="pb-3 pl-16 pr-1 space-y-1.5">
+        <div className="pb-3 pl-16 pr-1 space-y-2">
           {entries.map((e) => {
             const c = entryCost(e);
             const v = price != null ? price * (e.quantity ?? 1) : null;
             const g = c != null && v != null ? v - c : null;
             return (
-              <div key={e.collection_item_id} className="flex justify-between gap-3 text-xs">
-                <span className="text-subtle truncate">
+              <div key={e.collection_item_id} className="flex items-center justify-between gap-3 text-xs">
+                <Link to={`/card/${group.card_id}`} className="text-subtle truncate hover:text-ink">
                   {e.purchase_date
                     ? new Date(e.purchase_date).toLocaleDateString("de-DE")
                     : "Datum unbekannt"}
                   {(e.quantity ?? 1) > 1 ? ` · ${e.quantity}×` : ""}
                   {e.purchase_price != null ? ` · Kauf ${eur(e.purchase_price)}` : ""}
                   {c != null ? ` · Einstand ${eur(c)}` : ""}
+                </Link>
+                <span className="flex items-center gap-2 shrink-0">
+                  {g != null && (
+                    <span className={`font-mono ${g >= 0 ? "text-mint" : "text-rose"}`}>
+                      {g >= 0 ? "+" : "−"}
+                      {eur(Math.abs(g))}
+                    </span>
+                  )}
+                  {confirmId === e.collection_item_id ? (
+                    <>
+                      <button
+                        onClick={() => removeEntry(e.collection_item_id)}
+                        disabled={busy}
+                        className="bg-rose text-white rounded-full px-2 py-0.5 disabled:opacity-60"
+                      >
+                        {busy ? "…" : "Entfernen"}
+                      </button>
+                      <button onClick={() => setConfirmId(null)} className="text-subtle px-1">
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmId(e.collection_item_id)}
+                      aria-label="Diesen Kauf entfernen"
+                      className="w-5 h-5 rounded-full text-subtle hover:bg-line hover:text-rose transition"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </span>
-                {g != null && (
-                  <span className={`font-mono shrink-0 ${g >= 0 ? "text-mint" : "text-rose"}`}>
-                    {g >= 0 ? "+" : "−"}
-                    {eur(Math.abs(g))}
-                  </span>
-                )}
               </div>
             );
           })}

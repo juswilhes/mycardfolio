@@ -100,6 +100,7 @@ export default function Collection() {
           card_id: it.card_id,
           name: it.name,
           set_name: it.set_name,
+          rarity: it.rarity,
           artist: it.artist,
           image_small: it.image_small,
           latest_price: it.latest_price,

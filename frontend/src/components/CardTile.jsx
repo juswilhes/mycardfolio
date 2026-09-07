@@ -42,7 +42,7 @@ export default function CardTile({ item, onChanged }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{item.name}</p>
         <p className="text-subtle text-xs mt-0.5 truncate">
-          {item.set_name} · {qty}×
+          {[item.rarity, item.set_name].filter(Boolean).join(" · ")} · {qty}×
         </p>
       </div>
 
@@ -88,7 +88,7 @@ export default function CardTile({ item, onChanged }) {
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirm(true); }}
           aria-label="Aus Sammlung entfernen"
-          className="shrink-0 w-7 h-7 rounded-full text-subtle opacity-30 group-hover:opacity-100 hover:bg-line hover:text-rose transition"
+          className="shrink-0 w-7 h-7 rounded-full text-subtle opacity-50 group-hover:opacity-100 hover:bg-line hover:text-rose transition"
         >
           ✕
         </button>
