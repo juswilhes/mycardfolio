@@ -62,7 +62,8 @@ export default function AddCard() {
     <div>
       <h1 className="text-xl font-semibold mb-1">Karte suchen</h1>
       <p className="text-subtle text-sm mb-5">
-        Deutsche Namen gehen auch (z. B. „Glurak", „Relaxo").
+        Deutsche Namen gehen auch („Glurak", „Relaxo"), und du kannst die
+        Kartennummer anhängen – z. B. „Mega Absol ex 180/132".
       </p>
 
       <form
@@ -76,7 +77,7 @@ export default function AddCard() {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Kartenname, z. B. Charizard oder Glurak"
+          placeholder="z. B. Charizard, Glurak oder Mega Absol ex 180/132"
           className="flex-1 border border-line rounded-full px-4 py-2.5 text-sm placeholder:text-subtle focus:outline-none focus:border-ink"
         />
         <button

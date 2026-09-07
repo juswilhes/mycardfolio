@@ -76,31 +76,60 @@ function expandQuery(query) {
   return [...terms].slice(0, 12);
 }
 
+// Trennt eine evtl. angehängte Kartennummer ab:
+//  "Mega Absol ex 180/132" -> { text: "Mega Absol ex", number: "180" }
+//  "Rayquaza TG05"          -> { text: "Rayquaza",      number: "TG05" }
+//  "180/132" / "180"        -> { text: "",              number: "180" }
+function splitNumber(query) {
+  const m = query.trim().match(/^(.*?)[\s#]*([A-Za-z]{0,3}\d+[A-Za-z]?)(?:\/\s*\d+)?\s*$/);
+  if (m && m[2]) return { text: m[1].trim(), number: m[2] };
+  return { text: query.trim(), number: null };
+}
+
+function runSearch({ game, terms, number, limit }) {
+  const nameClauses = terms.length
+    ? `(${terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ")})`
+    : null;
+  const where = ["c.game_id = (SELECT id FROM games WHERE slug = ?)"];
+  const params = [game];
+  if (nameClauses) {
+    where.push(nameClauses);
+    params.push(...terms.map((t) => `%${t}%`));
+  }
+  if (number) {
+    where.push("c.number = ? COLLATE NOCASE");
+    params.push(number);
+  }
+  // Ordering: Namens-Präfix zuerst, dann kürzere Namen, dann neueste Sets.
+  const prefixExpr = terms.length
+    ? `CASE WHEN (${terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ")}) THEN 0 ELSE 1 END`
+    : "0";
+  if (terms.length) params.push(...terms.map((t) => `${t}%`));
+  params.push(limit);
+
+  return db
+    .prepare(
+      `SELECT c.* FROM cards c
+       LEFT JOIN card_sets s ON s.id = c.set_id
+       WHERE ${where.join(" AND ")}
+       ORDER BY ${prefixExpr}, LENGTH(c.name), s.release_date DESC, c.name
+       LIMIT ?`
+    )
+    .all(...params)
+    .map(rowToCard);
+}
+
 export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
-  const terms = expandQuery(query);
-  const likeClauses = terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ");
-  // Karten, deren Name mit einem der Begriffe BEGINNT, zuerst (z.B. "Charizard"
-  // vor "Mega Charizard Y ex"), dann kürzere Namen, dann neueste Sets.
-  const prefixClauses = terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ");
-  const stmt = db.prepare(`
-    SELECT c.* FROM cards c
-    LEFT JOIN card_sets s ON s.id = c.set_id
-    WHERE c.game_id = (SELECT id FROM games WHERE slug = ?)
-      AND (${likeClauses})
-    ORDER BY
-      CASE WHEN (${prefixClauses}) THEN 0 ELSE 1 END,
-      LENGTH(c.name),
-      s.release_date DESC,
-      c.name
-    LIMIT ?
-  `);
-  const params = [
-    game,
-    ...terms.map((t) => `%${t}%`),
-    ...terms.map((t) => `${t}%`),
-    limit,
-  ];
-  return stmt.all(...params).map(rowToCard);
+  const { text, number } = splitNumber(query);
+  const terms = text ? expandQuery(text) : [];
+
+  let rows = runSearch({ game, terms, number, limit });
+  // Nichts mit Nummer gefunden? Dann ohne Nummer versuchen (Nummernschema
+  // unterscheidet sich je Sprache/Druck).
+  if (rows.length === 0 && number && terms.length) {
+    rows = runSearch({ game, terms, number: null, limit });
+  }
+  return rows;
 }
 
 const byExternalIdStmt = db.prepare(`

@@ -35,7 +35,7 @@ export default function Sets() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Karte direkt suchen – z. B. Charizard oder Glurak"
+          placeholder="Karte direkt suchen – Name, deutscher Name oder mit Nummer (180/132)"
           className="flex-1 border border-line rounded-full px-4 py-2.5 text-sm placeholder:text-subtle focus:outline-none focus:border-ink"
         />
         <button
