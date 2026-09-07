@@ -43,7 +43,7 @@ export function saveCardWithPrices(gameSlug, cardData) {
 
 export const listCollection = db.prepare(`
   SELECT ci.id AS collection_item_id, ci.quantity, ci.condition,
-         ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency,
+         ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency, ci.notes,
          c.id AS card_id, c.external_id, c.name, c.set_name, c.number, c.rarity,
          c.artist, c.image_small, c.image_large
   FROM collection_items ci

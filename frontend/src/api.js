@@ -22,6 +22,22 @@ export async function addToCollection(payload) {
   return res.json();
 }
 
+export async function updateCollectionItem(id, payload) {
+  const res = await fetch(`${BASE}/collection/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Änderung konnte nicht gespeichert werden");
+  return res.json();
+}
+
+export async function deleteCollectionItem(id) {
+  const res = await fetch(`${BASE}/collection/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Karte konnte nicht entfernt werden");
+  return res.json();
+}
+
 export async function getPriceHistory(cardId) {
   const res = await fetch(`${BASE}/cards/${cardId}/prices`);
   if (!res.ok) throw new Error("Preisverlauf konnte nicht geladen werden");

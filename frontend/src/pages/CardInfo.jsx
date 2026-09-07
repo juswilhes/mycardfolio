@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection } from "../api.js";
 import PriceChart from "../components/PriceChart.jsx";
-import AddToPortfolioDialog from "../components/AddToPortfolioDialog.jsx";
+import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
 // Route: /database/:externalId
@@ -26,10 +26,10 @@ export default function CardInfo() {
     getCardPriceHistory(externalId).then(setHistory).catch(() => setHistory([]));
   }, [externalId]);
 
-  async function confirmAdd(payload) {
+  async function confirmAdd(values) {
     setBusy(true);
     try {
-      await addToCollection(payload);
+      await addToCollection({ ...values, externalId });
       setDialogOpen(false);
       setCelebrate(true);
     } finally {
@@ -96,7 +96,7 @@ export default function CardInfo() {
       <PriceChart data={history} />
 
       {dialogOpen && (
-        <AddToPortfolioDialog
+        <CollectionItemDialog
           card={card}
           busy={busy}
           onConfirm={confirmAdd}

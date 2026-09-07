@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCollection } from "../api.js";
 import CardTile from "../components/CardTile.jsx";
 import { Link } from "react-router-dom";
@@ -6,9 +6,14 @@ import { Link } from "react-router-dom";
 export default function Collection() {
   const [items, setItems] = useState(null);
 
+  const load = useCallback(
+    () => getCollection().then(setItems).catch(() => setItems([])),
+    []
+  );
+
   useEffect(() => {
-    getCollection().then(setItems).catch(() => setItems([]));
-  }, []);
+    load();
+  }, [load]);
 
   if (items === null) {
     return <p className="text-subtle text-sm">Lade Sammlung …</p>;
@@ -43,7 +48,7 @@ export default function Collection() {
       </div>
       <div>
         {items.map((item) => (
-          <CardTile key={item.collection_item_id} item={item} />
+          <CardTile key={item.collection_item_id} item={item} onChanged={load} />
         ))}
       </div>
     </div>

@@ -10,16 +10,25 @@ const CONDITIONS = [
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-// Modal zum Erfassen eines Kaufs. Ruft onConfirm(payload) auf; der
-// aufrufende Screen kümmert sich um API-Call + Animation.
-export default function AddToPortfolioDialog({ card, onConfirm, onClose, busy }) {
+// Dialog zum Erfassen ODER Bearbeiten eines Sammlungs-Eintrags.
+// onConfirm bekommt die reinen Formularwerte; der aufrufende Screen
+// hängt ggf. externalId an und kümmert sich um API-Call + Animation.
+export default function CollectionItemDialog({
+  card,
+  initial,
+  title = "Zum Portfolio hinzufügen",
+  submitLabel = "Zum Portfolio",
+  busy,
+  onConfirm,
+  onClose,
+}) {
   const [form, setForm] = useState({
-    quantity: 1,
-    condition: "near_mint",
-    purchasePrice: "",
-    shippingCost: "",
-    purchaseDate: today(),
-    notes: "",
+    quantity: initial?.quantity ?? 1,
+    condition: initial?.condition ?? "near_mint",
+    purchasePrice: initial?.purchase_price != null ? String(initial.purchase_price) : "",
+    shippingCost: initial?.shipping_cost != null ? String(initial.shipping_cost) : "",
+    purchaseDate: initial?.purchase_date ? initial.purchase_date.slice(0, 10) : today(),
+    notes: initial?.notes ?? "",
   });
 
   useEffect(() => {
@@ -39,7 +48,6 @@ export default function AddToPortfolioDialog({ card, onConfirm, onClose, busy })
     e.preventDefault();
     if (busy) return;
     onConfirm({
-      externalId: card.external_id,
       quantity: qty,
       condition: form.condition,
       purchasePrice: form.purchasePrice === "" ? null : price,
@@ -65,14 +73,12 @@ export default function AddToPortfolioDialog({ card, onConfirm, onClose, busy })
             className="w-16 rounded-lg border border-line shrink-0"
           />
           <div className="min-w-0">
+            <p className="text-xs text-subtle">{title}</p>
             <p className="font-semibold truncate">{card.name}</p>
             <p className="text-subtle text-xs truncate">
               {card.set_name}
               {card.number ? ` · #${card.number}` : ""}
             </p>
-            {card.artist && (
-              <p className="text-subtle text-[11px] truncate mt-0.5">✎ {card.artist}</p>
-            )}
           </div>
         </div>
 
@@ -144,7 +150,7 @@ export default function AddToPortfolioDialog({ card, onConfirm, onClose, busy })
             type="submit" disabled={busy}
             className="flex-1 bg-yellow text-yellowInk font-medium rounded-full py-2.5 text-sm disabled:opacity-60"
           >
-            {busy ? "Wird hinzugefügt …" : "Zum Portfolio"}
+            {busy ? "Speichern …" : submitLabel}
           </button>
         </div>
       </form>

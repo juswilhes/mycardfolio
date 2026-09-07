@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { searchCards, addToCollection } from "../api.js";
 import { useNavigate, Link } from "react-router-dom";
-import AddToPortfolioDialog from "../components/AddToPortfolioDialog.jsx";
+import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
 export default function AddCard() {
@@ -24,10 +24,10 @@ export default function AddCard() {
     }
   }
 
-  async function confirmAdd(payload) {
+  async function confirmAdd(values) {
     setBusy(true);
     try {
-      await addToCollection(payload);
+      await addToCollection({ ...values, externalId: dialogCard.external_id });
       const card = dialogCard;
       setDialogCard(null);
       setCelebrateCard(card);
@@ -87,7 +87,7 @@ export default function AddCard() {
       </div>
 
       {dialogCard && (
-        <AddToPortfolioDialog
+        <CollectionItemDialog
           card={dialogCard}
           busy={busy}
           onConfirm={confirmAdd}

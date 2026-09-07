@@ -13,6 +13,16 @@ const insertCollectionItem = db.prepare(`
     (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes)
 `);
 
+const updateCollectionItem = db.prepare(`
+  UPDATE collection_items SET
+    quantity = @quantity, condition = @condition,
+    purchase_price = @purchase_price, shipping_cost = @shipping_cost,
+    purchase_date = @purchase_date, notes = @notes
+  WHERE id = @id
+`);
+
+const deleteCollectionItem = db.prepare(`DELETE FROM collection_items WHERE id = ?`);
+
 const num = (v) => {
   if (v === "" || v === null || v === undefined) return null;
   const n = Number(v);
@@ -83,6 +93,29 @@ router.post("/", async (req, res) => {
       })
       .catch(() => {});
   }
+});
+
+// PATCH /api/collection/:id  { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes }
+router.patch("/:id", (req, res) => {
+  const { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes } = req.body;
+  const info = updateCollectionItem.run({
+    id: Number(req.params.id),
+    quantity: num(quantity) ?? 1,
+    condition: condition || "near_mint",
+    purchase_price: num(purchasePrice),
+    shipping_cost: num(shippingCost),
+    purchase_date: purchaseDate || null,
+    notes: notes || null,
+  });
+  if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
+  res.json({ ok: true });
+});
+
+// DELETE /api/collection/:id -> Karte aus der Sammlung entfernen
+router.delete("/:id", (req, res) => {
+  const info = deleteCollectionItem.run(Number(req.params.id));
+  if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
+  res.json({ ok: true });
 });
 
 export default router;
