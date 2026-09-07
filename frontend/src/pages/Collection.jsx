@@ -46,6 +46,7 @@ const savePref = (k, v) => {
 
 export default function Collection() {
   const [items, setItems] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [history, setHistory] = useState(null);
   const [movers, setMovers] = useState(null);
 
@@ -60,7 +61,15 @@ export default function Collection() {
   useEffect(() => savePref("artist", fArtist), [fArtist]);
 
   const load = useCallback(() => {
-    getCollection().then(setItems).catch(() => setItems([]));
+    getCollection()
+      .then((data) => {
+        setItems(data);
+        setLoadError(false);
+      })
+      .catch(() => {
+        setLoadError(true);
+        setItems((prev) => prev ?? []);
+      });
     getPortfolioHistory().then(setHistory).catch(() => setHistory([]));
     getMovers().then(setMovers).catch(() => setMovers(null));
   }, []);
@@ -101,6 +110,25 @@ export default function Collection() {
 
   if (items === null) return <p className="text-subtle text-sm">Lade Sammlung …</p>;
 
+  if (loadError) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-lg font-medium mb-1">Server nicht erreichbar</p>
+        <p className="text-subtle mb-6">
+          Deine Karten sind nicht weg – die App kann das Backend gerade nur nicht
+          erreichen. Läuft <code>backend</code> (Port 3001)? Sonst
+          <code> start-mycardfolio.bat</code> neu starten.
+        </p>
+        <button
+          onClick={load}
+          className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full"
+        >
+          Erneut versuchen
+        </button>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="text-center py-24">
@@ -124,6 +152,16 @@ export default function Collection() {
 
   return (
     <div>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold">Meine Sammlung</h1>
+        <Link
+          to="/add"
+          className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
+        >
+          + Karte hinzufügen
+        </Link>
+      </div>
+
       <div className="bg-surface border border-line rounded-2xl px-6 py-5 mb-6 shadow-sm">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
           <div>

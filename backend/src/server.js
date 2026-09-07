@@ -9,6 +9,9 @@ import salesRouter from "./routes/sales.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
 import { recordPortfolioSnapshot } from "./services/portfolioService.js";
 
+process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
+process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e));
+
 const app = express();
 app.use(cors());
 app.use(express.json());

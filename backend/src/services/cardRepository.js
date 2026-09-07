@@ -76,47 +76,48 @@ function expandQuery(query) {
   return [...terms].slice(0, 12);
 }
 
-// Trennt eine evtl. angehängte Kartennummer ab:
-//  "Mega Absol ex 180/132" -> { text: "Mega Absol ex", number: "180" }
-//  "Rayquaza TG05"          -> { text: "Rayquaza",      number: "TG05" }
-//  "180/132" / "180"        -> { text: "",              number: "180" }
+// Trennt eine evtl. angehängte Kartennummer ab. Die "eigene" Nummer der
+// Karte steht vor dem "/", der Teil danach ist die Set-Gesamtzahl.
+//  "Mega Absol ex 180/132"      -> { text: "Mega Absol ex",   number: "180" }
+//  "Darkrai VSTAR GG50/GG70"     -> { text: "Darkrai VSTAR",   number: "GG50" }
+//  "Rayquaza TG05"               -> { text: "Rayquaza",        number: "TG05" }
+//  "180/132" / "180"             -> { text: "",                number: "180" }
+const NUM = "[A-Za-z]{0,4}\\d+[A-Za-z]?";
 function splitNumber(query) {
-  const m = query.trim().match(/^(.*?)[\s#]*([A-Za-z]{0,3}\d+[A-Za-z]?)(?:\/\s*\d+)?\s*$/);
-  if (m && m[2]) return { text: m[1].trim(), number: m[2] };
+  // Nummer nur abtrennen, wenn sie ein eigenes Wort ist (Leerzeichen/# davor)
+  // oder die ganze Eingabe ist - sonst würde "Porygon2" zerlegt.
+  const m = query.trim().match(new RegExp(`^(?:(.*?)[\\s#]+)?(${NUM})(?:\\s*/\\s*${NUM})?\\s*$`));
+  if (m && m[2]) return { text: (m[1] ?? "").trim(), number: m[2] };
   return { text: query.trim(), number: null };
 }
 
-function runSearch({ game, terms, number, limit }) {
-  const nameClauses = terms.length
-    ? `(${terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ")})`
-    : null;
-  const where = ["c.game_id = (SELECT id FROM games WHERE slug = ?)"];
-  const params = [game];
-  if (nameClauses) {
-    where.push(nameClauses);
-    params.push(...terms.map((t) => `%${t}%`));
-  }
-  if (number) {
-    where.push("c.number = ? COLLATE NOCASE");
-    params.push(number);
-  }
-  // Ordering: Namens-Präfix zuerst, dann kürzere Namen, dann neueste Sets.
-  const prefixExpr = terms.length
-    ? `CASE WHEN (${terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ")}) THEN 0 ELSE 1 END`
-    : "0";
-  if (terms.length) params.push(...terms.map((t) => `${t}%`));
-  params.push(limit);
+// EIN fest vorbereitetes Statement mit fixer Parameterzahl (statt bei jeder
+// Suche ein neues zu prepare()n - das hat better-sqlite3 unter der schnellen
+// Tipp-Suche zum Absturz gebracht). Ungenutzte Slots bekommen NULL.
+const MAX_TERMS = 8;
+const likeSlots = Array.from({ length: MAX_TERMS }, (_, i) => `c.name LIKE @like${i} COLLATE NOCASE`).join(" OR ");
+const preSlots = Array.from({ length: MAX_TERMS }, (_, i) => `c.name LIKE @pre${i} COLLATE NOCASE`).join(" OR ");
 
-  return db
-    .prepare(
-      `SELECT c.* FROM cards c
-       LEFT JOIN card_sets s ON s.id = c.set_id
-       WHERE ${where.join(" AND ")}
-       ORDER BY ${prefixExpr}, LENGTH(c.name), s.release_date DESC, c.name
-       LIMIT ?`
-    )
-    .all(...params)
-    .map(rowToCard);
+const searchStmt = db.prepare(`
+  SELECT c.* FROM cards c
+  LEFT JOIN card_sets s ON s.id = c.set_id
+  WHERE c.game_id = (SELECT id FROM games WHERE slug = @game)
+    AND (@hasName = 0 OR (${likeSlots}))
+    AND (@num IS NULL OR c.number = @num COLLATE NOCASE)
+  ORDER BY
+    CASE WHEN @hasName = 1 AND (${preSlots}) THEN 0 ELSE 1 END,
+    LENGTH(c.name), s.release_date DESC, c.name
+  LIMIT @limit
+`);
+
+function runSearch({ game, terms, number, limit }) {
+  const t = terms.slice(0, MAX_TERMS);
+  const params = { game, num: number || null, limit, hasName: t.length ? 1 : 0 };
+  for (let i = 0; i < MAX_TERMS; i++) {
+    params[`like${i}`] = i < t.length ? `%${t[i]}%` : null;
+    params[`pre${i}`] = i < t.length ? `${t[i]}%` : null;
+  }
+  return searchStmt.all(params).map(rowToCard);
 }
 
 export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
