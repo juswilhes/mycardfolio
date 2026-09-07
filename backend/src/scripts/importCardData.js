@@ -37,22 +37,35 @@ const upsertSet = db.prepare(`
 const upsertCard = db.prepare(`
   INSERT INTO cards (
     game_id, external_id, name, set_name, set_id, number, rarity, image_small, image_large,
-    supertype, subtypes, types, hp, artist, flavor_text, national_pokedex, evolves_from,
+    supertype, subtypes, types, hp, artist, artist_source, flavor_text, national_pokedex, evolves_from,
     abilities, attacks, weaknesses, resistances, retreat_cost, rules, legalities, regulation_mark, raw_json
   ) VALUES (
     @game_id, @external_id, @name, @set_name, @set_id, @number, @rarity, @image_small, @image_large,
-    @supertype, @subtypes, @types, @hp, @artist, @flavor_text, @national_pokedex, @evolves_from,
+    @supertype, @subtypes, @types, @hp, @artist, @artist_source, @flavor_text, @national_pokedex, @evolves_from,
     @abilities, @attacks, @weaknesses, @resistances, @retreat_cost, @rules, @legalities, @regulation_mark, @raw_json
   )
   ON CONFLICT(game_id, external_id) DO UPDATE SET
     name=excluded.name, set_name=excluded.set_name, set_id=excluded.set_id, number=excluded.number,
     rarity=excluded.rarity, image_small=excluded.image_small, image_large=excluded.image_large,
     supertype=excluded.supertype, subtypes=excluded.subtypes, types=excluded.types, hp=excluded.hp,
-    artist=excluded.artist, flavor_text=excluded.flavor_text, national_pokedex=excluded.national_pokedex,
+    flavor_text=excluded.flavor_text, national_pokedex=excluded.national_pokedex,
     evolves_from=excluded.evolves_from, abilities=excluded.abilities, attacks=excluded.attacks,
     weaknesses=excluded.weaknesses, resistances=excluded.resistances, retreat_cost=excluded.retreat_cost,
     rules=excluded.rules, legalities=excluded.legalities, regulation_mark=excluded.regulation_mark,
-    raw_json=excluded.raw_json
+    raw_json=excluded.raw_json,
+    -- Illustrator NIE überschreiben, wenn manuell gesetzt oder wenn der
+    -- Datensatz gar keinen liefert (dann bleibt ein evtl. per Backfill
+    -- ergänzter Wert erhalten).
+    artist = CASE
+      WHEN cards.artist_manual = 1 THEN cards.artist
+      WHEN excluded.artist IS NOT NULL AND excluded.artist <> '' THEN excluded.artist
+      ELSE cards.artist
+    END,
+    artist_source = CASE
+      WHEN cards.artist_manual = 1 THEN cards.artist_source
+      WHEN excluded.artist IS NOT NULL AND excluded.artist <> '' THEN 'dataset'
+      ELSE cards.artist_source
+    END
 `);
 
 // --- Sets ---------------------------------------------------------------
@@ -97,6 +110,7 @@ const importCards = db.transaction((cards, setId) => {
       types: j(c.types),
       hp: c.hp ?? null,
       artist: c.artist ?? null,
+      artist_source: c.artist ? "dataset" : null,
       flavor_text: c.flavorText ?? null,
       national_pokedex: j(c.nationalPokedexNumbers),
       evolves_from: c.evolvesFrom ?? null,

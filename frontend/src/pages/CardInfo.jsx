@@ -1,22 +1,25 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getCardInfo, addToCollection } from "../api.js";
+import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection } from "../api.js";
+import PriceChart from "../components/PriceChart.jsx";
 
 // Route: /database/:externalId
-// Zeigt alle bekannten Infos zu EINER Karte. Die Stammdaten (Illustrator,
-// Attacken, Schwächen, Flavor-Text, ...) kommen aus der lokalen DB und sind
-// daher sofort da; nur die Preise werden noch live nachgeladen.
+// Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
+// Illustrator-Angabe lässt sich hier von Hand ergänzen/korrigieren.
 export default function CardInfo() {
   const { externalId } = useParams();
   const [card, setCard] = useState(null);
+  const [history, setHistory] = useState(null);
   const [error, setError] = useState(false);
   const [adding, setAdding] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     setCard(null);
+    setHistory(null);
     setError(false);
     getCardInfo(externalId).then(setCard).catch(() => setError(true));
+    getCardPriceHistory(externalId).then(setHistory).catch(() => setHistory([]));
   }, [externalId]);
 
   async function handleAdd() {
@@ -32,21 +35,15 @@ export default function CardInfo() {
   if (error) return <p className="text-rose text-sm">Karteninfo konnte nicht geladen werden.</p>;
   if (!card) return <p className="text-subtle text-sm">Lade Kartendetails …</p>;
 
-  const typeLine = [card.supertype, ...(card.subtypes ?? [])].filter(Boolean).join(" · ");
+  const kartentyp = [card.supertype, (card.types ?? []).join("/")].filter(Boolean).join(" · ");
 
   const facts = [
-    ["Illustrator", card.artist],
     ["Seltenheit", card.rarity],
-    ["HP", card.hp],
-    ["Typ", (card.types ?? []).join(", ")],
+    ["Kartennummer", card.number ? `#${card.number}` : null],
+    ["Kartentyp", kartentyp],
+    ["Erscheinungsjahr", card.year],
     ["Set", card.set_name],
-    ["Nummer", card.number ? `#${card.number}` : null],
     ["Pokédex-Nr.", (card.national_pokedex ?? []).join(", ")],
-    ["Entwickelt sich aus", card.evolves_from],
-    ["Schwäche", (card.weaknesses ?? []).map((w) => `${w.type} ${w.value}`).join(", ")],
-    ["Resistenz", (card.resistances ?? []).map((r) => `${r.type} ${r.value}`).join(", ")],
-    ["Rückzugskosten", (card.retreat_cost ?? []).length ? `${card.retreat_cost.length}` : null],
-    ["Regulierung", card.regulation_mark],
   ].filter(([, v]) => v);
 
   return (
@@ -63,11 +60,13 @@ export default function CardInfo() {
         />
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold">{card.name}</h1>
-          {typeLine && <p className="text-subtle text-sm mt-1">{typeLine}</p>}
-          <p className="text-subtle text-sm">
+          <p className="text-subtle text-sm mt-1">
             {card.set_name}
             {card.number ? ` · #${card.number}` : ""}
           </p>
+
+          <ArtistLine card={card} externalId={externalId} onSaved={setCard} />
+
           <button
             onClick={handleAdd}
             disabled={adding}
@@ -88,82 +87,82 @@ export default function CardInfo() {
         ))}
       </div>
 
-      {/* Fähigkeiten */}
-      {(card.abilities ?? []).length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-sm text-subtle mb-3">Fähigkeiten</h2>
-          {card.abilities.map((a, i) => (
-            <div key={i} className="border-t border-line py-3">
-              <p className="text-sm font-medium">
-                {a.name}
-                {a.type && a.type !== "Ability" ? (
-                  <span className="text-subtle font-normal"> · {a.type}</span>
-                ) : null}
-              </p>
-              {a.text && <p className="text-sm text-subtle mt-1">{a.text}</p>}
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Attacken */}
-      {(card.attacks ?? []).length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-sm text-subtle mb-3">Attacken</h2>
-          {card.attacks.map((atk, i) => (
-            <div key={i} className="border-t border-line py-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm font-medium flex items-center flex-wrap gap-1.5">
-                  {(atk.cost ?? []).map((c, j) => (
-                    <span
-                      key={j}
-                      className="inline-block text-[10px] leading-none uppercase tracking-wide bg-canvas border border-line rounded-full px-1.5 py-1 text-subtle font-normal"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                  <span className="ml-0.5">{atk.name}</span>
-                </p>
-                {atk.damage && <span className="text-sm font-mono shrink-0">{atk.damage}</span>}
-              </div>
-              {atk.text && <p className="text-sm text-subtle mt-1">{atk.text}</p>}
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Regeltext / Flavor */}
-      {(card.rules ?? []).length > 0 && (
-        <section className="mb-8 border-t border-line pt-3">
-          {card.rules.map((r, i) => (
-            <p key={i} className="text-sm text-subtle mb-2">{r}</p>
-          ))}
-        </section>
-      )}
-      {card.flavor_text && (
-        <p className="text-sm italic text-subtle border-l-2 border-line pl-3 mb-8">
-          {card.flavor_text}
-        </p>
-      )}
-
-      {/* Preise */}
-      <h2 className="text-sm text-subtle mb-2">Aktuelle Preise</h2>
-      {(card.prices ?? []).length === 0 ? (
-        <p className="text-subtle text-sm">Für diese Karte liegen aktuell keine Preisdaten vor.</p>
-      ) : (
-        <div className="border-t border-line">
-          {card.prices.map((p, i) => (
-            <div key={i} className="flex justify-between py-3 border-b border-line text-sm">
-              <span className="text-subtle">
-                {p.source} · {p.price_type}
-              </span>
-              <span className="font-mono">
-                {p.price.toFixed(2)} {p.currency}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Preisentwicklung */}
+      <h2 className="text-sm text-subtle mb-2">Preisentwicklung</h2>
+      <PriceChart data={history} />
     </div>
+  );
+}
+
+// Illustrator-Zeile mit Inline-Bearbeitung. Fehlt der Wert, steht dort ein
+// klarer Hinweis + "eintragen"-Link.
+function ArtistLine({ card, externalId, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(card.artist ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const v = value.trim();
+    if (!v) return;
+    setSaving(true);
+    try {
+      await updateCardArtist(externalId, v);
+      onSaved({ ...card, artist: v, artist_source: "manual", artist_manual: true });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          placeholder="Name des Illustrators"
+          className="border border-line rounded-full px-3 py-1 text-sm bg-surface focus:outline-none focus:border-ink"
+        />
+        <button
+          onClick={save}
+          disabled={saving}
+          className="text-sm bg-yellow text-yellowInk px-3 py-1 rounded-full disabled:opacity-60"
+        >
+          {saving ? "…" : "Speichern"}
+        </button>
+        <button onClick={() => setEditing(false)} className="text-sm text-subtle">
+          Abbrechen
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <p className="text-sm mt-2">
+      <span className="text-subtle">Illustrator: </span>
+      {card.artist ? (
+        <>
+          {card.artist}
+          <button
+            onClick={() => setEditing(true)}
+            className="ml-2 text-xs text-subtle hover:text-ink underline"
+          >
+            ändern
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="text-rose">nicht hinterlegt</span>
+          <button
+            onClick={() => setEditing(true)}
+            className="ml-2 text-xs text-ink underline"
+          >
+            eintragen
+          </button>
+        </>
+      )}
+    </p>
   );
 }

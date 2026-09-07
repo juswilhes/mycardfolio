@@ -98,6 +98,8 @@ addColumn("rules", "TEXT");            // JSON-Array
 addColumn("legalities", "TEXT");       // JSON
 addColumn("regulation_mark", "TEXT");
 addColumn("raw_json", "TEXT");         // vollständige Rohdaten, falls später mehr gebraucht wird
+addColumn("artist_source", "TEXT");    // woher der Illustrator kommt: "dataset" | "tcgdex" | "manual"
+addColumn("artist_manual", "INTEGER"); // 1 = vom Nutzer gesetzt, darf beim Re-Import nicht überschrieben werden
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id)`);
 

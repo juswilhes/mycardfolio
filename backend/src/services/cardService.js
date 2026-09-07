@@ -73,3 +73,18 @@ export const cardIdByExternalId = db.prepare(`
   SELECT id FROM cards
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
+
+// Illustrator manuell setzen. artist_manual = 1 schützt den Wert davor,
+// beim nächsten `npm run import` überschrieben zu werden.
+export const setArtistManual = db.prepare(`
+  UPDATE cards SET artist = ?, artist_source = 'manual', artist_manual = 1
+  WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
+`);
+
+export const priceHistoryByExternalId = db.prepare(`
+  SELECT ps.price, ps.currency, ps.price_type, ps.source, ps.fetched_at
+  FROM price_snapshots ps
+  JOIN cards c ON c.id = ps.card_id
+  WHERE c.external_id = ?
+  ORDER BY ps.fetched_at ASC
+`);

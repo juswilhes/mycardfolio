@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { getCardById } from "../services/pokemonTcgApi.js";
-import { priceHistoryForCard, latestPriceForCard, cardIdByExternalId } from "../services/cardService.js";
+import {
+  priceHistoryForCard,
+  latestPriceForCard,
+  cardIdByExternalId,
+  setArtistManual,
+  priceHistoryByExternalId,
+} from "../services/cardService.js";
 import { searchCardsLocal, getCardByExternalIdLocal } from "../services/cardRepository.js";
 
 const router = Router();
@@ -37,7 +43,23 @@ router.get("/external/:externalId", async (req, res) => {
   }
 });
 
-// GET /api/cards/:id/prices  -> Datenpunkte für den Graphen
+// GET /api/cards/external/:externalId/prices -> Preisverlauf für den Graphen
+// auf der Datenbank-Detailseite (nutzt die externe ID, nicht die interne).
+router.get("/external/:externalId/prices", (req, res) => {
+  res.json(priceHistoryByExternalId.all(req.params.externalId));
+});
+
+// PATCH /api/cards/external/:externalId/artist  { artist }
+// Illustrator von Hand setzen/korrigieren. Bleibt beim Re-Import erhalten.
+router.patch("/external/:externalId/artist", (req, res) => {
+  const artist = (req.body?.artist ?? "").trim();
+  if (!artist) return res.status(400).json({ error: "artist fehlt" });
+  const info = setArtistManual.run(artist, req.params.externalId);
+  if (!info.changes) return res.status(404).json({ error: "Karte nicht gefunden" });
+  res.json({ ok: true, artist });
+});
+
+// GET /api/cards/:id/prices  -> Datenpunkte für den Graphen (interne ID)
 router.get("/:id/prices", (req, res) => {
   const rows = priceHistoryForCard.all(req.params.id);
   res.json(rows);

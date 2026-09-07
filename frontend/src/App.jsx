@@ -1,4 +1,5 @@
-import { Routes, Route, NavLink } from "react-router-dom";
+import { Routes, Route, NavLink, Link } from "react-router-dom";
+import Logo from "./components/Logo.jsx";
 import Collection from "./pages/Collection.jsx";
 import AddCard from "./pages/AddCard.jsx";
 import CardDetail from "./pages/CardDetail.jsx";
@@ -13,7 +14,9 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-line px-6 py-4 flex items-center justify-between">
-        <span className="text-base font-semibold tracking-tight">MyCardfolio</span>
+        <Link to="/" aria-label="mycardfolio – Startseite">
+          <Logo className="h-7" />
+        </Link>
         <div className="flex items-center gap-6">
           <nav className="flex gap-6 text-sm">
             <NavLink

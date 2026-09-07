@@ -53,3 +53,19 @@ export async function getCardInfo(externalId) {
   if (!res.ok) throw new Error("Karteninfo konnte nicht geladen werden");
   return res.json();
 }
+
+export async function getCardPriceHistory(externalId) {
+  const res = await fetch(`${BASE}/cards/external/${externalId}/prices`);
+  if (!res.ok) throw new Error("Preisverlauf konnte nicht geladen werden");
+  return res.json();
+}
+
+export async function updateCardArtist(externalId, artist) {
+  const res = await fetch(`${BASE}/cards/external/${externalId}/artist`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ artist }),
+  });
+  if (!res.ok) throw new Error("Illustrator konnte nicht gespeichert werden");
+  return res.json();
+}

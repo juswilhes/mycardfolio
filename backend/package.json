@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "import": "node src/scripts/importCardData.js"
+    "import": "node src/scripts/importCardData.js",
+    "backfill-artists": "node src/scripts/backfillArtists.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",

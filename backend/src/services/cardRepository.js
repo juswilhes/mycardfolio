@@ -36,6 +36,11 @@ export function rowToCard(row) {
     rules: parse(row.rules) ?? [],
     legalities: parse(row.legalities) ?? {},
     regulation_mark: row.regulation_mark,
+    artist_source: row.artist_source,
+    artist_manual: !!row.artist_manual,
+    set_release_date: row.set_release_date ?? null,
+    year: row.set_release_date ? String(row.set_release_date).slice(0, 4) : null,
+    set_logo: row.set_logo ?? null,
   };
 }
 
@@ -62,7 +67,9 @@ export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
 }
 
 const byExternalIdStmt = db.prepare(`
-  SELECT c.* FROM cards c
+  SELECT c.*, s.release_date AS set_release_date, s.logo AS set_logo
+  FROM cards c
+  LEFT JOIN card_sets s ON s.id = c.set_id
   WHERE c.external_id = ? AND c.game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
 
