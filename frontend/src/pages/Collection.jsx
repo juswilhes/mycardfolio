@@ -10,6 +10,7 @@ const eur = (n) => `${n.toFixed(2)} €`;
 const SORTS = {
   recent: "Zuletzt hinzugefügt",
   bought: "Kaufdatum (neueste zuerst)",
+  bought_asc: "Kaufdatum (älteste zuerst)",
   value_desc: "Wert (hoch → niedrig)",
   gain_desc: "Gewinn (hoch → niedrig)",
   gain_asc: "Verlust (niedrig → hoch)",
@@ -87,6 +88,7 @@ export default function Collection() {
     const cmp = {
       recent: () => 0, // API-Reihenfolge = zuletzt hinzugefügt zuerst
       bought: (a, b) => (b.purchase_date ?? "").localeCompare(a.purchase_date ?? ""),
+      bought_asc: (a, b) => (a.purchase_date ?? "9999").localeCompare(b.purchase_date ?? "9999"),
       value_desc: (a, b) => val(b) - val(a),
       gain_desc: (a, b) => (gainOf(b) ?? -Infinity) - (gainOf(a) ?? -Infinity),
       gain_asc: (a, b) => (gainOf(a) ?? Infinity) - (gainOf(b) ?? Infinity),

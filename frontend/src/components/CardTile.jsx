@@ -43,9 +43,6 @@ export default function CardTile({ item, onChanged }) {
         <p className="font-medium truncate">{item.name}</p>
         <p className="text-subtle text-xs mt-0.5 truncate">
           {item.set_name} · {qty}×
-          {item.purchase_date
-            ? ` · gekauft ${new Date(item.purchase_date).toLocaleDateString("de-DE")}`
-            : ""}
         </p>
       </div>
 

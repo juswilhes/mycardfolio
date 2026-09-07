@@ -1,6 +1,20 @@
 // Lesezugriffe auf die lokal importierten Karten-/Set-Stammdaten.
 // Ersetzt für Suche, Set-Listen und Kartendetails die Live-API-Aufrufe.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import db from "../db/index.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Deutsch -> Englisch für Pokémon-Namen, damit die Suche auch mit "Glurak"
+// oder "Relaxo" funktioniert (der Datensatz ist englisch).
+let DE_EN = {};
+try {
+  DE_EN = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "pokemon-de-en.json"), "utf8"));
+} catch {
+  /* Liste optional - Suche fällt dann auf reines Englisch zurück */
+}
 
 const parse = (v) => {
   if (v == null) return null;
@@ -44,26 +58,49 @@ export function rowToCard(row) {
   };
 }
 
-const searchStmt = db.prepare(`
-  SELECT c.* FROM cards c
-  LEFT JOIN card_sets s ON s.id = c.set_id
-  WHERE c.game_id = (SELECT id FROM games WHERE slug = @game)
-    AND c.name LIKE @like COLLATE NOCASE
-  ORDER BY
-    CASE WHEN c.name LIKE @exact COLLATE NOCASE THEN 0 ELSE 1 END,
-    s.release_date DESC,
-    c.name
-  LIMIT @limit
-`);
+// Query um deutsche Namenstreffer erweitern:
+//  - "Glurak"  -> auch "Charizard"
+//  - "Glur"    -> auch "Charizard" (deutscher Name beginnt mit der Eingabe)
+//  - "Glurak ex" -> auch "Charizard" (Eingabe beginnt mit deutschem Namen)
+function expandQuery(query) {
+  const q = query.trim();
+  const ql = q.toLowerCase();
+  const terms = new Set([q]);
+  if (ql.length >= 2) {
+    for (const [de, en] of Object.entries(DE_EN)) {
+      if (de === ql || de.startsWith(ql) || ql.startsWith(de + " ") || ql.startsWith(de)) {
+        terms.add(en);
+      }
+    }
+  }
+  return [...terms].slice(0, 12);
+}
 
 export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
-  const rows = searchStmt.all({
+  const terms = expandQuery(query);
+  const likeClauses = terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ");
+  // Karten, deren Name mit einem der Begriffe BEGINNT, zuerst (z.B. "Charizard"
+  // vor "Mega Charizard Y ex"), dann kürzere Namen, dann neueste Sets.
+  const prefixClauses = terms.map(() => "c.name LIKE ? COLLATE NOCASE").join(" OR ");
+  const stmt = db.prepare(`
+    SELECT c.* FROM cards c
+    LEFT JOIN card_sets s ON s.id = c.set_id
+    WHERE c.game_id = (SELECT id FROM games WHERE slug = ?)
+      AND (${likeClauses})
+    ORDER BY
+      CASE WHEN (${prefixClauses}) THEN 0 ELSE 1 END,
+      LENGTH(c.name),
+      s.release_date DESC,
+      c.name
+    LIMIT ?
+  `);
+  const params = [
     game,
-    like: `%${query}%`,
-    exact: `${query}%`,
+    ...terms.map((t) => `%${t}%`),
+    ...terms.map((t) => `${t}%`),
     limit,
-  });
-  return rows.map(rowToCard);
+  ];
+  return stmt.all(...params).map(rowToCard);
 }
 
 const byExternalIdStmt = db.prepare(`

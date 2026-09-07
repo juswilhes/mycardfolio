@@ -6,7 +6,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "import": "node src/scripts/importCardData.js",
-    "backfill-artists": "node src/scripts/backfillArtists.js"
+    "backfill-artists": "node src/scripts/backfillArtists.js",
+    "build-de-names": "node src/scripts/buildGermanNames.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",

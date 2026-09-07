@@ -1,28 +1,50 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchCards, addToCollection } from "../api.js";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
 export default function AddCard() {
-  const [query, setQuery] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useState(params.get("q") ?? "");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [dialogCard, setDialogCard] = useState(null);
   const [celebrateCard, setCelebrateCard] = useState(null);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  const reqId = useRef(0);
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    if (!query.trim()) return;
+  async function runSearch(q) {
+    const term = q.trim();
+    if (term.length < 2) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    const id = ++reqId.current;
     setLoading(true);
     try {
-      setResults(await searchCards(query));
+      const res = await searchCards(term);
+      if (id === reqId.current) {
+        setResults(res);
+        setSearched(true);
+      }
     } finally {
-      setLoading(false);
+      if (id === reqId.current) setLoading(false);
     }
   }
+
+  // Suche während des Tippens (leicht verzögert)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      runSearch(query);
+      setParams(query.trim() ? { q: query.trim() } : {}, { replace: true });
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   async function confirmAdd(values) {
     setBusy(true);
@@ -38,11 +60,23 @@ export default function AddCard() {
 
   return (
     <div>
-      <form onSubmit={handleSearch} className="flex gap-2 mb-8">
+      <h1 className="text-xl font-semibold mb-1">Karte suchen</h1>
+      <p className="text-subtle text-sm mb-5">
+        Deutsche Namen gehen auch (z. B. „Glurak", „Relaxo").
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          runSearch(query);
+        }}
+        className="flex gap-2 mb-8"
+      >
         <input
+          autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Kartenname, z.B. Charizard"
+          placeholder="Kartenname, z. B. Charizard oder Glurak"
           className="flex-1 border border-line rounded-full px-4 py-2.5 text-sm placeholder:text-subtle focus:outline-none focus:border-ink"
         />
         <button
@@ -54,6 +88,9 @@ export default function AddCard() {
       </form>
 
       {loading && <p className="text-subtle text-sm">Suche läuft …</p>}
+      {!loading && searched && results.length === 0 && (
+        <p className="text-subtle text-sm">Keine Karte gefunden.</p>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {results.map((card) => (

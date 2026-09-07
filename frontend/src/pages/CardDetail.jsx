@@ -8,7 +8,7 @@ import {
   sellCollectionItem,
 } from "../api.js";
 import PriceSection from "../components/PriceSection.jsx";
-import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
+import CollectionItemDialog, { conditionLabel } from "../components/CollectionItemDialog.jsx";
 import SellDialog from "../components/SellDialog.jsx";
 
 // Route: /card/:cardId
@@ -155,7 +155,7 @@ export default function CardDetail() {
         </div>
         <div className="flex justify-between py-3 border-b border-line text-sm">
           <span className="text-subtle">Zustand</span>
-          <span>{item.condition}</span>
+          <span>{conditionLabel(item.condition)}</span>
         </div>
         {item.purchase_price != null && (
           <div className="flex justify-between py-3 border-b border-line text-sm">

@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 
-const CONDITIONS = [
+export const CONDITIONS = [
+  ["sealed", "Sealed (versiegelt)"],
+  ["mint", "Mint"],
   ["near_mint", "Near Mint"],
   ["lightly_played", "Lightly Played"],
   ["moderately_played", "Moderately Played"],
   ["heavily_played", "Heavily Played"],
   ["damaged", "Damaged"],
 ];
+
+const CONDITION_LABELS = Object.fromEntries(CONDITIONS);
+export const conditionLabel = (v) => CONDITION_LABELS[v] ?? v ?? "—";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
