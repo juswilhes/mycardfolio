@@ -2,55 +2,72 @@ import { Router } from "express";
 import { getCardById } from "../services/pokemonTcgApi.js";
 import {
   priceHistoryForCard,
-  latestPriceForCard,
-  cardIdByExternalId,
   setArtistManual,
   priceHistoryByExternalId,
+  cardmarketBreakdownByExternalId,
+  cardMetaByExternalId,
+  latestPriceByExternalId,
+  upsertCardRow,
+  recordPrices,
 } from "../services/cardService.js";
 import { searchCardsLocal, getCardByExternalIdLocal } from "../services/cardRepository.js";
+import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
 
 const router = Router();
 
-// GET /api/cards/search?q=Pikachu
-// Läuft komplett gegen die lokale DB -> sofortige Ergebnisse, keine
-// Wartezeit durch externe API-Aufrufe.
+// GET /api/cards/search?q=Pikachu  -> lokal, sofort
 router.get("/search", (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Query-Parameter 'q' fehlt" });
   res.json(searchCardsLocal(q.trim()));
 });
 
-// GET /api/cards/external/:externalId -> alle bekannten Infos zu EINER Karte.
-// Stammdaten (Illustrator, Attacken, Schwächen, ...) kommen aus der lokalen
-// DB und sind sofort da. Preise: zuletzt gespeicherter Snapshot; ein
-// frischer Live-Abruf wird nur angestoßen, wenn die Karte lokal fehlt.
+// GET /api/cards/external/:externalId -> Stammdaten (lokal) + aktuelle
+// Cardmarket-Preise (EUR, via TCGdex, 6 h gecacht). Der Abruf ist schnell
+// genug, um ihn hier zu awaiten; schlägt er fehl, kommen die zuletzt
+// gespeicherten Werte zum Zug.
 router.get("/external/:externalId", async (req, res) => {
   const { externalId } = req.params;
   const local = getCardByExternalIdLocal(externalId);
 
   if (local) {
-    const cardId = cardIdByExternalId.get(externalId)?.id;
-    const last = cardId ? latestPriceForCard.get(cardId) : null;
-    return res.json({ ...local, prices: last ? [last] : [] });
+    let meta = null;
+    try {
+      const { prices, meta: m } = await getCardmarketPrices(externalId);
+      meta = m;
+      if (prices.length) {
+        const cardId = cardMetaByExternalId.get(externalId)?.id ?? upsertCardRow("pokemon", local);
+        recordPrices(cardId, prices, m);
+      }
+    } catch {
+      /* offline -> gespeicherte Werte unten */
+    }
+    const breakdown = cardmarketBreakdownByExternalId.all(externalId);
+    const dbMeta = cardMetaByExternalId.get(externalId);
+    return res.json({
+      ...local,
+      latest_price: latestPriceByExternalId.get(externalId) ?? null,
+      price_breakdown: breakdown,
+      cardmarket_updated: meta?.updated ?? dbMeta?.cardmarket_updated ?? null,
+      cardmarket_url: cardmarketUrl(meta?.productId ?? dbMeta?.cardmarket_product_id ?? null),
+    });
   }
 
-  // Karte (noch) nicht im lokalen Datensatz -> live versuchen (mit Timeout)
+  // Karte nicht im lokalen Datensatz -> live von pokemontcg.io
   try {
     const live = await getCardById(externalId, 8000);
-    res.json({ ...live, prices: live.prices ?? [] });
+    res.json({ ...live, price_breakdown: [], cardmarket_url: null });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
 });
 
-// GET /api/cards/external/:externalId/prices -> Preisverlauf für den Graphen
-// auf der Datenbank-Detailseite (nutzt die externe ID, nicht die interne).
+// GET /api/cards/external/:externalId/prices -> Trend-Verlauf (EUR) für den Graphen
 router.get("/external/:externalId/prices", (req, res) => {
   res.json(priceHistoryByExternalId.all(req.params.externalId));
 });
 
 // PATCH /api/cards/external/:externalId/artist  { artist }
-// Illustrator von Hand setzen/korrigieren. Bleibt beim Re-Import erhalten.
 router.patch("/external/:externalId/artist", (req, res) => {
   const artist = (req.body?.artist ?? "").trim();
   if (!artist) return res.status(400).json({ error: "artist fehlt" });
@@ -59,10 +76,9 @@ router.patch("/external/:externalId/artist", (req, res) => {
   res.json({ ok: true, artist });
 });
 
-// GET /api/cards/:id/prices  -> Datenpunkte für den Graphen (interne ID)
+// GET /api/cards/:id/prices  -> Trend-Verlauf (EUR), interne ID
 router.get("/:id/prices", (req, res) => {
-  const rows = priceHistoryForCard.all(req.params.id);
-  res.json(rows);
+  res.json(priceHistoryForCard.all(req.params.id));
 });
 
 export default router;

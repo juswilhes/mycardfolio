@@ -66,24 +66,11 @@ function mapSet(s) {
   };
 }
 
-// Normalisiert die API-Antwort auf unser internes Format, inkl. aller
-// verfügbaren Preis-Datenpunkte (TCGplayer = USD, Cardmarket = EUR)
+// Normalisiert die API-Antwort auf unser internes Format. Preise kommen
+// NICHT von hier - dafür ist priceProvider.js (Cardmarket/EUR) zuständig.
+// Diese Funktion wird nur noch als Fallback für Karten genutzt, die nicht
+// im lokalen Datensatz stecken.
 function mapCard(c) {
-  const prices = [];
-  const tp = c.tcgplayer?.prices;
-  if (tp) {
-    for (const [variant, values] of Object.entries(tp)) {
-      // variant z.B. "holofoil", "normal", "reverseHolofoil"
-      if (values?.market != null) {
-        prices.push({ source: "tcgplayer", price_type: variant, currency: "USD", price: values.market });
-      }
-    }
-  }
-  const cm = c.cardmarket?.prices;
-  if (cm?.trendPrice != null) {
-    prices.push({ source: "cardmarket", price_type: "trend", currency: "EUR", price: cm.trendPrice });
-  }
-
   return {
     external_id: c.id,
     name: c.name,
@@ -92,6 +79,5 @@ function mapCard(c) {
     rarity: c.rarity,
     image_small: c.images?.small,
     image_large: c.images?.large, // Artwork liegt bei dieser API auf Englisch vor
-    prices,
   };
 }

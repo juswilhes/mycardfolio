@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection } from "../api.js";
-import PriceChart from "../components/PriceChart.jsx";
+import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
@@ -22,8 +22,19 @@ export default function CardInfo() {
     setCard(null);
     setHistory(null);
     setError(false);
-    getCardInfo(externalId).then(setCard).catch(() => setError(true));
-    getCardPriceHistory(externalId).then(setHistory).catch(() => setHistory([]));
+    // erst die Karteninfo (stößt serverseitig den Preis-Abruf an), dann die
+    // Historie – sonst wäre der frische Datenpunkt noch nicht geschrieben.
+    getCardInfo(externalId)
+      .then((c) => {
+        setCard(c);
+        getCardPriceHistory(externalId)
+          .then((h) => setHistory(h ?? []))
+          .catch(() => setHistory([]));
+      })
+      .catch(() => {
+        setError(true);
+        setHistory([]);
+      });
   }, [externalId]);
 
   async function confirmAdd(values) {
@@ -91,9 +102,7 @@ export default function CardInfo() {
         ))}
       </div>
 
-      {/* Preisentwicklung */}
-      <h2 className="text-sm text-subtle mb-2">Preisentwicklung</h2>
-      <PriceChart data={history} />
+      <PriceSection card={card} history={history} />
 
       {dialogOpen && (
         <CollectionItemDialog

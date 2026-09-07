@@ -100,6 +100,8 @@ addColumn("regulation_mark", "TEXT");
 addColumn("raw_json", "TEXT");         // vollständige Rohdaten, falls später mehr gebraucht wird
 addColumn("artist_source", "TEXT");    // woher der Illustrator kommt: "dataset" | "tcgdex" | "manual"
 addColumn("artist_manual", "INTEGER"); // 1 = vom Nutzer gesetzt, darf beim Re-Import nicht überschrieben werden
+addColumn("cardmarket_product_id", "INTEGER"); // für den Direktlink zu Cardmarket
+addColumn("cardmarket_updated", "TEXT");       // Zeitstempel des letzten Cardmarket-Werts
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id)`);
 
@@ -115,6 +117,7 @@ const addCiColumn = (name, type) => {
 };
 addCiColumn("shipping_cost", "REAL");
 addCiColumn("currency", "TEXT DEFAULT 'EUR'");
+addCiColumn("language", "TEXT DEFAULT 'en'"); // Sprache der Druckvariante: 'de' | 'en'
 
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(

@@ -1,31 +1,40 @@
 import cron from "node-cron";
-import { getCardById } from "./pokemonTcgApi.js";
-import { saveCardWithPrices, allCardsForGame } from "./cardService.js";
+import { allCardsForGame, recordPrices } from "./cardService.js";
+import { getCardmarketPrices } from "./priceProvider.js";
+import db from "../db/index.js";
 
-// Zieht für jede in der DB bekannte Karte den aktuellen Preis nach und
-// legt einen neuen price_snapshot an. Das ist der Baustein, der die
-// Preishistorie ohne manuelles Zutun wachsen lässt.
+// Nur Karten, die tatsächlich in der Sammlung liegen, brauchen eine
+// wachsende Preishistorie - nicht alle 20.000 Karten des Datensatzes.
+const collectionCards = db.prepare(`
+  SELECT DISTINCT c.id, c.external_id
+  FROM collection_items ci
+  JOIN cards c ON c.id = ci.card_id
+`);
+
+// Zieht für jede Sammlungskarte den aktuellen Cardmarket-Preis (EUR) nach
+// und legt einen Snapshot an. Das ist der Baustein, der die Preishistorie
+// ohne manuelles Zutun wachsen lässt.
 export async function refreshAllPrices() {
-  const cards = allCardsForGame.all();
-  console.log(`[priceFetcher] Aktualisiere ${cards.length} Karten ...`);
+  const cards = collectionCards.all();
+  console.log(`[priceFetcher] Aktualisiere ${cards.length} Sammlungskarten ...`);
 
+  let ok = 0;
   for (const card of cards) {
     try {
-      if (card.game_slug === "pokemon") {
-        const fresh = await getCardById(card.external_id);
-        saveCardWithPrices("pokemon", fresh);
+      const { prices, meta } = await getCardmarketPrices(card.external_id);
+      if (prices.length) {
+        recordPrices(card.id, prices, meta);
+        ok++;
       }
-      // Weitere Spiele (z.B. "mtg") würden hier als eigener Branch ergänzt.
     } catch (err) {
-      console.error(`[priceFetcher] Fehler bei Karte ${card.external_id}:`, err.message);
+      console.error(`[priceFetcher] Fehler bei ${card.external_id}:`, err.message);
     }
-    // kleine Pause, um das Rate-Limit der kostenlosen API zu schonen
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 250)); // TCGdex schonen
   }
-  console.log("[priceFetcher] Fertig.");
+  console.log(`[priceFetcher] Fertig - ${ok}/${cards.length} mit Preis.`);
 }
 
-// Läuft täglich um 06:00 Uhr. Cron-Ausdruck bei Bedarf anpassen.
+// Läuft täglich um 06:00 Uhr.
 export function schedulePriceFetching() {
   cron.schedule("0 6 * * *", () => {
     refreshAllPrices().catch((e) => console.error("[priceFetcher] Job fehlgeschlagen:", e));

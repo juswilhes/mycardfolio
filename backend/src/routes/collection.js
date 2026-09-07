@@ -1,23 +1,31 @@
 import { Router } from "express";
 import db from "../db/index.js";
 import { getCardById } from "../services/pokemonTcgApi.js";
-import { saveCardWithPrices, listCollection, latestPriceForCard } from "../services/cardService.js";
+import {
+  upsertCardRow,
+  recordPrices,
+  listCollection,
+  latestPriceForCard,
+  cardmarketBreakdownForCard,
+} from "../services/cardService.js";
 import { getCardByExternalIdLocal } from "../services/cardRepository.js";
+import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
 
 const router = Router();
 
 const insertCollectionItem = db.prepare(`
   INSERT INTO collection_items
-    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes)
+    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language)
   VALUES
-    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes)
+    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language)
 `);
 
 const updateCollectionItem = db.prepare(`
   UPDATE collection_items SET
     quantity = @quantity, condition = @condition,
     purchase_price = @purchase_price, shipping_cost = @shipping_cost,
-    purchase_date = @purchase_date, notes = @notes
+    purchase_date = @purchase_date, notes = @notes,
+    language = COALESCE(@language, language)
   WHERE id = @id
 `);
 
@@ -28,19 +36,33 @@ const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
+const langOrNull = (v) => (v === "de" || v === "en" ? v : null);
 
-// GET /api/collection -> Sammlung inkl. aktuellem Preis pro Karte
+// Cardmarket-Preis im Hintergrund nachziehen (blockiert die Antwort nie).
+function refreshPriceInBackground(cardId, externalId) {
+  getCardmarketPrices(externalId)
+    .then(({ prices, meta }) => {
+      if (prices.length) recordPrices(cardId, prices, meta);
+    })
+    .catch(() => {});
+}
+
+// GET /api/collection -> Sammlung inkl. aktuellem Cardmarket-Preis (EUR)
 router.get("/", (_req, res) => {
-  const items = listCollection.all().map((item) => ({
-    ...item,
-    latest_price: latestPriceForCard.get(item.card_id) ?? null,
-  }));
+  const items = listCollection.all().map((item) => {
+    const breakdown = cardmarketBreakdownForCard.all(item.card_id);
+    return {
+      ...item,
+      latest_price: latestPriceForCard.get(item.card_id) ?? null,
+      price_breakdown: breakdown,
+      cardmarket_url: cardmarketUrl(item.cardmarket_product_id),
+    };
+  });
   res.json(items);
 });
 
 // POST /api/collection
-// { externalId, quantity, condition, purchasePrice, shippingCost, purchaseDate, notes }
-// Legt die Karte (falls neu) an, zieht sofort den aktuellen Preis und fügt sie der Sammlung hinzu.
+// { externalId, quantity, condition, purchasePrice, shippingCost, purchaseDate, notes, language }
 router.post("/", async (req, res) => {
   const {
     externalId,
@@ -50,13 +72,12 @@ router.post("/", async (req, res) => {
     shippingCost,
     purchaseDate,
     notes,
+    language,
   } = req.body;
   if (!externalId) return res.status(400).json({ error: "externalId fehlt" });
 
-  // Kartendaten kommen aus der lokalen DB -> sofort. Fehlt die Karte lokal,
-  // einmal live nachladen.
-  const local = getCardByExternalIdLocal(externalId);
-  let cardData = local;
+  // Kartendaten aus der lokalen DB -> sofort. Fehlt die Karte lokal, einmal live nachladen.
+  let cardData = getCardByExternalIdLocal(externalId);
   if (!cardData) {
     try {
       cardData = await getCardById(externalId, 6000);
@@ -67,7 +88,7 @@ router.post("/", async (req, res) => {
 
   let cardId;
   try {
-    cardId = saveCardWithPrices("pokemon", { ...cardData, prices: cardData.prices ?? [] });
+    cardId = upsertCardRow("pokemon", cardData);
     insertCollectionItem.run({
       card_id: cardId,
       quantity: num(quantity) ?? 1,
@@ -76,28 +97,19 @@ router.post("/", async (req, res) => {
       shipping_cost: num(shippingCost),
       purchase_date: purchaseDate || null,
       notes: notes || null,
+      language: langOrNull(language) ?? "en",
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 
-  // sofort antworten - die Animation im Frontend soll nicht auf die
-  // langsame Preis-API warten
   res.status(201).json({ cardId });
-
-  // aktuellen Preis best-effort im Hintergrund nachziehen
-  if (local) {
-    getCardById(externalId, 8000)
-      .then((live) => {
-        if (live.prices?.length) saveCardWithPrices("pokemon", { ...live, prices: live.prices });
-      })
-      .catch(() => {});
-  }
+  refreshPriceInBackground(cardId, externalId);
 });
 
-// PATCH /api/collection/:id  { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes }
+// PATCH /api/collection/:id
 router.patch("/:id", (req, res) => {
-  const { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes } = req.body;
+  const { quantity, condition, purchasePrice, shippingCost, purchaseDate, notes, language } = req.body;
   const info = updateCollectionItem.run({
     id: Number(req.params.id),
     quantity: num(quantity) ?? 1,
@@ -106,6 +118,7 @@ router.patch("/:id", (req, res) => {
     shipping_cost: num(shippingCost),
     purchase_date: purchaseDate || null,
     notes: notes || null,
+    language: langOrNull(language),
   });
   if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
   res.json({ ok: true });
