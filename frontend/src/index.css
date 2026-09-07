@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Alle Farben stehen hier EINMAL als CSS-Variablen. Tailwind (siehe
+  tailwind.config.js) liest diese Variablen, statt feste Hex-Werte zu
+  benutzen. Dadurch reicht es, die Klasse "dark" auf <html> zu setzen,
+  damit ALLE Farben im ganzen Projekt automatisch umspringen.
+
+  Farbwelt inspiriert von Jurafuchs: warmes Creme statt kaltem Weiß/Grau,
+  rundere Formen, freundlicher statt streng-minimalistisch.
+*/
+:root {
+  --canvas: #fbf3e6;   /* warmes Creme statt neutralem Grau */
+  --surface: #ffffff;  /* Flaechen (z.B. Kacheln) */
+  --line: #ecdfc7;     /* warme Beige-Trennlinie */
+  --ink: #241c15;      /* warmes Dunkelbraun statt reinem Schwarz */
+  --subtle: #8a7a63;   /* warmer Sekundaertext */
+  --yellow: #f8c93a;   /* Akzentfarbe, bleibt in beiden Modi gleich */
+  --yellow-ink: #3d2c00;
+  --mint: #1fae6b;
+  --rose: #d3455b;
+}
+
+:root.dark {
+  --canvas: #1c1712;
+  --surface: #241d16;
+  --line: #35291c;
+  --ink: #f6ede0;
+  --subtle: #b0a08a;
+  --yellow: #f8c93a;
+  --yellow-ink: #241c15;
+  --mint: #35d488;
+  --rose: #ff6b81;
+}
+
+body {
+  @apply bg-canvas text-ink font-sans;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
