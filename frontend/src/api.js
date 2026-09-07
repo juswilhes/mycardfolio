@@ -38,6 +38,42 @@ export async function deleteCollectionItem(id) {
   return res.json();
 }
 
+export async function sellCollectionItem(id, payload) {
+  const res = await fetch(`${BASE}/collection/${id}/sell`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Verkauf konnte nicht gespeichert werden");
+  return res.json();
+}
+
+// --- Portfolio & Verkäufe --------------------------------------------
+
+export async function getPortfolioHistory() {
+  const res = await fetch(`${BASE}/portfolio/history`);
+  if (!res.ok) throw new Error("Portfolio-Verlauf konnte nicht geladen werden");
+  return res.json();
+}
+
+export async function getMovers() {
+  const res = await fetch(`${BASE}/portfolio/movers`);
+  if (!res.ok) throw new Error("Bewegungen konnten nicht geladen werden");
+  return res.json();
+}
+
+export async function getSales() {
+  const res = await fetch(`${BASE}/sales`);
+  if (!res.ok) throw new Error("Verkäufe konnten nicht geladen werden");
+  return res.json();
+}
+
+export async function deleteSale(id) {
+  const res = await fetch(`${BASE}/sales/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Verkauf konnte nicht entfernt werden");
+  return res.json();
+}
+
 export async function getPriceHistory(cardId) {
   const res = await fetch(`${BASE}/cards/${cardId}/prices`);
   if (!res.ok) throw new Error("Preisverlauf konnte nicht geladen werden");

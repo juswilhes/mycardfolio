@@ -10,6 +10,7 @@ import {
 } from "../services/cardService.js";
 import { getCardByExternalIdLocal } from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
+import { recordPortfolioSnapshot, sellCollectionItem } from "../services/portfolioService.js";
 
 const router = Router();
 
@@ -105,6 +106,7 @@ router.post("/", async (req, res) => {
 
   res.status(201).json({ cardId });
   refreshPriceInBackground(cardId, externalId);
+  recordPortfolioSnapshot();
 });
 
 // PATCH /api/collection/:id
@@ -121,13 +123,31 @@ router.patch("/:id", (req, res) => {
     language: langOrNull(language),
   });
   if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
+  recordPortfolioSnapshot();
   res.json({ ok: true });
 });
 
-// DELETE /api/collection/:id -> Karte aus der Sammlung entfernen
+// POST /api/collection/:id/sell
+// { salePrice, saleShipping, saleFees, soldOn, notes } -> in die Verkaufshistorie
+router.post("/:id/sell", (req, res) => {
+  const { salePrice, saleShipping, saleFees, soldOn, notes } = req.body;
+  const ok = sellCollectionItem(req.params.id, {
+    salePrice: num(salePrice),
+    saleShipping: num(saleShipping),
+    saleFees: num(saleFees),
+    soldOn: soldOn || new Date().toISOString().slice(0, 10),
+    notes: notes || null,
+  });
+  if (!ok) return res.status(404).json({ error: "Eintrag nicht gefunden" });
+  recordPortfolioSnapshot();
+  res.json({ ok: true });
+});
+
+// DELETE /api/collection/:id -> Karte ohne Verkauf aus der Sammlung entfernen
 router.delete("/:id", (req, res) => {
   const info = deleteCollectionItem.run(Number(req.params.id));
   if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
+  recordPortfolioSnapshot();
   res.json({ ok: true });
 });
 

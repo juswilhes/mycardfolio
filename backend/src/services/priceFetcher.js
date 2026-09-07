@@ -1,6 +1,7 @@
 import cron from "node-cron";
-import { allCardsForGame, recordPrices } from "./cardService.js";
+import { recordPrices } from "./cardService.js";
 import { getCardmarketPrices } from "./priceProvider.js";
+import { recordPortfolioSnapshot } from "./portfolioService.js";
 import db from "../db/index.js";
 
 // Nur Karten, die tatsächlich in der Sammlung liegen, brauchen eine
@@ -31,6 +32,7 @@ export async function refreshAllPrices() {
     }
     await new Promise((r) => setTimeout(r, 250)); // TCGdex schonen
   }
+  recordPortfolioSnapshot(); // Tagespunkt für den Portfolio-Graphen
   console.log(`[priceFetcher] Fertig - ${ok}/${cards.length} mit Preis.`);
 }
 

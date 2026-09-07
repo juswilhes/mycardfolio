@@ -5,9 +5,11 @@ import {
   getPriceHistory,
   updateCollectionItem,
   deleteCollectionItem,
+  sellCollectionItem,
 } from "../api.js";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
+import SellDialog from "../components/SellDialog.jsx";
 
 // Route: /card/:cardId
 export default function CardDetail() {
@@ -16,6 +18,7 @@ export default function CardDetail() {
   const [item, setItem] = useState(null);
   const [history, setHistory] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [selling, setSelling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -68,6 +71,16 @@ export default function CardDetail() {
     }
   }
 
+  async function sell(values) {
+    setBusy(true);
+    try {
+      await sellCollectionItem(item.collection_item_id, values);
+      navigate("/verkauft");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <Link to="/" className="text-sm text-subtle hover:text-ink">
@@ -98,6 +111,12 @@ export default function CardDetail() {
               className="border border-line text-sm px-3 py-1.5 rounded-full hover:border-ink"
             >
               Bearbeiten
+            </button>
+            <button
+              onClick={() => setSelling(true)}
+              className="border border-line text-sm px-3 py-1.5 rounded-full hover:border-ink"
+            >
+              Verkauft
             </button>
             {confirmDelete ? (
               <>
@@ -188,6 +207,14 @@ export default function CardDetail() {
           busy={busy}
           onConfirm={saveEdit}
           onClose={() => !busy && setEditing(false)}
+        />
+      )}
+      {selling && (
+        <SellDialog
+          item={item}
+          busy={busy}
+          onConfirm={sell}
+          onClose={() => !busy && setSelling(false)}
         />
       )}
     </div>

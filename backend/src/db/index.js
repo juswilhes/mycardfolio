@@ -65,6 +65,38 @@ CREATE TABLE IF NOT EXISTS collection_items (
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Ein Tages-Snapshot des GESAMTEN Portfolios (für den Wert-über-Zeit-Graphen).
+CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+  captured_on  TEXT PRIMARY KEY,     -- YYYY-MM-DD
+  total_value  REAL NOT NULL,
+  total_cost   REAL NOT NULL,
+  card_count   INTEGER NOT NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Verkaufte Karten: beim Verkauf wird der Sammlungseintrag hierher verschoben,
+-- damit realisierter Gewinn/Verlust und Verkaufshistorie erhalten bleiben.
+CREATE TABLE IF NOT EXISTS sales (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id        INTEGER REFERENCES cards(id),
+  external_id    TEXT,
+  name           TEXT NOT NULL,
+  set_name       TEXT,
+  number         TEXT,
+  image_small    TEXT,
+  quantity       INTEGER NOT NULL DEFAULT 1,
+  condition      TEXT,
+  language       TEXT,
+  purchase_price REAL,
+  shipping_cost  REAL,
+  sale_price     REAL,
+  sale_shipping  REAL,
+  sale_fees      REAL,
+  sold_on        TEXT,
+  notes          TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
 `);
