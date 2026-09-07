@@ -4,6 +4,7 @@ import { getCollection, getPortfolioHistory, getMovers } from "../api.js";
 import CardTile from "../components/CardTile.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
+import { SortIcon, FilterIcon } from "../components/icons.jsx";
 
 const eur = (n) => `${n.toFixed(2)} €`;
 
@@ -205,41 +206,50 @@ export default function Collection() {
       <Movers data={movers} />
 
       {/* Sortieren & Filtern */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <select value={sort} onChange={(e) => setSort(e.target.value)} className={selectCls}>
-          {Object.entries(SORTS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-        <select value={fLang} onChange={(e) => setFLang(e.target.value)} className={selectCls}>
-          <option value="all">Alle Sprachen</option>
-          <option value="de">Deutsch</option>
-          <option value="en">Englisch</option>
-        </select>
-        {sets.length > 1 && (
-          <select value={fSet} onChange={(e) => setFSet(e.target.value)} className={selectCls}>
-            <option value="all">Alle Sets</option>
-            {sets.map((s) => (
-              <option key={s} value={s}>{s}</option>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+        <div className="flex items-center gap-1.5">
+          <SortIcon className="w-4 h-4 text-subtle shrink-0" />
+          <span className="sr-only">Sortieren</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className={selectCls}>
+            {Object.entries(SORTS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
             ))}
           </select>
-        )}
-        {artists.length > 1 && (
-          <select value={fArtist} onChange={(e) => setFArtist(e.target.value)} className={selectCls}>
-            <option value="all">Alle Zeichner</option>
-            {artists.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <FilterIcon className="w-4 h-4 text-subtle shrink-0" />
+          <span className="sr-only">Filter</span>
+          <select value={fLang} onChange={(e) => setFLang(e.target.value)} className={selectCls}>
+            <option value="all">Alle Sprachen</option>
+            <option value="de">Deutsch</option>
+            <option value="en">Englisch</option>
           </select>
-        )}
-        {(fLang !== "all" || fSet !== "all" || fArtist !== "all") && (
-          <button
-            onClick={() => { setFLang("all"); setFSet("all"); setFArtist("all"); }}
-            className="text-xs text-subtle underline px-2"
-          >
-            Filter zurücksetzen
-          </button>
-        )}
+          {sets.length > 1 && (
+            <select value={fSet} onChange={(e) => setFSet(e.target.value)} className={selectCls}>
+              <option value="all">Alle Sets</option>
+              {sets.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
+          {artists.length > 1 && (
+            <select value={fArtist} onChange={(e) => setFArtist(e.target.value)} className={selectCls}>
+              <option value="all">Alle Zeichner</option>
+              {artists.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          )}
+          {(fLang !== "all" || fSet !== "all" || fArtist !== "all") && (
+            <button
+              onClick={() => { setFLang("all"); setFSet("all"); setFArtist("all"); }}
+              className="text-xs text-subtle underline px-2"
+            >
+              zurücksetzen
+            </button>
+          )}
+        </div>
       </div>
 
       {shown.length === 0 ? (
