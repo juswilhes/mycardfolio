@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCollection, getPortfolioHistory, getMovers } from "../api.js";
-import CardTile from "../components/CardTile.jsx";
+import CollectionGroup from "../components/CollectionGroup.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
 import { SortIcon, FilterIcon } from "../components/icons.jsx";
@@ -25,11 +25,6 @@ const cost = (i) =>
   i.purchase_price != null || i.shipping_cost != null
     ? ((i.purchase_price ?? 0) + (i.shipping_cost ?? 0)) * (i.quantity ?? 1)
     : null;
-const gainOf = (i) => {
-  const c = cost(i);
-  return c != null ? val(i) - c : null;
-};
-
 const loadPref = (k, d) => {
   try {
     return localStorage.getItem(`mcf-coll-${k}`) ?? d;
@@ -88,25 +83,62 @@ export default function Collection() {
     [items]
   );
 
-  const shown = useMemo(() => {
-    let list = (items ?? []).filter(
+  // Karten mit mehreren Käufen zusammenfassen: erst filtern, dann nach
+  // card_id gruppieren, dann die Gruppen sortieren.
+  const groups = useMemo(() => {
+    const filtered = (items ?? []).filter(
       (i) =>
         (fLang === "all" || i.language === fLang) &&
         (fSet === "all" || i.set_name === fSet) &&
         (fArtist === "all" || i.artist === fArtist)
     );
+    const map = new Map();
+    filtered.forEach((it, idx) => {
+      let g = map.get(it.card_id);
+      if (!g) {
+        g = {
+          card_id: it.card_id,
+          name: it.name,
+          set_name: it.set_name,
+          artist: it.artist,
+          image_small: it.image_small,
+          latest_price: it.latest_price,
+          firstIdx: idx,
+          entries: [],
+        };
+        map.set(it.card_id, g);
+      }
+      g.entries.push(it);
+    });
+
+    const gVal = (g) => (g.latest_price?.price ?? 0) * g.entries.reduce((s, e) => s + (e.quantity ?? 1), 0);
+    const gCost = (g) => {
+      const w = g.entries.filter((e) => cost(e) != null);
+      return w.length ? w.reduce((s, e) => s + cost(e), 0) : null;
+    };
+    const gGain = (g) => {
+      const c = gCost(g);
+      if (c == null) return null;
+      const w = g.entries.filter((e) => cost(e) != null);
+      const q = w.reduce((s, e) => s + (e.quantity ?? 1), 0);
+      return (g.latest_price?.price ?? 0) * q - c;
+    };
+    const sortedDates = (g) => g.entries.map((e) => e.purchase_date).filter(Boolean).sort();
+    const newest = (g) => sortedDates(g).at(-1) ?? "";
+    const oldest = (g) => sortedDates(g)[0] ?? "";
+
     const cmp = {
-      recent: () => 0, // API-Reihenfolge = zuletzt hinzugefügt zuerst
-      bought: (a, b) => (b.purchase_date ?? "").localeCompare(a.purchase_date ?? ""),
-      bought_asc: (a, b) => (a.purchase_date ?? "9999").localeCompare(b.purchase_date ?? "9999"),
-      value_desc: (a, b) => val(b) - val(a),
-      gain_desc: (a, b) => (gainOf(b) ?? -Infinity) - (gainOf(a) ?? -Infinity),
-      gain_asc: (a, b) => (gainOf(a) ?? Infinity) - (gainOf(b) ?? Infinity),
+      recent: (a, b) => a.firstIdx - b.firstIdx,
+      bought: (a, b) => newest(b).localeCompare(newest(a)),
+      bought_asc: (a, b) => (oldest(a) || "9999").localeCompare(oldest(b) || "9999"),
+      value_desc: (a, b) => gVal(b) - gVal(a),
+      gain_desc: (a, b) => (gGain(b) ?? -Infinity) - (gGain(a) ?? -Infinity),
+      gain_asc: (a, b) => (gGain(a) ?? Infinity) - (gGain(b) ?? Infinity),
       name: (a, b) => a.name.localeCompare(b.name),
       set: (a, b) => (a.set_name ?? "").localeCompare(b.set_name ?? ""),
       artist: (a, b) => (a.artist ?? "").localeCompare(b.artist ?? ""),
     }[sort];
-    return sort === "recent" ? list : [...list].sort(cmp);
+    return [...map.values()].sort(cmp);
   }, [items, sort, fLang, fSet, fArtist]);
 
   if (items === null) return <p className="text-subtle text-sm">Lade Sammlung …</p>;
@@ -252,12 +284,12 @@ export default function Collection() {
         </div>
       </div>
 
-      {shown.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-subtle text-sm py-6">Keine Karte passt zu den Filtern.</p>
       ) : (
         <div>
-          {shown.map((item) => (
-            <CardTile key={item.collection_item_id} item={item} onChanged={load} />
+          {groups.map((g) => (
+            <CollectionGroup key={g.card_id} group={g} onChanged={load} />
           ))}
         </div>
       )}
