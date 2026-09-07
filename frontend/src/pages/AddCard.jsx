@@ -73,12 +73,13 @@ export default function AddCard() {
         }}
         className="flex gap-2 mb-8"
       >
+        {/* Suchfeld: heller Grund + dunkler Text in beiden Modi */}
         <input
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="z. B. Charizard, Glurak oder Mega Absol ex 180/132"
-          className="flex-1 border border-line rounded-full px-4 py-2.5 text-sm placeholder:text-subtle focus:outline-none focus:border-ink"
+          className="flex-1 rounded-full px-4 py-2.5 text-sm border border-line bg-white text-[#241c15] placeholder:text-[#8a7a63] caret-[#241c15] focus:outline-none focus:border-ink"
         />
         <button
           className="bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full text-sm"
