@@ -26,6 +26,18 @@ export default function CardDetail() {
   const min = prices.length ? Math.min(...prices) : null;
   const max = prices.length ? Math.max(...prices) : null;
 
+  const qty = item.quantity ?? 1;
+  const unitCost =
+    item.purchase_price != null || item.shipping_cost != null
+      ? (item.purchase_price ?? 0) + (item.shipping_cost ?? 0)
+      : null;
+  const totalCost = unitCost != null ? unitCost * qty : null;
+  const currentValue =
+    item.latest_price != null ? item.latest_price.price * qty : null;
+  const gain =
+    totalCost != null && currentValue != null ? currentValue - totalCost : null;
+  const fmt = (n) => `${n.toFixed(2)} €`;
+
   return (
     <div>
       <Link to="/" className="text-sm text-subtle hover:text-ink">
@@ -54,16 +66,49 @@ export default function CardDetail() {
 
       <div className="border-t border-line mt-6">
         <div className="flex justify-between py-3 border-b border-line text-sm">
-          <span className="text-subtle">Quelle</span>
-          <span>{item.latest_price?.source ?? "—"}</span>
-        </div>
-        <div className="flex justify-between py-3 border-b border-line text-sm">
           <span className="text-subtle">Menge in deiner Sammlung</span>
-          <span>{item.quantity}×</span>
+          <span>{qty}×</span>
         </div>
         <div className="flex justify-between py-3 border-b border-line text-sm">
           <span className="text-subtle">Zustand</span>
           <span>{item.condition}</span>
+        </div>
+        {item.purchase_price != null && (
+          <div className="flex justify-between py-3 border-b border-line text-sm">
+            <span className="text-subtle">Kaufpreis {qty > 1 ? "(pro Karte)" : ""}</span>
+            <span className="font-mono">{fmt(item.purchase_price)}</span>
+          </div>
+        )}
+        {item.shipping_cost != null && (
+          <div className="flex justify-between py-3 border-b border-line text-sm">
+            <span className="text-subtle">Versand {qty > 1 ? "(pro Karte)" : ""}</span>
+            <span className="font-mono">{fmt(item.shipping_cost)}</span>
+          </div>
+        )}
+        {totalCost != null && (
+          <div className="flex justify-between py-3 border-b border-line text-sm">
+            <span className="text-subtle">Einstandswert gesamt</span>
+            <span className="font-mono">{fmt(totalCost)}</span>
+          </div>
+        )}
+        {item.purchase_date && (
+          <div className="flex justify-between py-3 border-b border-line text-sm">
+            <span className="text-subtle">Kaufdatum</span>
+            <span>{new Date(item.purchase_date).toLocaleDateString("de-DE")}</span>
+          </div>
+        )}
+        {gain != null && (
+          <div className="flex justify-between py-3 border-b border-line text-sm">
+            <span className="text-subtle">Wertentwicklung</span>
+            <span className={`font-mono ${gain >= 0 ? "text-mint" : "text-rose"}`}>
+              {gain >= 0 ? "+" : "−"}
+              {fmt(Math.abs(gain))}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between py-3 border-b border-line text-sm">
+          <span className="text-subtle">Preisquelle</span>
+          <span>{item.latest_price?.source ?? "—"}</span>
         </div>
         {min !== null && (
           <div className="flex justify-between py-3 border-b border-line text-sm">

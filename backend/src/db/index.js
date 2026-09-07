@@ -103,6 +103,19 @@ addColumn("artist_manual", "INTEGER"); // 1 = vom Nutzer gesetzt, darf beim Re-I
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id)`);
 
+// Sammlungs-Einträge: Versandkosten getrennt vom Kaufpreis führen, damit
+// man später Gebühren/Versand sauber auswerten kann. currency vorbereitet
+// (aktuell immer EUR).
+const ciColumns = new Set(db.prepare(`PRAGMA table_info(collection_items)`).all().map((c) => c.name));
+const addCiColumn = (name, type) => {
+  if (!ciColumns.has(name)) {
+    db.exec(`ALTER TABLE collection_items ADD COLUMN ${name} ${type}`);
+    ciColumns.add(name);
+  }
+};
+addCiColumn("shipping_cost", "REAL");
+addCiColumn("currency", "TEXT DEFAULT 'EUR'");
+
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(
   `INSERT OR IGNORE INTO games (slug, name) VALUES ('pokemon', 'Pokémon TCG')`

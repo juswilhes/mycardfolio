@@ -42,8 +42,10 @@ export function saveCardWithPrices(gameSlug, cardData) {
 }
 
 export const listCollection = db.prepare(`
-  SELECT ci.id AS collection_item_id, ci.quantity, ci.condition, ci.purchase_price, ci.purchase_date,
-         c.id AS card_id, c.name, c.set_name, c.number, c.rarity, c.image_small, c.image_large
+  SELECT ci.id AS collection_item_id, ci.quantity, ci.condition,
+         ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency,
+         c.id AS card_id, c.external_id, c.name, c.set_name, c.number, c.rarity,
+         c.artist, c.image_small, c.image_large
   FROM collection_items ci
   JOIN cards c ON c.id = ci.card_id
   ORDER BY ci.created_at DESC

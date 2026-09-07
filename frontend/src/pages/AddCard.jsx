@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { searchCards, addToCollection } from "../api.js";
 import { useNavigate, Link } from "react-router-dom";
+import AddToPortfolioDialog from "../components/AddToPortfolioDialog.jsx";
+import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
 export default function AddCard() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [dialogCard, setDialogCard] = useState(null);
+  const [celebrateCard, setCelebrateCard] = useState(null);
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
   async function handleSearch(e) {
@@ -19,9 +24,16 @@ export default function AddCard() {
     }
   }
 
-  async function handleAdd(card) {
-    await addToCollection({ externalId: card.external_id, quantity: 1 });
-    navigate("/");
+  async function confirmAdd(payload) {
+    setBusy(true);
+    try {
+      await addToCollection(payload);
+      const card = dialogCard;
+      setDialogCard(null);
+      setCelebrateCard(card);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -46,7 +58,6 @@ export default function AddCard() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {results.map((card) => (
           <div key={card.external_id} className="flex flex-col">
-            {/* Bild kommt direkt von der API, siehe Erklärung in CardTile.jsx */}
             <img
               src={card.image_large}
               alt={`${card.name} (Englisch)`}
@@ -65,7 +76,7 @@ export default function AddCard() {
                 Details
               </Link>
               <button
-                onClick={() => handleAdd(card)}
+                onClick={() => setDialogCard(card)}
                 className="flex-1 border border-line text-xs py-1.5 rounded-full hover:border-ink"
               >
                 + Sammlung
@@ -74,6 +85,18 @@ export default function AddCard() {
           </div>
         ))}
       </div>
+
+      {dialogCard && (
+        <AddToPortfolioDialog
+          card={dialogCard}
+          busy={busy}
+          onConfirm={confirmAdd}
+          onClose={() => !busy && setDialogCard(null)}
+        />
+      )}
+      {celebrateCard && (
+        <PortfolioAddedAnimation card={celebrateCard} onDone={() => navigate("/")} />
+      )}
     </div>
   );
 }

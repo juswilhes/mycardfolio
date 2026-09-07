@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection } from "../api.js";
 import PriceChart from "../components/PriceChart.jsx";
+import AddToPortfolioDialog from "../components/AddToPortfolioDialog.jsx";
+import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
 // Route: /database/:externalId
 // Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
@@ -11,7 +13,9 @@ export default function CardInfo() {
   const [card, setCard] = useState(null);
   const [history, setHistory] = useState(null);
   const [error, setError] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,13 +26,14 @@ export default function CardInfo() {
     getCardPriceHistory(externalId).then(setHistory).catch(() => setHistory([]));
   }, [externalId]);
 
-  async function handleAdd() {
-    setAdding(true);
+  async function confirmAdd(payload) {
+    setBusy(true);
     try {
-      await addToCollection({ externalId, quantity: 1 });
-      navigate("/");
+      await addToCollection(payload);
+      setDialogOpen(false);
+      setCelebrate(true);
     } finally {
-      setAdding(false);
+      setBusy(false);
     }
   }
 
@@ -68,11 +73,10 @@ export default function CardInfo() {
           <ArtistLine card={card} externalId={externalId} onSaved={setCard} />
 
           <button
-            onClick={handleAdd}
-            disabled={adding}
-            className="mt-4 bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm disabled:opacity-60"
+            onClick={() => setDialogOpen(true)}
+            className="mt-4 bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
           >
-            {adding ? "Wird hinzugefügt …" : "+ Zum Portfolio hinzufügen"}
+            + Zum Portfolio hinzufügen
           </button>
         </div>
       </div>
@@ -90,6 +94,18 @@ export default function CardInfo() {
       {/* Preisentwicklung */}
       <h2 className="text-sm text-subtle mb-2">Preisentwicklung</h2>
       <PriceChart data={history} />
+
+      {dialogOpen && (
+        <AddToPortfolioDialog
+          card={card}
+          busy={busy}
+          onConfirm={confirmAdd}
+          onClose={() => !busy && setDialogOpen(false)}
+        />
+      )}
+      {celebrate && (
+        <PortfolioAddedAnimation card={card} onDone={() => navigate("/")} />
+      )}
     </div>
   );
 }
