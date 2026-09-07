@@ -74,6 +74,12 @@ export async function deleteSale(id) {
   return res.json();
 }
 
+export async function undoSale(id) {
+  const res = await fetch(`${BASE}/sales/${id}/undo`, { method: "POST" });
+  if (!res.ok) throw new Error("Verkauf konnte nicht rückgängig gemacht werden");
+  return res.json();
+}
+
 export async function getPriceHistory(cardId) {
   const res = await fetch(`${BASE}/cards/${cardId}/prices`);
   if (!res.ok) throw new Error("Preisverlauf konnte nicht geladen werden");

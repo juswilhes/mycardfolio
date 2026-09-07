@@ -92,11 +92,21 @@ const collectionItemFull = db.prepare(`
 const insertSale = db.prepare(`
   INSERT INTO sales
     (card_id, external_id, name, set_name, number, image_small, quantity, condition, language,
-     purchase_price, shipping_cost, sale_price, sale_shipping, sale_fees, sold_on, notes)
+     purchase_price, shipping_cost, purchase_date, purchase_notes,
+     sale_price, sale_shipping, sale_fees, sold_on, notes)
   VALUES
     (@card_id, @external_id, @name, @set_name, @number, @image_small, @quantity, @condition, @language,
-     @purchase_price, @shipping_cost, @sale_price, @sale_shipping, @sale_fees, @sold_on, @notes)
+     @purchase_price, @shipping_cost, @purchase_date, @purchase_notes,
+     @sale_price, @sale_shipping, @sale_fees, @sold_on, @notes)
 `);
+
+const restoreCollectionItem = db.prepare(`
+  INSERT INTO collection_items
+    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language)
+  VALUES
+    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language)
+`);
+const saleById = db.prepare(`SELECT * FROM sales WHERE id = ?`);
 
 const removeCollectionItem = db.prepare(`DELETE FROM collection_items WHERE id = ?`);
 
@@ -118,6 +128,8 @@ export function sellCollectionItem(id, sale) {
       language: item.language,
       purchase_price: item.purchase_price,
       shipping_cost: item.shipping_cost,
+      purchase_date: item.purchase_date,
+      purchase_notes: item.notes,
       sale_price: sale.salePrice,
       sale_shipping: sale.saleShipping,
       sale_fees: sale.saleFees,
@@ -125,6 +137,27 @@ export function sellCollectionItem(id, sale) {
       notes: sale.notes,
     });
     removeCollectionItem.run(Number(id));
+  });
+  tx();
+  return true;
+}
+
+// Verkauf rückgängig: Eintrag wieder in die Sammlung, Verkauf entfernen.
+export function undoSale(id) {
+  const s = saleById.get(Number(id));
+  if (!s) return null;
+  const tx = db.transaction(() => {
+    restoreCollectionItem.run({
+      card_id: s.card_id,
+      quantity: s.quantity ?? 1,
+      condition: s.condition,
+      purchase_price: s.purchase_price,
+      shipping_cost: s.shipping_cost,
+      purchase_date: s.purchase_date,
+      notes: s.purchase_notes,
+      language: s.language ?? "en",
+    });
+    deleteSaleRow.run(Number(id));
   });
   tx();
   return true;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getSales, deleteSale } from "../api.js";
+import { getSales, undoSale } from "../api.js";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -18,7 +18,7 @@ export default function Sales() {
   const { sales, stats } = data;
 
   async function undo(id) {
-    await deleteSale(id);
+    await undoSale(id);
     setConfirmId(null);
     load();
   }
@@ -92,9 +92,9 @@ export default function Sales() {
                     <span className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => undo(s.id)}
-                        className="text-xs bg-rose text-white rounded-full px-2 py-1"
+                        className="text-xs bg-mint text-white rounded-full px-2 py-1"
                       >
-                        Rückgängig
+                        Zurück in die Sammlung
                       </button>
                       <button onClick={() => setConfirmId(null)} className="text-xs text-subtle px-1">
                         ✕
@@ -113,8 +113,8 @@ export default function Sales() {
             })}
           </div>
           <p className="text-[11px] text-subtle mt-3">
-            „Rückgängig" löscht nur den Verkaufs­eintrag – die Karte landet nicht
-            automatisch wieder in der Sammlung.
+            „Rückgängig" macht den Verkauf komplett zurück: die Karte erscheint
+            sofort wieder in deiner Sammlung (mit dem ursprünglichen Kaufpreis).
           </p>
         </>
       )}

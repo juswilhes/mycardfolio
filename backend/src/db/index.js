@@ -151,6 +151,18 @@ addCiColumn("shipping_cost", "REAL");
 addCiColumn("currency", "TEXT DEFAULT 'EUR'");
 addCiColumn("language", "TEXT DEFAULT 'en'"); // Sprache der Druckvariante: 'de' | 'en'
 
+// sales: Kaufdatum + ursprüngliche Kaufnotiz mitführen, damit ein Verkauf
+// rückgängig gemacht werden kann und die Karte 1:1 zurückkommt.
+const salesColumns = new Set(db.prepare(`PRAGMA table_info(sales)`).all().map((c) => c.name));
+const addSalesColumn = (name, type) => {
+  if (!salesColumns.has(name)) {
+    db.exec(`ALTER TABLE sales ADD COLUMN ${name} ${type}`);
+    salesColumns.add(name);
+  }
+};
+addSalesColumn("purchase_date", "TEXT");
+addSalesColumn("purchase_notes", "TEXT");
+
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(
   `INSERT OR IGNORE INTO games (slug, name) VALUES ('pokemon', 'Pokémon TCG')`
