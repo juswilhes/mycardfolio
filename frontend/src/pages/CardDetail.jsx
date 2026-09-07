@@ -10,6 +10,7 @@ import {
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog, { conditionLabel } from "../components/CollectionItemDialog.jsx";
 import SellDialog from "../components/SellDialog.jsx";
+import SaleCelebrationAnimation from "../components/SaleCelebrationAnimation.jsx";
 
 const fmt = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -26,6 +27,7 @@ export default function CardDetail() {
   const [history, setHistory] = useState(null);
   const [editEntry, setEditEntry] = useState(null);
   const [sellEntry, setSellEntry] = useState(null);
+  const [celebration, setCelebration] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -84,10 +86,22 @@ export default function CardDetail() {
       setEditEntry(null)
     );
 
-  const sell = (values) =>
-    withReload(() => sellCollectionItem(sellEntry.collection_item_id, values), "/verkauft").then(
-      () => setSellEntry(null)
-    );
+  async function sell(values) {
+    setBusy(true);
+    try {
+      const e = sellEntry;
+      await sellCollectionItem(e.collection_item_id, values);
+      const q = e.quantity ?? 1;
+      const c = ((e.purchase_price ?? 0) + (e.shipping_cost ?? 0)) * q;
+      const proceeds =
+        ((values.salePrice ?? 0) + (values.saleShipping ?? 0) - (values.saleFees ?? 0)) * q;
+      const realized = proceeds - c;
+      setSellEntry(null);
+      setCelebration({ card, realized, cost: c, proceeds, big: c > 0 && realized / c > 0.5 });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const remove = (id) =>
     withReload(() => deleteCollectionItem(id)).then(() => setConfirmDeleteId(null));
@@ -236,6 +250,9 @@ export default function CardDetail() {
           onConfirm={sell}
           onClose={() => !busy && setSellEntry(null)}
         />
+      )}
+      {celebration && (
+        <SaleCelebrationAnimation {...celebration} onDone={() => navigate("/verkauft")} />
       )}
     </div>
   );
