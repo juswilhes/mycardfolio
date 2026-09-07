@@ -1,28 +1,37 @@
 import { Router } from "express";
-import { searchCards, getCardById } from "../services/pokemonTcgApi.js";
-import { priceHistoryForCard } from "../services/cardService.js";
+import { getCardById } from "../services/pokemonTcgApi.js";
+import { priceHistoryForCard, latestPriceForCard, cardIdByExternalId } from "../services/cardService.js";
+import { searchCardsLocal, getCardByExternalIdLocal } from "../services/cardRepository.js";
 
 const router = Router();
 
 // GET /api/cards/search?q=Pikachu
-router.get("/search", async (req, res) => {
+// Läuft komplett gegen die lokale DB -> sofortige Ergebnisse, keine
+// Wartezeit durch externe API-Aufrufe.
+router.get("/search", (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Query-Parameter 'q' fehlt" });
-  try {
-    const results = await searchCards(q);
-    res.json(results);
-  } catch (err) {
-    res.status(502).json({ error: err.message });
-  }
+  res.json(searchCardsLocal(q.trim()));
 });
 
-// GET /api/cards/external/:externalId -> Live-Kartendaten inkl. aktueller Preise,
-// direkt von der Pokemon-TCG-API. Funktioniert für JEDE Karte, auch wenn sie
-// noch nicht in der eigenen Sammlung/Datenbank gespeichert ist - das ist der
-// Unterschied zur Detailseite in der Sammlung, die die lokale Preishistorie zeigt.
+// GET /api/cards/external/:externalId -> alle bekannten Infos zu EINER Karte.
+// Stammdaten (Illustrator, Attacken, Schwächen, ...) kommen aus der lokalen
+// DB und sind sofort da. Preise: zuletzt gespeicherter Snapshot; ein
+// frischer Live-Abruf wird nur angestoßen, wenn die Karte lokal fehlt.
 router.get("/external/:externalId", async (req, res) => {
+  const { externalId } = req.params;
+  const local = getCardByExternalIdLocal(externalId);
+
+  if (local) {
+    const cardId = cardIdByExternalId.get(externalId)?.id;
+    const last = cardId ? latestPriceForCard.get(cardId) : null;
+    return res.json({ ...local, prices: last ? [last] : [] });
+  }
+
+  // Karte (noch) nicht im lokalen Datensatz -> live versuchen (mit Timeout)
   try {
-    res.json(await getCardById(req.params.externalId));
+    const live = await getCardById(externalId, 8000);
+    res.json({ ...live, prices: live.prices ?? [] });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }

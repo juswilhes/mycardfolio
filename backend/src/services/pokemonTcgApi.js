@@ -10,45 +10,47 @@ function headers() {
   return h;
 }
 
+// fetch mit hartem Timeout - die kostenlose API antwortet manchmal gar
+// nicht (502). Ohne Timeout würde ein Request die ganze Antwort blockieren.
+async function fetchJson(url, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: headers(), signal: ctrl.signal });
+    if (!res.ok) throw new Error(`Pokemon TCG API Fehler: ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // Suche nach Karten per Namen, z.B. für die "Karte hinzufügen"-Ansicht
 export async function searchCards(query, pageSize = 20) {
   const url = `${BASE_URL}/cards?q=name:"${encodeURIComponent(query)}*"&pageSize=${pageSize}`;
-  const res = await fetch(url, { headers: headers() });
-  if (!res.ok) throw new Error(`Pokemon TCG API Fehler: ${res.status}`);
-  const json = await res.json();
+  const json = await fetchJson(url);
   return json.data.map(mapCard);
 }
 
 // Einzelne Karte per externer ID nachladen (u.a. für den Preis-Refresh-Job)
-export async function getCardById(externalId) {
-  const res = await fetch(`${BASE_URL}/cards/${externalId}`, { headers: headers() });
-  if (!res.ok) throw new Error(`Pokemon TCG API Fehler: ${res.status}`);
-  const json = await res.json();
+export async function getCardById(externalId, timeoutMs = 8000) {
+  const json = await fetchJson(`${BASE_URL}/cards/${externalId}`, timeoutMs);
   return mapCard(json.data);
 }
 
 // Alle Sets (Erweiterungen), neueste zuerst - Grundlage für die "Alle Karten"-Seite
 export async function getSets() {
-  const res = await fetch(`${BASE_URL}/sets?orderBy=-releaseDate`, { headers: headers() });
-  if (!res.ok) throw new Error(`Pokemon TCG API Fehler: ${res.status}`);
-  const json = await res.json();
+  const json = await fetchJson(`${BASE_URL}/sets?orderBy=-releaseDate`);
   return json.data.map(mapSet);
 }
 
 export async function getSetById(setId) {
-  const res = await fetch(`${BASE_URL}/sets/${setId}`, { headers: headers() });
-  if (!res.ok) throw new Error(`Pokemon TCG API Fehler: ${res.status}`);
-  const json = await res.json();
+  const json = await fetchJson(`${BASE_URL}/sets/${setId}`);
   return mapSet(json.data);
 }
 
 // Alle Karten eines einzelnen Sets, sortiert nach Kartennummer
 export async function getCardsBySet(setId) {
-  const res = await fetch(`${BASE_URL}/cards?q=set.id:${setId}&orderBy=number&pageSize=250`, {
-    headers: headers(),
-  });
-  if (!res.ok) throw new Error(`Pokemon TCG API Fehler: ${res.status}`);
-  const json = await res.json();
+  const json = await fetchJson(`${BASE_URL}/cards?q=set.id:${setId}&orderBy=number&pageSize=250`);
   return json.data.map(mapCard);
 }
 

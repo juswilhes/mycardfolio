@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { searchCards, addToCollection } from "../api.js";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function AddCard() {
   const [query, setQuery] = useState("");
@@ -53,13 +53,24 @@ export default function AddCard() {
               className="rounded-2xl mb-2 border border-line shadow-sm"
             />
             <p className="text-sm font-medium truncate">{card.name}</p>
-            <p className="text-subtle text-xs mb-2 truncate">{card.set_name}</p>
-            <button
-              onClick={() => handleAdd(card)}
-              className="mt-auto border border-line text-sm py-1.5 rounded-full hover:border-ink"
-            >
-              + Zur Sammlung
-            </button>
+            <p className="text-subtle text-xs truncate">{card.set_name}</p>
+            <p className="text-subtle text-[11px] mb-2 truncate">
+              {[card.rarity, card.artist && `✎ ${card.artist}`].filter(Boolean).join(" · ")}
+            </p>
+            <div className="mt-auto flex gap-2">
+              <Link
+                to={`/database/${card.external_id}`}
+                className="flex-1 text-center border border-line text-xs py-1.5 rounded-full hover:border-ink"
+              >
+                Details
+              </Link>
+              <button
+                onClick={() => handleAdd(card)}
+                className="flex-1 border border-line text-xs py-1.5 rounded-full hover:border-ink"
+              >
+                + Sammlung
+              </button>
+            </div>
           </div>
         ))}
       </div>

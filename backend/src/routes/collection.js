@@ -2,6 +2,7 @@ import { Router } from "express";
 import db from "../db/index.js";
 import { getCardById } from "../services/pokemonTcgApi.js";
 import { saveCardWithPrices, listCollection, latestPriceForCard } from "../services/cardService.js";
+import { getCardByExternalIdLocal } from "../services/cardRepository.js";
 
 const router = Router();
 
@@ -25,13 +26,24 @@ router.post("/", async (req, res) => {
   const { externalId, quantity = 1, condition = "near_mint", purchasePrice, purchaseDate, notes } = req.body;
   if (!externalId) return res.status(400).json({ error: "externalId fehlt" });
 
+  // Kartendaten aus der lokalen DB (sofort). Nur wenn die Karte dort fehlt,
+  // wird live nachgeladen. Preise werden best-effort live geholt.
+  let cardData = getCardByExternalIdLocal(externalId);
+  let prices = [];
   try {
-    const cardData = await getCardById(externalId);
-    const cardId = saveCardWithPrices("pokemon", cardData);
+    const live = await getCardById(externalId, 6000);
+    prices = live.prices ?? [];
+    if (!cardData) cardData = live;
+  } catch (err) {
+    if (!cardData) return res.status(502).json({ error: err.message });
+  }
+
+  try {
+    const cardId = saveCardWithPrices("pokemon", { ...cardData, prices });
     insertCollectionItem.run(cardId, quantity, condition, purchasePrice ?? null, purchaseDate ?? null, notes ?? null);
     res.status(201).json({ cardId });
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 

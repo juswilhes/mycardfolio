@@ -68,3 +68,8 @@ export const allCardsForGame = db.prepare(`
   SELECT c.id, c.external_id, g.slug AS game_slug
   FROM cards c JOIN games g ON g.id = c.game_id
 `);
+
+export const cardIdByExternalId = db.prepare(`
+  SELECT id FROM cards
+  WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
+`);
