@@ -1,23 +1,26 @@
 import db from "../db/index.js";
 import { listCollection, latestPriceForCard, priceHistoryForCard } from "./cardService.js";
+import { listUserIds } from "./authService.js";
 
 const n = (v) => (v == null ? 0 : Number(v) || 0);
 const today = () => new Date().toISOString().slice(0, 10);
+const round2 = (x) => Math.round(x * 100) / 100;
 
 // --- Portfolio-Wert über Zeit ---------------------------------------------
 
 const upsertPortfolioSnapshot = db.prepare(`
-  INSERT INTO portfolio_snapshots (captured_on, total_value, total_cost, card_count)
-  VALUES (@day, @value, @cost, @count)
-  ON CONFLICT(captured_on) DO UPDATE SET
+  INSERT INTO portfolio_snapshots (user_id, captured_on, total_value, total_cost, card_count)
+  VALUES (@user_id, @day, @value, @cost, @count)
+  ON CONFLICT(user_id, captured_on) DO UPDATE SET
     total_value = excluded.total_value,
     total_cost  = excluded.total_cost,
     card_count  = excluded.card_count
 `);
 
-// Einen Tages-Snapshot des Gesamt-Portfolios schreiben (idempotent pro Tag).
-export function recordPortfolioSnapshot() {
-  const rows = listCollection.all();
+// Einen Tages-Snapshot des Portfolios eines Nutzers schreiben (idempotent pro Tag).
+export function recordPortfolioSnapshot(userId) {
+  if (!userId) return;
+  const rows = listCollection.all(userId);
   let value = 0;
   let cost = 0;
   let count = 0;
@@ -29,16 +32,21 @@ export function recordPortfolioSnapshot() {
     }
     count += r.quantity;
   }
-  upsertPortfolioSnapshot.run({ day: today(), value, cost, count });
+  upsertPortfolioSnapshot.run({ user_id: userId, day: today(), value, cost, count });
 }
 
-export const portfolioHistory = db.prepare(`
+// Für Cron-Job / manuellen Refresh: alle Nutzer.
+export function recordAllPortfolioSnapshots() {
+  for (const id of listUserIds()) recordPortfolioSnapshot(id);
+}
+
+const portfolioHistoryStmt = db.prepare(`
   SELECT captured_on, total_value, total_cost, card_count
   FROM portfolio_snapshots
+  WHERE user_id = ?
   ORDER BY captured_on ASC
 `);
-
-const round2 = (x) => Math.round(x * 100) / 100;
+export const portfolioHistory = { all: (userId) => portfolioHistoryStmt.all(userId) };
 
 // Alle Trend-Snapshots (Cardmarket bevorzugt) als Tageswerte je Karte/Variante.
 const trendSnapshotsAll = db.prepare(`
@@ -49,20 +57,21 @@ const trendSnapshotsAll = db.prepare(`
   ORDER BY (source = 'cardmarket') DESC, fetched_at ASC
 `);
 
-// Wert-über-Zeit für eine GEFILTERTE Teilmenge der Sammlung. Wird genutzt,
-// wenn die Sammlungsansicht nach Set/Sprache/Zeichner filtert - die
-// portfolio_snapshots-Tabelle kennt nur den Gesamtwert.
-export function computePortfolioHistory({ set, language, artist } = {}) {
-  const items = listCollection.all().filter(
-    (i) =>
-      (!set || i.set_name === set) &&
-      (!language || i.language === language) &&
-      (!artist || i.artist === artist)
-  );
+// Wert-über-Zeit für eine (optional gefilterte) Teilmenge der Sammlung eines
+// Nutzers - berechnet aus den Preis-Snapshots.
+export function computePortfolioHistory(userId, { set, language, artist } = {}) {
+  const items = listCollection
+    .all(userId)
+    .filter(
+      (i) =>
+        (!set || i.set_name === set) &&
+        (!language || i.language === language) &&
+        (!artist || i.artist === artist)
+    );
   if (!items.length) return [];
 
   const cardIds = new Set(items.map((i) => i.card_id));
-  const byKey = new Map(); // "cardId|variant" -> [{day, price}] (aufsteigend, je Tag letzter Wert)
+  const byKey = new Map();
   for (const r of trendSnapshotsAll.all()) {
     if (!cardIds.has(r.card_id)) continue;
     const key = `${r.card_id}|${r.variant}`;
@@ -86,8 +95,6 @@ export function computePortfolioHistory({ set, language, artist } = {}) {
       if (s.day <= day) p = s.price;
       else break;
     }
-    // Vor dem ersten Snapshot den ältesten bekannten Wert nehmen, sonst
-    // entstünde am Anfang der Kurve ein künstlicher Einbruch auf 0.
     return p ?? arr[0].price;
   };
 
@@ -117,12 +124,12 @@ export function computePortfolioHistory({ set, language, artist } = {}) {
 
 // --- Top-Gewinner / -Verlierer (7 Tage) ---------------------------------
 
-export function getMovers() {
+export function getMovers(userId) {
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const movers = [];
 
-  for (const c of listCollection.all()) {
-    const hist = priceHistoryForCard.all(c.card_id); // {price, fetched_at} aufsteigend
+  for (const c of listCollection.all(userId)) {
+    const hist = priceHistoryForCard.all(c.card_id);
     if (hist.length < 2) continue;
 
     const latest = hist[hist.length - 1];
@@ -163,17 +170,17 @@ export function getMovers() {
 const collectionItemFull = db.prepare(`
   SELECT ci.*, c.external_id, c.name, c.set_name, c.number, c.image_small
   FROM collection_items ci JOIN cards c ON c.id = ci.card_id
-  WHERE ci.id = ?
+  WHERE ci.id = ? AND ci.user_id = ?
 `);
 
 const insertSale = db.prepare(`
   INSERT INTO sales
-    (card_id, external_id, name, set_name, number, image_small, quantity, condition, language, variant,
+    (user_id, card_id, external_id, name, set_name, number, image_small, quantity, condition, language, variant,
      grading_company, grade,
      purchase_price, shipping_cost, purchase_date, purchase_notes,
      sale_price, sale_shipping, sale_fees, sold_on, notes)
   VALUES
-    (@card_id, @external_id, @name, @set_name, @number, @image_small, @quantity, @condition, @language, @variant,
+    (@user_id, @card_id, @external_id, @name, @set_name, @number, @image_small, @quantity, @condition, @language, @variant,
      @grading_company, @grade,
      @purchase_price, @shipping_cost, @purchase_date, @purchase_notes,
      @sale_price, @sale_shipping, @sale_fees, @sold_on, @notes)
@@ -181,23 +188,25 @@ const insertSale = db.prepare(`
 
 const restoreCollectionItem = db.prepare(`
   INSERT INTO collection_items
-    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language, variant,
+    (user_id, card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language, variant,
      grading_company, grade)
   VALUES
-    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language, @variant,
+    (@user_id, @card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language, @variant,
      @grading_company, @grade)
 `);
-const saleById = db.prepare(`SELECT * FROM sales WHERE id = ?`);
-
-const removeCollectionItem = db.prepare(`DELETE FROM collection_items WHERE id = ?`);
+const saleById = db.prepare(`SELECT * FROM sales WHERE id = ? AND user_id = ?`);
+const removeCollectionItem = db.prepare(`DELETE FROM collection_items WHERE id = ? AND user_id = ?`);
+const deleteSaleRow = db.prepare(`DELETE FROM sales WHERE id = ? AND user_id = ?`);
+const salesRows = db.prepare(`SELECT * FROM sales WHERE user_id = ? ORDER BY sold_on DESC, id DESC`);
 
 // Sammlungseintrag "verkaufen": nach sales verschieben, aus der Sammlung nehmen.
-export function sellCollectionItem(id, sale) {
-  const item = collectionItemFull.get(Number(id));
+export function sellCollectionItem(id, sale, userId) {
+  const item = collectionItemFull.get(Number(id), userId);
   if (!item) return null;
 
   const tx = db.transaction(() => {
     insertSale.run({
+      user_id: userId,
       card_id: item.card_id,
       external_id: item.external_id,
       name: item.name,
@@ -220,18 +229,19 @@ export function sellCollectionItem(id, sale) {
       sold_on: sale.soldOn,
       notes: sale.notes,
     });
-    removeCollectionItem.run(Number(id));
+    removeCollectionItem.run(Number(id), userId);
   });
   tx();
   return true;
 }
 
 // Verkauf rückgängig: Eintrag wieder in die Sammlung, Verkauf entfernen.
-export function undoSale(id) {
-  const s = saleById.get(Number(id));
+export function undoSale(id, userId) {
+  const s = saleById.get(Number(id), userId);
   if (!s) return null;
   const tx = db.transaction(() => {
     restoreCollectionItem.run({
+      user_id: userId,
       card_id: s.card_id,
       quantity: s.quantity ?? 1,
       condition: s.condition,
@@ -244,14 +254,11 @@ export function undoSale(id) {
       grading_company: s.grading_company ?? null,
       grade: s.grade ?? null,
     });
-    deleteSaleRow.run(Number(id));
+    deleteSaleRow.run(Number(id), userId);
   });
   tx();
   return true;
 }
-
-const salesRows = db.prepare(`SELECT * FROM sales ORDER BY sold_on DESC, id DESC`);
-const deleteSaleRow = db.prepare(`DELETE FROM sales WHERE id = ?`);
 
 // realisierter Gewinn/Verlust eines Verkaufs
 function realized(s) {
@@ -260,8 +267,8 @@ function realized(s) {
   return (proceeds - cost) * (s.quantity || 1);
 }
 
-export function listSales() {
-  const rows = salesRows.all().map((s) => ({ ...s, realized: realized(s) }));
+export function listSales(userId) {
+  const rows = salesRows.all(userId).map((s) => ({ ...s, realized: realized(s) }));
   const stats = rows.reduce(
     (acc, s) => {
       acc.total_realized += s.realized;
@@ -274,6 +281,6 @@ export function listSales() {
   return { sales: rows, stats };
 }
 
-export function deleteSale(id) {
-  return deleteSaleRow.run(Number(id)).changes > 0;
+export function deleteSale(id, userId) {
+  return deleteSaleRow.run(Number(id), userId).changes > 0;
 }

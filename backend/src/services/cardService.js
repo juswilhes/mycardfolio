@@ -59,7 +59,7 @@ export function recordPrices(cardId, prices = [], meta = null) {
   }
 }
 
-export const listCollection = db.prepare(`
+const listCollectionStmt = db.prepare(`
   SELECT ci.id AS collection_item_id, ci.quantity, ci.condition,
          ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency, ci.notes,
          ci.language, ci.variant, ci.grading_company, ci.grade,
@@ -68,8 +68,14 @@ export const listCollection = db.prepare(`
          c.cardmarket_product_id, c.cardmarket_updated
   FROM collection_items ci
   JOIN cards c ON c.id = ci.card_id
+  WHERE ci.user_id = ?
   ORDER BY ci.created_at DESC
 `);
+
+// Sammlung EINES Nutzers.
+export const listCollection = {
+  all: (userId) => listCollectionStmt.all(userId),
+};
 
 const trendRows = db.prepare(`
   SELECT price, currency, price_type, source, variant, fetched_at
@@ -158,17 +164,19 @@ export function latestTrendByExternal(externalId, variant = "normal") {
 }
 export const latestPriceByExternalId = { get: (externalId) => latestTrendByExternal(externalId, "normal") };
 
-// Fortschritt je Set: wie viele verschiedene Karten aus dem Set besitzt du?
-export const setProgress = db.prepare(`
+// Fortschritt je Set: wie viele verschiedene Karten aus dem Set besitzt der Nutzer?
+const setProgressStmt = db.prepare(`
   SELECT c.set_id, COUNT(DISTINCT c.id) AS owned
   FROM collection_items ci JOIN cards c ON c.id = ci.card_id
-  WHERE c.set_id IS NOT NULL
+  WHERE c.set_id IS NOT NULL AND ci.user_id = ?
   GROUP BY c.set_id
 `);
+export const setProgress = { all: (userId) => setProgressStmt.all(userId) };
 
-// external_ids aller Karten eines Sets, die du besitzt
-export const ownedInSet = db.prepare(`
+// external_ids aller Karten eines Sets, die der Nutzer besitzt
+const ownedInSetStmt = db.prepare(`
   SELECT DISTINCT c.external_id
   FROM collection_items ci JOIN cards c ON c.id = ci.card_id
-  WHERE c.set_id = ?
+  WHERE c.set_id = ? AND ci.user_id = ?
 `);
+export const ownedInSet = { all: (setId, userId) => ownedInSetStmt.all(setId, userId) };

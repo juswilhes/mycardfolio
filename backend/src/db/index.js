@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -97,6 +98,29 @@ CREATE TABLE IF NOT EXISTS sales (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Nutzerkonten (ab "Model B": jede Person hat ihr eigenes Portfolio).
+CREATE TABLE IF NOT EXISTS users (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  email          TEXT UNIQUE NOT NULL,          -- immer kleingeschrieben
+  password_hash  TEXT NOT NULL DEFAULT '',
+  display_name   TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  verify_token   TEXT,
+  verify_sent_at TEXT,
+  reset_token    TEXT,
+  reset_expires  TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token       TEXT PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  user_agent  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
 `);
@@ -173,6 +197,96 @@ addSalesColumn("purchase_notes", "TEXT");
 addSalesColumn("variant", "TEXT DEFAULT 'normal'");
 addSalesColumn("grading_company", "TEXT");
 addSalesColumn("grade", "TEXT");
+
+// --- Nutzer-Zuordnung (Model B) --------------------------------------------
+// collection_items / sales / portfolio_snapshots gehoeren jetzt je einem
+// Nutzer. Vorhandene Daten (aus der Einzelnutzer-Zeit) wandern in ein
+// "Seed"-Konto, das der Betreiber per Passwort-Reset uebernimmt.
+addCiColumn("user_id", "INTEGER");
+addSalesColumn("user_id", "INTEGER");
+
+// portfolio_snapshots: PK war captured_on -> auf (user_id, captured_on)
+// umstellen. Dafuer Tabelle neu bauen.
+const psnapCols = new Set(
+  db.prepare(`PRAGMA table_info(portfolio_snapshots)`).all().map((c) => c.name)
+);
+let portfolioSnapshotsRebuilt = false;
+if (!psnapCols.has("user_id")) {
+  db.exec(`
+    ALTER TABLE portfolio_snapshots RENAME TO portfolio_snapshots_old;
+    CREATE TABLE portfolio_snapshots (
+      user_id     INTEGER NOT NULL,
+      captured_on TEXT NOT NULL,
+      total_value REAL NOT NULL,
+      total_cost  REAL NOT NULL,
+      card_count  INTEGER NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, captured_on)
+    );
+  `);
+  portfolioSnapshotsRebuilt = true;
+}
+
+// Seed-Konto anlegen, falls es Alt-Daten ohne Nutzer gibt und noch kein
+// Konto existiert.
+const orphanItems = db
+  .prepare(`SELECT COUNT(*) AS n FROM collection_items WHERE user_id IS NULL`)
+  .get().n;
+const userCount = db.prepare(`SELECT COUNT(*) AS n FROM users`).get().n;
+
+if (userCount === 0 && (orphanItems > 0 || portfolioSnapshotsRebuilt)) {
+  const seedEmail = (process.env.SEED_USER_EMAIL || "justus-hess@outlook.de")
+    .trim()
+    .toLowerCase();
+  const resetToken = crypto.randomBytes(24).toString("base64url");
+  // reset_expires weit in der Zukunft -> Link laeuft praktisch nicht ab
+  db.prepare(
+    `INSERT INTO users (email, password_hash, email_verified, reset_token, reset_expires)
+     VALUES (?, '', 1, ?, '2099-01-01T00:00:00.000Z')`
+  ).run(seedEmail, resetToken);
+  const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
+  console.log(
+    `\n[setup] Bestehende Sammlung wurde dem Konto "${seedEmail}" zugeordnet.\n` +
+      `        Passwort setzen (Link laeuft nicht ab):\n` +
+      `        ${frontend}/passwort-zuruecksetzen?token=${resetToken}\n`
+  );
+}
+
+// Alt-Daten dem (ersten) Konto zuordnen.
+const firstUser = db.prepare(`SELECT id FROM users ORDER BY id LIMIT 1`).get();
+if (firstUser) {
+  db.prepare(`UPDATE collection_items SET user_id = ? WHERE user_id IS NULL`).run(firstUser.id);
+  db.prepare(`UPDATE sales SET user_id = ? WHERE user_id IS NULL`).run(firstUser.id);
+}
+if (portfolioSnapshotsRebuilt) {
+  if (firstUser) {
+    db.prepare(
+      `INSERT OR IGNORE INTO portfolio_snapshots
+         (user_id, captured_on, total_value, total_cost, card_count, created_at)
+       SELECT ?, captured_on, total_value, total_cost, card_count, created_at
+       FROM portfolio_snapshots_old`
+    ).run(firstUser.id);
+  }
+  db.exec(`DROP TABLE portfolio_snapshots_old`);
+}
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
+
+// Solange ein Konto noch kein Passwort hat (Seed-Konto), bei jedem Start
+// einen frischen "Passwort setzen"-Link ausgeben, damit der Betreiber
+// jederzeit hineinkommt.
+for (const u of db.prepare(`SELECT id, email FROM users WHERE password_hash = ''`).all()) {
+  const t = crypto.randomBytes(24).toString("base64url");
+  db.prepare(
+    `UPDATE users SET reset_token = ?, reset_expires = '2099-01-01T00:00:00.000Z' WHERE id = ?`
+  ).run(t, u.id);
+  const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
+  console.log(
+    `\n[setup] Konto "${u.email}" hat noch kein Passwort. Jetzt setzen:\n` +
+      `        ${frontend}/passwort-zuruecksetzen?token=${t}\n`
+  );
+}
 
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(

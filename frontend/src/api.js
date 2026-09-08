@@ -1,166 +1,83 @@
 const BASE = "/api";
 
-export async function searchCards(q) {
-  const res = await fetch(`${BASE}/cards/search?q=${encodeURIComponent(q)}`);
-  if (!res.ok) throw new Error("Suche fehlgeschlagen");
-  return res.json();
-}
-
-export async function getCollection() {
-  const res = await fetch(`${BASE}/collection`);
-  if (!res.ok) throw new Error("Sammlung konnte nicht geladen werden");
-  return res.json();
-}
-
-export async function addToCollection(payload) {
-  const res = await fetch(`${BASE}/collection`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+// Zentraler Fetch-Helfer: schickt immer das Session-Cookie mit und wirft
+// bei Fehlern die Server-Meldung (statt einer generischen).
+async function request(path, { method = "GET", body, headers } = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    credentials: "include",
+    headers: {
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error("Karte konnte nicht hinzugefügt werden");
-  return res.json();
+
+  let data = null;
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const err = new Error(data?.error || `Fehler ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
 }
 
-export async function matchImportRows(rows) {
-  const res = await fetch(`${BASE}/collection/import/match`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows }),
-  });
-  if (!res.ok) throw new Error("Abgleich fehlgeschlagen");
-  return res.json();
-}
+// --- Auth ------------------------------------------------------------
+export const getMe = () => request("/auth/me").then((d) => d.user);
+export const register = (payload) => request("/auth/register", { method: "POST", body: payload }).then((d) => d.user);
+export const login = (email, password) =>
+  request("/auth/login", { method: "POST", body: { email, password } }).then((d) => d.user);
+export const logout = () => request("/auth/logout", { method: "POST" });
+export const verifyEmail = (token) => request("/auth/verify", { method: "POST", body: { token } }).then((d) => d.user);
+export const resendVerification = () => request("/auth/resend-verification", { method: "POST" });
+export const requestPasswordReset = (email) =>
+  request("/auth/request-reset", { method: "POST", body: { email } });
+export const resetPassword = (token, password) =>
+  request("/auth/reset", { method: "POST", body: { token, password } }).then((d) => d.user);
+export const updateProfile = (displayName) =>
+  request("/auth/me", { method: "PATCH", body: { displayName } }).then((d) => d.user);
+export const deleteAccount = (password) =>
+  request("/auth/account", { method: "DELETE", body: { password } });
+export const exportDataUrl = `${BASE}/auth/export`;
 
-export async function commitImport(items) {
-  const res = await fetch(`${BASE}/collection/import/commit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items }),
-  });
-  if (!res.ok) throw new Error("Import fehlgeschlagen");
-  return res.json();
-}
+// --- Karten-Suche / -Datenbank -------------------------------------
+export const searchCards = (q) => request(`/cards/search?q=${encodeURIComponent(q)}`);
+export const getCardInfo = (externalId) => request(`/cards/external/${externalId}`);
+export const getCardPriceHistory = (externalId) => request(`/cards/external/${externalId}/prices`);
+export const getPriceHistory = (cardId) => request(`/cards/${cardId}/prices`);
+export const updateCardArtist = (externalId, artist) =>
+  request(`/cards/external/${externalId}/artist`, { method: "PATCH", body: { artist } });
 
-export async function updateCollectionItem(id, payload) {
-  const res = await fetch(`${BASE}/collection/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Änderung konnte nicht gespeichert werden");
-  return res.json();
-}
-
-export async function deleteCollectionItem(id) {
-  const res = await fetch(`${BASE}/collection/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Karte konnte nicht entfernt werden");
-  return res.json();
-}
-
-export async function sellCollectionItem(id, payload) {
-  const res = await fetch(`${BASE}/collection/${id}/sell`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Verkauf konnte nicht gespeichert werden");
-  return res.json();
-}
+// --- Sammlung -----------------------------------------------------
+export const getCollection = () => request("/collection");
+export const addToCollection = (payload) => request("/collection", { method: "POST", body: payload });
+export const matchImportRows = (rows) => request("/collection/import/match", { method: "POST", body: { rows } });
+export const commitImport = (items) => request("/collection/import/commit", { method: "POST", body: { items } });
+export const updateCollectionItem = (id, payload) =>
+  request(`/collection/${id}`, { method: "PATCH", body: payload });
+export const deleteCollectionItem = (id) => request(`/collection/${id}`, { method: "DELETE" });
+export const sellCollectionItem = (id, payload) =>
+  request(`/collection/${id}/sell`, { method: "POST", body: payload });
 
 // --- Portfolio & Verkäufe --------------------------------------------
-
-export async function getPortfolioHistory(filter = {}) {
+export function getPortfolioHistory(filter = {}) {
   const qs = new URLSearchParams();
   if (filter.set) qs.set("set", filter.set);
   if (filter.language) qs.set("language", filter.language);
   if (filter.artist) qs.set("artist", filter.artist);
-  const suffix = qs.toString() ? `?${qs}` : "";
-  const res = await fetch(`${BASE}/portfolio/history${suffix}`);
-  if (!res.ok) throw new Error("Portfolio-Verlauf konnte nicht geladen werden");
-  return res.json();
+  return request(`/portfolio/history${qs.toString() ? `?${qs}` : ""}`);
 }
+export const getMovers = () => request("/portfolio/movers");
+export const getSales = () => request("/sales");
+export const deleteSale = (id) => request(`/sales/${id}`, { method: "DELETE" });
+export const undoSale = (id) => request(`/sales/${id}/undo`, { method: "POST" });
 
-export async function getMovers() {
-  const res = await fetch(`${BASE}/portfolio/movers`);
-  if (!res.ok) throw new Error("Bewegungen konnten nicht geladen werden");
-  return res.json();
-}
-
-export async function getSales() {
-  const res = await fetch(`${BASE}/sales`);
-  if (!res.ok) throw new Error("Verkäufe konnten nicht geladen werden");
-  return res.json();
-}
-
-export async function deleteSale(id) {
-  const res = await fetch(`${BASE}/sales/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Verkauf konnte nicht entfernt werden");
-  return res.json();
-}
-
-export async function undoSale(id) {
-  const res = await fetch(`${BASE}/sales/${id}/undo`, { method: "POST" });
-  if (!res.ok) throw new Error("Verkauf konnte nicht rückgängig gemacht werden");
-  return res.json();
-}
-
-export async function getPriceHistory(cardId) {
-  const res = await fetch(`${BASE}/cards/${cardId}/prices`);
-  if (!res.ok) throw new Error("Preisverlauf konnte nicht geladen werden");
-  return res.json();
-}
-
-// --- Karten-Datenbank (Sets-Übersicht) ---------------------------------
-
-export async function getSets() {
-  const res = await fetch(`${BASE}/sets`);
-  if (!res.ok) throw new Error("Sets konnten nicht geladen werden");
-  return res.json();
-}
-
-export async function getSet(setId) {
-  const res = await fetch(`${BASE}/sets/${setId}`);
-  if (!res.ok) throw new Error("Set konnte nicht geladen werden");
-  return res.json();
-}
-
-export async function getCardsForSet(setId) {
-  const res = await fetch(`${BASE}/sets/${setId}/cards`);
-  if (!res.ok) throw new Error("Karten konnten nicht geladen werden");
-  return res.json();
-}
-
-export async function getSetProgress() {
-  const res = await fetch(`${BASE}/sets/progress`);
-  if (!res.ok) throw new Error("Fortschritt konnte nicht geladen werden");
-  return res.json();
-}
-
-export async function getOwnedInSet(setId) {
-  const res = await fetch(`${BASE}/sets/${setId}/owned`);
-  if (!res.ok) throw new Error("Besitz konnte nicht geladen werden");
-  return res.json();
-}
-
-export async function getCardInfo(externalId) {
-  const res = await fetch(`${BASE}/cards/external/${externalId}`);
-  if (!res.ok) throw new Error("Karteninfo konnte nicht geladen werden");
-  return res.json();
-}
-
-export async function getCardPriceHistory(externalId) {
-  const res = await fetch(`${BASE}/cards/external/${externalId}/prices`);
-  if (!res.ok) throw new Error("Preisverlauf konnte nicht geladen werden");
-  return res.json();
-}
-
-export async function updateCardArtist(externalId, artist) {
-  const res = await fetch(`${BASE}/cards/external/${externalId}/artist`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ artist }),
-  });
-  if (!res.ok) throw new Error("Illustrator konnte nicht gespeichert werden");
-  return res.json();
-}
+// --- Sets --------------------------------------------------------
+export const getSets = () => request("/sets");
+export const getSet = (setId) => request(`/sets/${setId}`);
+export const getCardsForSet = (setId) => request(`/sets/${setId}/cards`);
+export const getSetProgress = () => request("/sets/progress");
+export const getOwnedInSet = (setId) => request(`/sets/${setId}/owned`);

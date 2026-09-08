@@ -2,14 +2,17 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { rateLimit } from "express-rate-limit";
+import authRouter from "./routes/auth.js";
 import cardsRouter from "./routes/cards.js";
 import collectionRouter from "./routes/collection.js";
 import setsRouter from "./routes/sets.js";
 import portfolioRouter from "./routes/portfolio.js";
 import salesRouter from "./routes/sales.js";
+import { authRequired } from "./middleware/auth.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
-import { recordPortfolioSnapshot } from "./services/portfolioService.js";
+import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import db from "./db/index.js";
 
 process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
@@ -51,13 +54,15 @@ app.use(
 );
 
 // CORS: in Produktion auf die eigene Domain begrenzen (CORS_ORIGIN,
-// kommagetrennt), sonst alles erlauben (lokale Entwicklung).
+// kommagetrennt), sonst alles erlauben (lokale Entwicklung). credentials:
+// true, weil die Sitzung über ein Cookie läuft.
 const corsOrigin = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
   : true;
-app.use(cors({ origin: corsOrigin }));
+app.use(cors({ origin: corsOrigin, credentials: true }));
 
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
 
 // Grundlegendes Rate-Limiting gegen Missbrauch. Die Tipp-Suche feuert pro
 // Tastenanschlag - daher grosszuegig.
@@ -72,25 +77,20 @@ app.use(
   })
 );
 
-// Strengeres Limit für spätere Auth-Endpunkte (Login/Registrierung).
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: Number(process.env.AUTH_RATE_LIMIT) || 20,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Zu viele Versuche - bitte später erneut probieren." },
-});
-
+// Öffentlich: Konten, Karten-Stammdaten, Set-Übersicht.
+app.use("/api/auth", authRouter);
 app.use("/api/cards", cardsRouter);
-app.use("/api/collection", collectionRouter);
 app.use("/api/sets", setsRouter);
-app.use("/api/portfolio", portfolioRouter);
-app.use("/api/sales", salesRouter);
+
+// Nur mit Login: alles Nutzerbezogene.
+app.use("/api/collection", authRequired, collectionRouter);
+app.use("/api/portfolio", authRequired, portfolioRouter);
+app.use("/api/sales", authRequired, salesRouter);
 
 // Manueller Trigger, praktisch zum Testen (normalerweise übernimmt der Cron-Job das)
-app.post("/api/refresh-prices", async (_req, res) => {
+app.post("/api/refresh-prices", authRequired, async (_req, res) => {
   await refreshAllPrices();
-  recordPortfolioSnapshot();
+  recordAllPortfolioSnapshots();
   res.json({ ok: true });
 });
 
@@ -111,9 +111,9 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
-  // beim Start einen aktuellen Portfolio-Punkt sichern
+  // beim Start je Nutzer einen aktuellen Portfolio-Punkt sichern
   try {
-    recordPortfolioSnapshot();
+    recordAllPortfolioSnapshots();
   } catch (e) {
     console.error("[portfolio] Snapshot beim Start fehlgeschlagen:", e.message);
   }
