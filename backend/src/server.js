@@ -8,9 +8,28 @@ import portfolioRouter from "./routes/portfolio.js";
 import salesRouter from "./routes/sales.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
 import { recordPortfolioSnapshot } from "./services/portfolioService.js";
+import db from "./db/index.js";
 
 process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
 process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e));
+
+// SQLite sauber schliessen, bevor der Prozess endet - sonst kann
+// better-sqlite3 unter Node 24 beim Abbau nativ abstuerzen.
+let closing = false;
+function shutdown() {
+  if (closing) return;
+  closing = true;
+  try {
+    db.close();
+  } catch {
+    /* ignore */
+  }
+  process.exit(0);
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+process.on("SIGHUP", shutdown);
+process.on("beforeExit", shutdown);
 
 const app = express();
 app.use(cors());

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "dev": "nodemon --quiet --watch src src/server.js",
     "import": "node src/scripts/importCardData.js",
     "backfill-artists": "node src/scripts/backfillArtists.js",
     "build-de-names": "node src/scripts/buildGermanNames.js"
@@ -16,5 +16,8 @@
     "express": "^4.19.2",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
