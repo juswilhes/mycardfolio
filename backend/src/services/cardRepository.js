@@ -76,19 +76,49 @@ function expandQuery(query) {
   return [...terms].slice(0, 12);
 }
 
+// Kartennummer/Kürzel für den Vergleich normalisieren: GROSS, ohne Leer-/
+// Sonderzeichen, ohne führende Nullen im Zahlteil.
+//  "SWSH 150" / "swsh150" -> "SWSH150"   "SWSH072" -> "SWSH72"   "TG02" -> "TG2"
+const normNum = (n) =>
+  String(n ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s.\-]/g, "")
+    .replace(/^([A-Z]*?)0*(\d)/, "$1$2");
+
+// Promo-/Teilset-Kürzel, die in der DB direkt an der Nummer kleben
+// ("SWSH150", "SM172", "TG02", "GG50"). Nutzer tippen sie oft mit
+// Leerzeichen ("Vaporeon V SWSH 150") - dann landet das Kürzel im Namensteil.
+const PROMO_PREFIX =
+  /^(SWSH|SM|SV|SVP|SMP|XY|XYP|BW|BWP|HGSS|DP|DPP|RC|TG|GG)$/i;
+
 // Trennt eine evtl. angehängte Kartennummer ab. Die "eigene" Nummer der
 // Karte steht vor dem "/", der Teil danach ist die Set-Gesamtzahl.
 //  "Mega Absol ex 180/132"      -> { text: "Mega Absol ex",   number: "180" }
 //  "Darkrai VSTAR GG50/GG70"     -> { text: "Darkrai VSTAR",   number: "GG50" }
 //  "Rayquaza TG05"               -> { text: "Rayquaza",        number: "TG05" }
+//  "Vaporeon V SWSH 150"         -> { text: "Vaporeon V",      number: "SWSH150" }
 //  "180/132" / "180"             -> { text: "",                number: "180" }
 const NUM = "[A-Za-z]{0,4}\\d+[A-Za-z]?";
 function splitNumber(query) {
   // Nummer nur abtrennen, wenn sie ein eigenes Wort ist (Leerzeichen/# davor)
   // oder die ganze Eingabe ist - sonst würde "Porygon2" zerlegt.
   const m = query.trim().match(new RegExp(`^(?:(.*?)[\\s#]+)?(${NUM})(?:\\s*/\\s*${NUM})?\\s*$`));
-  if (m && m[2]) return { text: (m[1] ?? "").trim(), number: m[2] };
-  return { text: query.trim(), number: null };
+  if (!m || !m[2]) return { text: query.trim(), number: null };
+
+  let text = (m[1] ?? "").trim();
+  let number = m[2];
+
+  // "... SWSH 150": das Promo-Kürzel steht als letztes Wort im Namensteil,
+  // die Nummer sind nur Ziffern -> beides zur echten Kartennummer zusammenziehen.
+  if (/^\d+[A-Za-z]?$/.test(number) && text) {
+    const parts = text.split(/\s+/);
+    if (PROMO_PREFIX.test(parts[parts.length - 1])) {
+      number = parts.pop().toUpperCase() + number;
+      text = parts.join(" ");
+    }
+  }
+  return { text, number };
 }
 
 // EIN fest vorbereitetes Statement mit fixer Parameterzahl (statt bei jeder
@@ -125,19 +155,20 @@ export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
   const terms = text ? expandQuery(text) : [];
 
   let rows = runSearch({ game, terms, number, limit });
-  // Nichts mit Nummer gefunden? Dann ohne Nummer versuchen (Nummernschema
-  // unterscheidet sich je Sprache/Druck).
+
+  // Keine exakte Nummer getroffen? Das Nummernschema unterscheidet sich je
+  // Sprache/Promo/führende Nullen - breit über den Namen suchen und in JS
+  // nach normalisierter Nummer filtern ("SWSH 150" == "SWSH150" == "swsh150").
   if (rows.length === 0 && number && terms.length) {
-    rows = runSearch({ game, terms, number: null, limit });
+    const wide = runSearch({ game, terms, number: null, limit: Math.max(limit, 60) });
+    const want = normNum(number);
+    const hits = wide.filter((r) => normNum(r.number) === want);
+    rows = (hits.length ? hits : wide).slice(0, limit);
   }
   return rows;
 }
 
 const normLoose = (s) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-const normNum = (n) => {
-  const s = String(n ?? "").trim();
-  return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s.toUpperCase().replace(/^0+/, "");
-};
 
 const words = (s) => (s ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 2);
 // Wort-Überlappung zweier Set-Namen (0..1). "Obsidian Flames" vs
