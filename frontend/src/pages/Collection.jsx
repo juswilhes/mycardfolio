@@ -13,8 +13,10 @@ const SORTS = {
   bought: "Kaufdatum (neueste zuerst)",
   bought_asc: "Kaufdatum (älteste zuerst)",
   value_desc: "Wert (hoch → niedrig)",
-  gain_desc: "Gewinn (hoch → niedrig)",
-  gain_asc: "Verlust (niedrig → hoch)",
+  gain_desc: "Gewinn € (hoch → niedrig)",
+  gain_asc: "Verlust € (niedrig → hoch)",
+  gainpct_desc: "Gewinn % (hoch → niedrig)",
+  gainpct_asc: "Verlust % (niedrig → hoch)",
   name: "Name (A → Z)",
   set: "Set",
   artist: "Zeichner",
@@ -124,6 +126,12 @@ export default function Collection() {
       const q = w.reduce((s, e) => s + (e.quantity ?? 1), 0);
       return (g.latest_price?.price ?? 0) * q - c;
     };
+    const gGainPct = (g) => {
+      const c = gCost(g);
+      const gn = gGain(g);
+      if (c == null || gn == null || c <= 0) return null;
+      return (gn / c) * 100;
+    };
     const sortedDates = (g) => g.entries.map((e) => e.purchase_date).filter(Boolean).sort();
     const newest = (g) => sortedDates(g).at(-1) ?? "";
     const oldest = (g) => sortedDates(g)[0] ?? "";
@@ -135,6 +143,8 @@ export default function Collection() {
       value_desc: (a, b) => gVal(b) - gVal(a),
       gain_desc: (a, b) => (gGain(b) ?? -Infinity) - (gGain(a) ?? -Infinity),
       gain_asc: (a, b) => (gGain(a) ?? Infinity) - (gGain(b) ?? Infinity),
+      gainpct_desc: (a, b) => (gGainPct(b) ?? -Infinity) - (gGainPct(a) ?? -Infinity),
+      gainpct_asc: (a, b) => (gGainPct(a) ?? Infinity) - (gGainPct(b) ?? Infinity),
       name: (a, b) => a.name.localeCompare(b.name),
       set: (a, b) => (a.set_name ?? "").localeCompare(b.set_name ?? ""),
       artist: (a, b) => (a.artist ?? "").localeCompare(b.artist ?? ""),

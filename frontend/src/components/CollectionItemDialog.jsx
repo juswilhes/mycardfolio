@@ -30,6 +30,28 @@ export const VARIANTS = [
 const VARIANT_LABELS = Object.fromEntries(VARIANTS);
 export const variantLabel = (v) => VARIANT_LABELS[v] ?? "Normal";
 
+// Kurzkürzel für die Sprache, wie es in jeder Sammlungszeile steht.
+const LANG_LABELS = {
+  de: "DE",
+  en: "ENG",
+  fr: "FR",
+  it: "IT",
+  es: "ES",
+  pt: "PT",
+  ja: "JP",
+  jp: "JP",
+  ko: "KR",
+  "zh-cn": "CN",
+  "zh-tw": "TW",
+  ru: "RU",
+  nl: "NL",
+};
+export const langLabel = (v) => {
+  if (!v) return null;
+  const k = String(v).toLowerCase();
+  return LANG_LABELS[k] ?? k.slice(0, 3).toUpperCase();
+};
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 // Dialog zum Erfassen ODER Bearbeiten eines Sammlungs-Eintrags.

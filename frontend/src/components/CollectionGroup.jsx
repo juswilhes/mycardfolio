@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import CardTile from "./CardTile.jsx";
+import { langLabel } from "./CollectionItemDialog.jsx";
 import { deleteCollectionItem } from "../api.js";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
@@ -26,6 +27,8 @@ export default function CollectionGroup({ group, onChanged }) {
   const price = entries[0].latest_price?.price ?? null;
   const qty = entries.reduce((s, e) => s + (e.quantity ?? 1), 0);
   const value = price != null ? price * qty : null;
+
+  const langs = [...new Set(entries.map((e) => langLabel(e.language)).filter(Boolean))];
 
   const withCost = entries.filter((e) => entryCost(e) != null);
   const cost = withCost.reduce((s, e) => s + entryCost(e), 0);
@@ -53,7 +56,17 @@ export default function CollectionGroup({ group, onChanged }) {
         >
           <img src={group.image_small} alt="" className="w-12 h-auto rounded shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{group.name}</p>
+            <p className="font-medium truncate">
+              {group.name}
+              {langs.map((l) => (
+                <span
+                  key={l}
+                  className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-subtle border border-line rounded px-1 py-0.5"
+                >
+                  {l}
+                </span>
+              ))}
+            </p>
             <p className="text-subtle text-xs mt-0.5 truncate">
               {[group.rarity, group.set_name].filter(Boolean).join(" · ")} · {qty}× ·{" "}
               {entries.length} Käufe
@@ -106,6 +119,7 @@ export default function CollectionGroup({ group, onChanged }) {
                     ? new Date(e.purchase_date).toLocaleDateString("de-DE")
                     : "Datum unbekannt"}
                   {(e.quantity ?? 1) > 1 ? ` · ${e.quantity}×` : ""}
+                  {langLabel(e.language) ? ` · ${langLabel(e.language)}` : ""}
                   {e.purchase_price != null ? ` · Kauf ${eur(e.purchase_price)}` : ""}
                   {c != null ? ` · Einstand ${eur(c)}` : ""}
                 </Link>
