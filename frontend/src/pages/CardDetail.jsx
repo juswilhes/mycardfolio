@@ -8,7 +8,7 @@ import {
   sellCollectionItem,
 } from "../api.js";
 import PriceSection from "../components/PriceSection.jsx";
-import CollectionItemDialog, { conditionLabel, variantLabel } from "../components/CollectionItemDialog.jsx";
+import CollectionItemDialog, { conditionLabel, variantLabel, gradeLabel } from "../components/CollectionItemDialog.jsx";
 import SellDialog from "../components/SellDialog.jsx";
 import SaleCelebrationAnimation from "../components/SaleCelebrationAnimation.jsx";
 
@@ -168,6 +168,7 @@ export default function CardDetail() {
                     : "Kaufdatum unbekannt"}
                   {" · "}
                   {conditionLabel(e.condition)}
+                  {gradeLabel(e.grading_company, e.grade) ? ` · ${gradeLabel(e.grading_company, e.grade)}` : ""}
                   {e.variant && e.variant !== "normal" ? ` · ${variantLabel(e.variant)}` : ""}
                   {" · "}
                   {e.language === "de" ? "Deutsch" : "Englisch"}

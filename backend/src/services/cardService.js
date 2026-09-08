@@ -62,7 +62,7 @@ export function recordPrices(cardId, prices = [], meta = null) {
 export const listCollection = db.prepare(`
   SELECT ci.id AS collection_item_id, ci.quantity, ci.condition,
          ci.purchase_price, ci.shipping_cost, ci.purchase_date, ci.currency, ci.notes,
-         ci.language, ci.variant,
+         ci.language, ci.variant, ci.grading_company, ci.grade,
          c.id AS card_id, c.external_id, c.name, c.set_name, c.set_id, c.number, c.rarity,
          c.artist, c.image_small, c.image_large,
          c.cardmarket_product_id, c.cardmarket_updated

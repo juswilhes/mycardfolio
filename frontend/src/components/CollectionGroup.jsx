@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import CardTile from "./CardTile.jsx";
-import { langLabel } from "./CollectionItemDialog.jsx";
+import { langLabel, gradeLabel } from "./CollectionItemDialog.jsx";
 import { deleteCollectionItem } from "../api.js";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
@@ -29,6 +29,9 @@ export default function CollectionGroup({ group, onChanged }) {
   const value = price != null ? price * qty : null;
 
   const langs = [...new Set(entries.map((e) => langLabel(e.language)).filter(Boolean))];
+  const grades = [
+    ...new Set(entries.map((e) => gradeLabel(e.grading_company, e.grade)).filter(Boolean)),
+  ];
 
   const withCost = entries.filter((e) => entryCost(e) != null);
   const cost = withCost.reduce((s, e) => s + entryCost(e), 0);
@@ -64,6 +67,14 @@ export default function CollectionGroup({ group, onChanged }) {
                   className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-subtle border border-line rounded px-1 py-0.5"
                 >
                   {l}
+                </span>
+              ))}
+              {grades.map((g) => (
+                <span
+                  key={g}
+                  className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-yellowInk bg-yellow rounded px-1 py-0.5"
+                >
+                  {g}
                 </span>
               ))}
             </p>
@@ -120,6 +131,7 @@ export default function CollectionGroup({ group, onChanged }) {
                     : "Datum unbekannt"}
                   {(e.quantity ?? 1) > 1 ? ` · ${e.quantity}×` : ""}
                   {langLabel(e.language) ? ` · ${langLabel(e.language)}` : ""}
+                  {gradeLabel(e.grading_company, e.grade) ? ` · ${gradeLabel(e.grading_company, e.grade)}` : ""}
                   {e.purchase_price != null ? ` · Kauf ${eur(e.purchase_price)}` : ""}
                   {c != null ? ` · Einstand ${eur(c)}` : ""}
                 </Link>

@@ -52,6 +52,23 @@ export const langLabel = (v) => {
   return LANG_LABELS[k] ?? k.slice(0, 3).toUpperCase();
 };
 
+// Bekannte Grading-Firmen. Wert = Kürzel (so gespeichert), Label = Anzeige.
+export const GRADERS = [
+  ["PSA", "PSA"],
+  ["BGS", "BGS (Beckett)"],
+  ["CGC", "CGC"],
+  ["SGC", "SGC"],
+  ["AGS", "AGS"],
+  ["TAG", "TAG"],
+  ["ACE", "ACE Grading"],
+  ["GG", "GG (Getgraded)"],
+  ["Andere", "Andere"],
+];
+export const gradeLabel = (company, grade) => {
+  if (!company) return null;
+  return grade ? `${company} ${grade}` : company;
+};
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 // Dialog zum Erfassen ODER Bearbeiten eines Sammlungs-Eintrags.
@@ -75,6 +92,8 @@ export default function CollectionItemDialog({
     shippingCost: initial?.shipping_cost != null ? String(initial.shipping_cost) : "",
     purchaseDate: initial?.purchase_date ? initial.purchase_date.slice(0, 10) : today(),
     notes: initial?.notes ?? "",
+    gradingCompany: initial?.grading_company ?? "",
+    grade: initial?.grade ?? "",
   });
 
   useEffect(() => {
@@ -102,8 +121,12 @@ export default function CollectionItemDialog({
       shippingCost: form.shippingCost === "" ? null : shipping,
       purchaseDate: form.purchaseDate || null,
       notes: form.notes.trim() || null,
+      gradingCompany: form.gradingCompany || null,
+      grade: form.gradingCompany ? form.grade.trim() || null : null,
     });
   }
+
+  const showGrading = form.condition === "mint" || !!form.gradingCompany;
 
   return (
     <div
@@ -160,6 +183,40 @@ export default function CollectionItemDialog({
               ))}
             </select>
           </label>
+          {showGrading && (
+            <div className="col-span-2 rounded-xl border border-line bg-canvas/50 p-3">
+              <p className="text-xs font-medium text-ink mb-2">
+                Wurde die Karte gegradet?
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs text-subtle">
+                  Grading-Firma
+                  <select
+                    value={form.gradingCompany}
+                    onChange={set("gradingCompany")}
+                    className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+                  >
+                    <option value="">Nein, Rohkarte</option>
+                    {GRADERS.map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </label>
+                {form.gradingCompany && (
+                  <label className="text-xs text-subtle">
+                    Note (z. B. 10, 9.5)
+                    <input
+                      type="text"
+                      value={form.grade}
+                      onChange={set("grade")}
+                      placeholder="Grade"
+                      className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+          )}
           <label className="text-xs text-subtle col-span-2">
             Sprache der Karte
             <select

@@ -151,6 +151,8 @@ addCiColumn("shipping_cost", "REAL");
 addCiColumn("currency", "TEXT DEFAULT 'EUR'");
 addCiColumn("language", "TEXT DEFAULT 'en'"); // Sprache der Druckvariante: 'de' | 'en'
 addCiColumn("variant", "TEXT DEFAULT 'normal'"); // 'normal' | 'holo' | 'reverse' | 'first_edition'
+addCiColumn("grading_company", "TEXT"); // z.B. 'PSA', 'BGS', 'CGC' - NULL = ungegradet
+addCiColumn("grade", "TEXT");           // Note als Text: '10', '9.5', 'Black Label' ...
 
 const psColumns = new Set(db.prepare(`PRAGMA table_info(price_snapshots)`).all().map((c) => c.name));
 if (!psColumns.has("variant")) {
@@ -169,6 +171,8 @@ const addSalesColumn = (name, type) => {
 addSalesColumn("purchase_date", "TEXT");
 addSalesColumn("purchase_notes", "TEXT");
 addSalesColumn("variant", "TEXT DEFAULT 'normal'");
+addSalesColumn("grading_company", "TEXT");
+addSalesColumn("grade", "TEXT");
 
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(

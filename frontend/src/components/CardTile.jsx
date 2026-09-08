@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteCollectionItem } from "../api.js";
-import { variantLabel, langLabel } from "./CollectionItemDialog.jsx";
+import { variantLabel, langLabel, gradeLabel } from "./CollectionItemDialog.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -46,6 +46,11 @@ export default function CardTile({ item, onChanged }) {
           {langLabel(item.language) && (
             <span className="ml-2 align-middle text-[10px] font-semibold tracking-wide text-subtle border border-line rounded px-1 py-0.5">
               {langLabel(item.language)}
+            </span>
+          )}
+          {gradeLabel(item.grading_company, item.grade) && (
+            <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-yellowInk bg-yellow rounded px-1 py-0.5">
+              {gradeLabel(item.grading_company, item.grade)}
             </span>
           )}
         </p>

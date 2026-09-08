@@ -16,9 +16,11 @@ const router = Router();
 
 const insertCollectionItem = db.prepare(`
   INSERT INTO collection_items
-    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language, variant)
+    (card_id, quantity, condition, purchase_price, shipping_cost, purchase_date, notes, language, variant,
+     grading_company, grade)
   VALUES
-    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language, @variant)
+    (@card_id, @quantity, @condition, @purchase_price, @shipping_cost, @purchase_date, @notes, @language, @variant,
+     @grading_company, @grade)
 `);
 
 const updateCollectionItem = db.prepare(`
@@ -27,7 +29,9 @@ const updateCollectionItem = db.prepare(`
     purchase_price = @purchase_price, shipping_cost = @shipping_cost,
     purchase_date = @purchase_date, notes = @notes,
     language = COALESCE(@language, language),
-    variant = COALESCE(@variant, variant)
+    variant = COALESCE(@variant, variant),
+    grading_company = @grading_company,
+    grade = @grade
   WHERE id = @id
 `);
 
@@ -41,6 +45,28 @@ const num = (v) => {
 const langOrNull = (v) => (v === "de" || v === "en" ? v : null);
 const VARIANTS = ["normal", "holo", "reverse", "first_edition"];
 const variantOrNull = (v) => (VARIANTS.includes(v) ? v : null);
+
+// Grading: nur bekannte Firmen zulassen, Note als kurzer Text.
+const GRADERS = ["PSA", "BGS", "CGC", "SGC", "AGS", "TAG", "ACE", "GG", "Andere"];
+const gradingCompanyOrNull = (v) => {
+  if (!v) return null;
+  const hit = GRADERS.find((g) => g.toLowerCase() === String(v).trim().toLowerCase());
+  if (hit) return hit;
+  return String(v).trim().slice(0, 30) || null;
+};
+const gradeOrNull = (v) => {
+  const s = String(v ?? "").trim();
+  return s ? s.slice(0, 20) : null;
+};
+// Grading-Felder aus dem Request normalisieren. Nur gültig, wenn eine Firma
+// angegeben ist - sonst beides NULL (ungegradete Karte).
+const gradingFrom = (body) => {
+  const company = gradingCompanyOrNull(body.gradingCompany);
+  return {
+    grading_company: company,
+    grade: company ? gradeOrNull(body.grade) : null,
+  };
+};
 
 // Cardmarket-Preis im Hintergrund nachziehen (blockiert die Antwort nie).
 function refreshPriceInBackground(cardId, externalId) {
@@ -101,6 +127,7 @@ router.post("/", async (req, res) => {
       notes: notes || null,
       language: langOrNull(language) ?? "en",
       variant: variantOrNull(variant) ?? "normal",
+      ...gradingFrom(req.body),
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -149,6 +176,7 @@ router.post("/import/commit", (req, res) => {
         notes: it.notes || null,
         language: langOrNull(it.language) ?? "en",
         variant: variantOrNull(it.variant) ?? "normal",
+        ...gradingFrom(it),
       });
       externalIds.add(it.externalId);
       added++;
@@ -189,6 +217,7 @@ router.patch("/:id", (req, res) => {
     notes: notes || null,
     language: langOrNull(language),
     variant: variantOrNull(variant),
+    ...gradingFrom(req.body),
   });
   if (!info.changes) return res.status(404).json({ error: "Eintrag nicht gefunden" });
   recordPortfolioSnapshot();

@@ -69,6 +69,7 @@ export default function Sales() {
                       {s.set_name} · {s.quantity}×
                       {s.sold_on ? ` · ${new Date(s.sold_on).toLocaleDateString("de-DE")}` : ""}
                       {s.language ? ` · ${s.language === "de" ? "DE" : "EN"}` : ""}
+                      {s.grading_company ? ` · ${s.grading_company}${s.grade ? ` ${s.grade}` : ""}` : ""}
                     </p>
                     {s.notes && <p className="text-subtle text-xs truncate">{s.notes}</p>}
                   </div>
