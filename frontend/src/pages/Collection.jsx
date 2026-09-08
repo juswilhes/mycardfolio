@@ -22,6 +22,30 @@ const SORTS = {
   artist: "Zeichner",
 };
 
+// Wenn das Backend nicht antwortet – lieber mit einem Schmunzeln.
+const DOWN_MESSAGES = [
+  {
+    title: "Ein wildes Relaxo versperrt den Weg 😴",
+    body: "Es hat sich quer vor den Server gelegt und denkt gar nicht ans Aufstehen. Deine Karten sind natürlich alle noch da.",
+  },
+  {
+    title: "Der Server ist kurz Karten sortieren 🃏",
+    body: "Gleich zurück. Deine Sammlung ist sicher – nur die Verbindung zum Backend (Port 3001) hakt gerade.",
+  },
+  {
+    title: "Team Rocket hat den Server geklaut! 🚀",
+    body: "Keine Sorge, deine Karten sind nicht dabei – die liegen unberührt in der Datenbank. Der Server kommt gleich wieder.",
+  },
+  {
+    title: "Server-Pokémon ist eingeschläfert 💤",
+    body: "Ein Statusproblem, kein Datenproblem: deine Karten sind vollständig da, das Backend antwortet nur gerade nicht.",
+  },
+  {
+    title: "Kurze Kaffeepause vom Server ☕",
+    body: "Er tankt Energie und ist gleich zurück. Deine Sammlung wartet geduldig in der Datenbank.",
+  },
+];
+
 const val = (i) => (i.latest_price?.price ?? 0) * (i.quantity ?? 1);
 const cost = (i) =>
   i.purchase_price != null || i.shipping_cost != null
@@ -47,6 +71,10 @@ export default function Collection() {
   const [loadError, setLoadError] = useState(false);
   const [history, setHistory] = useState(null);
   const [movers, setMovers] = useState(null);
+  const down = useMemo(
+    () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
+    []
+  );
 
   const [sort, setSort] = useState(() => loadPref("sort", "recent"));
   const [fLang, setFLang] = useState(() => loadPref("lang", "all"));
@@ -176,18 +204,18 @@ export default function Collection() {
 
   if (loadError) {
     return (
-      <div className="text-center py-24">
-        <p className="text-lg font-medium mb-1">Server nicht erreichbar</p>
-        <p className="text-subtle mb-6">
-          Deine Karten sind nicht weg – die App kann das Backend gerade nur nicht
-          erreichen. Läuft <code>backend</code> (Port 3001)? Sonst
-          <code> start-mycardfolio.bat</code> neu starten.
+      <div className="text-center py-24 max-w-md mx-auto">
+        <p className="text-lg font-medium mb-1">{down.title}</p>
+        <p className="text-subtle mb-2">{down.body}</p>
+        <p className="text-xs text-subtle mb-6">
+          Falls es länger dauert: <code>start-mycardfolio.bat</code> neu starten
+          (startet das Backend notfalls mehrmals, bis es läuft).
         </p>
         <button
           onClick={load}
           className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full"
         >
-          Erneut versuchen
+          Nochmal versuchen
         </button>
       </div>
     );
