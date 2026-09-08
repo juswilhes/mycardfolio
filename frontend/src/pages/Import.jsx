@@ -118,7 +118,7 @@ export default function Import() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-semibold">Massen-Import</h1>
-        <Link to="/add" className="text-sm text-subtle hover:text-ink">← Einzeln hinzufügen</Link>
+        <Link to="/sets" className="text-sm text-subtle hover:text-ink">← Einzeln hinzufügen</Link>
       </div>
 
       {step === "input" && (

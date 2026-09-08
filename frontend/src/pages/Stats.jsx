@@ -79,7 +79,7 @@ export default function Stats() {
     return (
       <div className="py-16 text-center">
         <p className="text-subtle mb-4">Noch keine Karten – nichts auszuwerten.</p>
-        <Link to="/add" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
+        <Link to="/sets" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
           Karte hinzufügen
         </Link>
       </div>

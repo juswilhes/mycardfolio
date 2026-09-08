@@ -226,7 +226,7 @@ export default function Collection() {
       <div className="text-center py-24">
         <p className="text-lg font-medium mb-1">Noch keine Karten</p>
         <p className="text-subtle mb-6">Füge deine erste Karte hinzu, um den Wert zu verfolgen.</p>
-        <Link to="/add" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
+        <Link to="/sets" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
           Karte hinzufügen
         </Link>
       </div>
@@ -249,7 +249,7 @@ export default function Collection() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Meine Sammlung</h1>
         <Link
-          to="/add"
+          to="/sets"
           className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
         >
           + Karte hinzufügen

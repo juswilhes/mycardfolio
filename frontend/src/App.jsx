@@ -3,9 +3,8 @@ import { Routes, Route, NavLink, Link, Navigate, useLocation } from "react-route
 import Logo from "./components/Logo.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
 import Collection from "./pages/Collection.jsx";
-import AddCard from "./pages/AddCard.jsx";
 import CardDetail from "./pages/CardDetail.jsx";
-import Sets from "./pages/Sets.jsx";
+import AllCards from "./pages/AllCards.jsx";
 import SetDetail from "./pages/SetDetail.jsx";
 import CardInfo from "./pages/CardInfo.jsx";
 import Sales from "./pages/Sales.jsx";
@@ -61,7 +60,6 @@ export default function App() {
             <nav className="flex gap-6 text-sm">
               <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
               <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
-              <NavLink to="/add" className={navCls}>Hinzufügen</NavLink>
               <NavLink to="/verkauft" className={navCls}>Verkauft</NavLink>
               <NavLink to="/statistik" className={navCls}>Statistik</NavLink>
             </nav>
@@ -106,11 +104,12 @@ export default function App() {
           {/* Nur mit Login */}
           <Route path="/" element={<RequireAuth><Collection /></RequireAuth>} />
           <Route path="/card/:cardId" element={<RequireAuth><CardDetail /></RequireAuth>} />
-          <Route path="/add" element={<RequireAuth><AddCard /></RequireAuth>} />
           <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
           <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
           <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />
-          <Route path="/sets" element={<RequireAuth><Sets /></RequireAuth>} />
+          <Route path="/sets" element={<RequireAuth><AllCards /></RequireAuth>} />
+          {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
+          <Route path="/add" element={<Navigate to="/sets" replace />} />
           <Route path="/sets/:setId" element={<RequireAuth><SetDetail /></RequireAuth>} />
           <Route path="/database/:externalId" element={<RequireAuth><CardInfo /></RequireAuth>} />
           <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
