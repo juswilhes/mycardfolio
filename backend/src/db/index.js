@@ -4,7 +4,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database(path.join(__dirname, "..", "..", "data.sqlite"));
+
+// Speicherort der SQLite-Datei. In Produktion auf ein persistentes Volume
+// zeigen lassen (DATABASE_PATH), lokal liegt sie im backend-Ordner.
+const dbPath = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.join(__dirname, "..", "..", "data.sqlite");
+const db = new Database(dbPath);
 
 db.pragma("journal_mode = WAL");
 

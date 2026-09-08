@@ -1,4 +1,7 @@
 import "dotenv/config";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -96,6 +99,23 @@ app.post("/api/refresh-prices", authRequired, async (_req, res) => {
 
 // Unbekannte API-Routen sauber beantworten statt HTML-Fehlerseite.
 app.use("/api", (_req, res) => res.status(404).json({ error: "Nicht gefunden" }));
+
+// In Produktion das gebaute Frontend aus demselben Server ausliefern
+// (eine Domain -> keine CORS-/Cookie-Sonderfälle). FRONTEND_DIST kann den
+// Pfad überschreiben, sonst frontend/dist neben dem Projekt.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = process.env.FRONTEND_DIST
+  ? path.resolve(process.env.FRONTEND_DIST)
+  : path.join(__dirname, "..", "..", "frontend", "dist");
+
+if (fs.existsSync(path.join(frontendDist, "index.html"))) {
+  app.use(express.static(frontendDist, { maxAge: "1h", index: false }));
+  // SPA-Fallback: alles, was keine Datei ist, liefert index.html.
+  app.get(/^(?!\/api).*/, (_req, res) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+  console.log(`[frontend] wird ausgeliefert aus ${frontendDist}`);
+}
 
 // Zentrale Fehlerbehandlung: nie Stacktraces an den Client, immer geloggt.
 // eslint-disable-next-line no-unused-vars
