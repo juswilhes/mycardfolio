@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import {
   resendVerification,
   updateProfile,
@@ -15,6 +16,7 @@ export default function Account() {
   const [savedName, setSavedName] = useState(false);
   const [resent, setResent] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [pw, setPw] = useState("");
   const [delErr, setDelErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -93,10 +95,23 @@ export default function Account() {
       </section>
 
       <section className="mb-8">
-        <button onClick={logout} className="text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink">
+        <button
+          onClick={() => setConfirmLogout(true)}
+          className="text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink"
+        >
           Abmelden
         </button>
       </section>
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Wirklich abmelden?"
+          message="Du kannst dich jederzeit wieder anmelden."
+          confirmLabel="Abmelden"
+          onConfirm={logout}
+          onClose={() => setConfirmLogout(false)}
+        />
+      )}
 
       <section className="border-t border-line pt-6">
         <h2 className="text-sm font-semibold text-rose mb-1">Konto löschen</h2>

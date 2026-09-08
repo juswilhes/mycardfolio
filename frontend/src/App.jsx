@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Routes, Route, NavLink, Link, Navigate, useLocation } from "react-router-dom";
 import Logo from "./components/Logo.jsx";
+import ConfirmDialog from "./components/ConfirmDialog.jsx";
 import Collection from "./pages/Collection.jsx";
 import AddCard from "./pages/AddCard.jsx";
 import CardDetail from "./pages/CardDetail.jsx";
@@ -35,6 +37,18 @@ function RequireAuth({ children }) {
 export default function App() {
   const { isDark, toggleTheme } = useTheme();
   const { user, loading, logout } = useAuth();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function doLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+      setConfirmLogout(false);
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -56,7 +70,9 @@ export default function App() {
             (user ? (
               <div className="flex items-center gap-3 text-sm">
                 <NavLink to="/konto" className={navCls} title={user.email}>Konto</NavLink>
-                <button onClick={logout} className="text-subtle hover:text-ink">Abmelden</button>
+                <button onClick={() => setConfirmLogout(true)} className="text-subtle hover:text-ink">
+                  Abmelden
+                </button>
               </div>
             ) : (
               <div className="flex items-center gap-3 text-sm">
@@ -102,6 +118,17 @@ export default function App() {
       </main>
 
       <Footer />
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Wirklich abmelden?"
+          message="Du kannst dich jederzeit wieder anmelden."
+          confirmLabel="Abmelden"
+          busy={loggingOut}
+          onConfirm={doLogout}
+          onClose={() => !loggingOut && setConfirmLogout(false)}
+        />
+      )}
     </div>
   );
 }
