@@ -38,6 +38,83 @@ export const portfolioHistory = db.prepare(`
   ORDER BY captured_on ASC
 `);
 
+const round2 = (x) => Math.round(x * 100) / 100;
+
+// Alle Trend-Snapshots (Cardmarket bevorzugt) als Tageswerte je Karte/Variante.
+const trendSnapshotsAll = db.prepare(`
+  SELECT card_id, COALESCE(variant, 'normal') AS variant, price,
+         substr(fetched_at, 1, 10) AS day
+  FROM price_snapshots
+  WHERE price_type = 'trend'
+  ORDER BY (source = 'cardmarket') DESC, fetched_at ASC
+`);
+
+// Wert-über-Zeit für eine GEFILTERTE Teilmenge der Sammlung. Wird genutzt,
+// wenn die Sammlungsansicht nach Set/Sprache/Zeichner filtert - die
+// portfolio_snapshots-Tabelle kennt nur den Gesamtwert.
+export function computePortfolioHistory({ set, language, artist } = {}) {
+  const items = listCollection.all().filter(
+    (i) =>
+      (!set || i.set_name === set) &&
+      (!language || i.language === language) &&
+      (!artist || i.artist === artist)
+  );
+  if (!items.length) return [];
+
+  const cardIds = new Set(items.map((i) => i.card_id));
+  const byKey = new Map(); // "cardId|variant" -> [{day, price}] (aufsteigend, je Tag letzter Wert)
+  for (const r of trendSnapshotsAll.all()) {
+    if (!cardIds.has(r.card_id)) continue;
+    const key = `${r.card_id}|${r.variant}`;
+    let arr = byKey.get(key);
+    if (!arr) byKey.set(key, (arr = []));
+    const last = arr[arr.length - 1];
+    if (last && last.day === r.day) last.price = r.price;
+    else arr.push({ day: r.day, price: r.price });
+  }
+
+  const days = [
+    ...new Set([...[...byKey.values()].flat().map((s) => s.day), today()]),
+  ].sort();
+  if (!days.length) return [];
+
+  const priceOn = (key, day) => {
+    const arr = byKey.get(key);
+    if (!arr || !arr.length) return null;
+    let p = null;
+    for (const s of arr) {
+      if (s.day <= day) p = s.price;
+      else break;
+    }
+    // Vor dem ersten Snapshot den ältesten bekannten Wert nehmen, sonst
+    // entstünde am Anfang der Kurve ein künstlicher Einbruch auf 0.
+    return p ?? arr[0].price;
+  };
+
+  return days.map((day) => {
+    let value = 0;
+    let cost = 0;
+    let count = 0;
+    for (const it of items) {
+      const q = it.quantity || 1;
+      const p =
+        priceOn(`${it.card_id}|${it.variant || "normal"}`, day) ??
+        priceOn(`${it.card_id}|normal`, day);
+      value += n(p) * q;
+      if (it.purchase_price != null || it.shipping_cost != null) {
+        cost += (n(it.purchase_price) + n(it.shipping_cost)) * q;
+      }
+      count += q;
+    }
+    return {
+      captured_on: day,
+      total_value: round2(value),
+      total_cost: round2(cost),
+      card_count: count,
+    };
+  });
+}
+
 // --- Top-Gewinner / -Verlierer (7 Tage) ---------------------------------
 
 export function getMovers() {

@@ -92,6 +92,30 @@ const normNum = (n) =>
 const PROMO_PREFIX =
   /^(SWSH|SM|SV|SVP|SMP|XY|XYP|BW|BWP|HGSS|DP|DPP|RC|TG|GG)$/i;
 
+// Set-Kürzel/-Namen -> Set-IDs. Damit findet die Suche auch "... MEP 32"
+// (Set-ID) oder "... 151 199" (einwortiger Set-Name). Der Token wird beim
+// Suchen vom Namensteil abgetrennt und als Set-Filter genutzt.
+const setTokenMap = new Map();
+const tokKey = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function addSetToken(tok, id) {
+  const k = tokKey(tok);
+  if (k.length < 2) return;
+  if (!setTokenMap.has(k)) setTokenMap.set(k, new Set());
+  setTokenMap.get(k).add(id);
+}
+try {
+  for (const s of db
+    .prepare(`SELECT id, name FROM card_sets WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')`)
+    .all()) {
+    addSetToken(s.id, s.id);
+    const parts = String(s.name ?? "").trim().split(/\s+/);
+    if (parts.length === 1) addSetToken(parts[0], s.id); // einwortige Set-Namen ("151", "Evolutions")
+  }
+} catch {
+  /* card_sets evtl. noch leer - Suche läuft dann ohne Set-Token */
+}
+const setIdsForToken = (tok) => setTokenMap.get(tokKey(tok)) ?? null;
+
 // Trennt eine evtl. angehängte Kartennummer ab. Die "eigene" Nummer der
 // Karte steht vor dem "/", der Teil danach ist die Set-Gesamtzahl.
 //  "Mega Absol ex 180/132"      -> { text: "Mega Absol ex",   number: "180" }
@@ -151,19 +175,38 @@ function runSearch({ game, terms, number, limit }) {
 }
 
 export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
-  const { text, number } = splitNumber(query);
+  let { text, number } = splitNumber(query);
+
+  // Set-Kürzel/-Name am Ende des Namensteils abtrennen ("Mega Gardevoir ex MEP 32").
+  let setIds = null;
+  const w = text.split(/\s+/).filter(Boolean);
+  if (w.length > 1) {
+    const ids = setIdsForToken(w[w.length - 1]);
+    if (ids) {
+      setIds = ids;
+      text = w.slice(0, -1).join(" ");
+    }
+  }
+
   const terms = text ? expandQuery(text) : [];
+  const want = number ? normNum(number) : null;
 
   let rows = runSearch({ game, terms, number, limit });
 
-  // Keine exakte Nummer getroffen? Das Nummernschema unterscheidet sich je
-  // Sprache/Promo/führende Nullen - breit über den Namen suchen und in JS
-  // nach normalisierter Nummer filtern ("SWSH 150" == "SWSH150" == "swsh150").
-  if (rows.length === 0 && number && terms.length) {
-    const wide = runSearch({ game, terms, number: null, limit: Math.max(limit, 60) });
-    const want = normNum(number);
-    const hits = wide.filter((r) => normNum(r.number) === want);
-    rows = (hits.length ? hits : wide).slice(0, limit);
+  // Nachfiltern, wenn die exakte Runde nichts brachte ODER ein Set-Token
+  // gesetzt ist: breit über den Namen suchen und in JS nach normalisierter
+  // Nummer / Set filtern (Nummernschema variiert je Sprache/Promo/führende Null;
+  // "SWSH 150" == "SWSH150", "MEP 32" == Set mep + Nr. 032).
+  if ((rows.length === 0 || setIds) && terms.length) {
+    const wide = runSearch({ game, terms, number: null, limit: Math.max(limit, 80) });
+    let pool = wide;
+    if (setIds) pool = pool.filter((r) => r.set_id && setIds.has(r.set_id));
+    if (want) {
+      const hit = pool.filter((r) => normNum(r.number) === want);
+      if (hit.length) pool = hit;
+    }
+    if (pool.length) rows = pool.slice(0, limit);
+    else if (rows.length === 0) rows = wide.slice(0, limit);
   }
   return rows;
 }

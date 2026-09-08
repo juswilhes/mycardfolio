@@ -70,8 +70,13 @@ export async function sellCollectionItem(id, payload) {
 
 // --- Portfolio & Verkäufe --------------------------------------------
 
-export async function getPortfolioHistory() {
-  const res = await fetch(`${BASE}/portfolio/history`);
+export async function getPortfolioHistory(filter = {}) {
+  const qs = new URLSearchParams();
+  if (filter.set) qs.set("set", filter.set);
+  if (filter.language) qs.set("language", filter.language);
+  if (filter.artist) qs.set("artist", filter.artist);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  const res = await fetch(`${BASE}/portfolio/history${suffix}`);
   if (!res.ok) throw new Error("Portfolio-Verlauf konnte nicht geladen werden");
   return res.json();
 }

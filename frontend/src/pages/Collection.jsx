@@ -58,6 +58,8 @@ export default function Collection() {
   useEffect(() => savePref("set", fSet), [fSet]);
   useEffect(() => savePref("artist", fArtist), [fArtist]);
 
+  const anyFilter = fLang !== "all" || fSet !== "all" || fArtist !== "all";
+
   const load = useCallback(() => {
     getCollection()
       .then((data) => {
@@ -68,13 +70,25 @@ export default function Collection() {
         setLoadError(true);
         setItems((prev) => prev ?? []);
       });
-    getPortfolioHistory().then(setHistory).catch(() => setHistory([]));
     getMovers().then(setMovers).catch(() => setMovers(null));
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Verlaufsgraph an die aktive Filterung anpassen.
+  useEffect(() => {
+    if (!items) return;
+    setHistory(null);
+    getPortfolioHistory({
+      set: fSet !== "all" ? fSet : null,
+      language: fLang !== "all" ? fLang : null,
+      artist: fArtist !== "all" ? fArtist : null,
+    })
+      .then(setHistory)
+      .catch(() => setHistory([]));
+  }, [fSet, fLang, fArtist, items]);
 
   const sets = useMemo(
     () => [...new Set((items ?? []).map((i) => i.set_name).filter(Boolean))].sort(),
@@ -85,15 +99,21 @@ export default function Collection() {
     [items]
   );
 
-  // Karten mit mehreren Käufen zusammenfassen: erst filtern, dann nach
-  // card_id gruppieren, dann die Gruppen sortieren.
+  // Aktive Filterung – auch Kennzahlen oben und der Graph richten sich danach.
+  const filtered = useMemo(
+    () =>
+      (items ?? []).filter(
+        (i) =>
+          (fLang === "all" || i.language === fLang) &&
+          (fSet === "all" || i.set_name === fSet) &&
+          (fArtist === "all" || i.artist === fArtist)
+      ),
+    [items, fLang, fSet, fArtist]
+  );
+
+  // Karten mit mehreren Käufen zusammenfassen: nach card_id gruppieren,
+  // dann die Gruppen sortieren.
   const groups = useMemo(() => {
-    const filtered = (items ?? []).filter(
-      (i) =>
-        (fLang === "all" || i.language === fLang) &&
-        (fSet === "all" || i.set_name === fSet) &&
-        (fArtist === "all" || i.artist === fArtist)
-    );
     const map = new Map();
     filtered.forEach((it, idx) => {
       let g = map.get(it.card_id);
@@ -150,7 +170,7 @@ export default function Collection() {
       artist: (a, b) => (a.artist ?? "").localeCompare(b.artist ?? ""),
     }[sort];
     return [...map.values()].sort(cmp);
-  }, [items, sort, fLang, fSet, fArtist]);
+  }, [filtered, sort]);
 
   if (items === null) return <p className="text-subtle text-sm">Lade Sammlung …</p>;
 
@@ -185,9 +205,11 @@ export default function Collection() {
     );
   }
 
-  const totalValue = items.reduce((s, i) => s + val(i), 0);
-  const totalCards = items.reduce((s, i) => s + (i.quantity ?? 1), 0);
-  const withCost = items.filter((i) => cost(i) != null);
+  // Kennzahlen oben folgen der aktiven Filterung.
+  const base = anyFilter ? filtered : items;
+  const totalValue = base.reduce((s, i) => s + val(i), 0);
+  const totalCards = base.reduce((s, i) => s + (i.quantity ?? 1), 0);
+  const withCost = base.filter((i) => cost(i) != null);
   const totalCost = withCost.reduce((s, i) => s + cost(i), 0);
   const gain = withCost.reduce((s, i) => s + val(i), 0) - totalCost;
 
@@ -209,9 +231,13 @@ export default function Collection() {
       <div className="bg-surface border border-line rounded-2xl px-6 py-5 mb-6 shadow-sm">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
           <div>
-            <p className="text-subtle text-sm">Gesamtwert deiner Sammlung</p>
+            <p className="text-subtle text-sm">
+              {anyFilter ? "Wert der gefilterten Auswahl" : "Gesamtwert deiner Sammlung"}
+            </p>
             <p className="text-4xl font-semibold font-mono">{eur(totalValue)}</p>
-            <span className="text-xs text-subtle">{totalCards} Karten im Portfolio</span>
+            <span className="text-xs text-subtle">
+              {totalCards} {anyFilter ? "gefilterte Karten" : "Karten im Portfolio"}
+            </span>
           </div>
           {withCost.length > 0 && (
             <div className="flex gap-6 pb-1">
@@ -237,9 +263,19 @@ export default function Collection() {
         </div>
 
         <div className="mt-4">
-          <PortfolioChart data={history} />
+          {history === null ? (
+            <p className="text-subtle text-sm py-4">Lade Verlauf …</p>
+          ) : (
+            <PortfolioChart data={history} />
+          )}
         </div>
-        {withCost.length > 0 && withCost.length < items.length && (
+        {anyFilter && (
+          <p className="text-[11px] text-subtle mt-1">
+            Wert &amp; Verlauf zeigen nur die gefilterte Auswahl
+            {" "}({filtered.length} von {items.length} Einträgen).
+          </p>
+        )}
+        {!anyFilter && withCost.length > 0 && withCost.length < items.length && (
           <p className="text-[11px] text-subtle mt-1">
             G/V basiert auf {withCost.length} von {items.length} Karten mit hinterlegtem Kaufpreis.
           </p>
