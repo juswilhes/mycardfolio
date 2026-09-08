@@ -139,34 +139,52 @@ const normNum = (n) => {
   return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s.toUpperCase().replace(/^0+/, "");
 };
 
+const words = (s) => (s ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 2);
+// Wort-Überlappung zweier Set-Namen (0..1). "Obsidian Flames" vs
+// "Obsidian Flames" = 1; "151" vs "Pokemon 151" > 0; unpassend = 0.
+function setSimilarity(a, b) {
+  const wa = new Set(words(a));
+  const wb = words(b);
+  if (!wa.size || !wb.length) return 0;
+  const hit = wb.filter((w) => wa.has(w)).length;
+  return hit / Math.max(wa.size, wb.length);
+}
+
 // Beste Übereinstimmung für eine Zeile aus einem Massen-Import.
 // name kann die Nummer bereits enthalten; number/set schränken zusätzlich ein.
 export function matchCardForImport({ name, number, set }) {
   if (!name || !name.trim()) return { best: null, candidates: [] };
 
-  let rows = searchCardsLocal(number ? `${name} ${number}` : name, { limit: 25 });
-  if (!rows.length) rows = searchCardsLocal(name, { limit: 25 });
+  let rows = searchCardsLocal(number ? `${name} ${number}` : name, { limit: 60 });
+  if (!rows.length) rows = searchCardsLocal(name, { limit: 60 });
   if (!rows.length) return { best: null, candidates: [] };
 
-  let pool = rows;
-  if (number) {
-    const nn = normNum(number);
-    const exact = pool.filter((r) => normNum(r.number) === nn);
-    if (exact.length) pool = exact;
-  }
-  if (set) {
-    const s = normLoose(set);
-    const inSet = pool.filter((r) => {
-      const rs = normLoose(r.set_name);
-      return rs && (rs.includes(s) || s.includes(rs));
-    });
-    if (inSet.length) pool = inSet;
-  }
-  // exakter Namenstreffer nach vorn
-  const exactName = pool.filter((r) => normLoose(r.name) === normLoose(name));
-  if (exactName.length) pool = [...exactName, ...pool.filter((r) => !exactName.includes(r))];
+  const nn = number ? normNum(number) : null;
+  const nName = normLoose(name);
 
-  return { best: pool[0] ?? null, candidates: pool.slice(0, 6) };
+  // jede Karte bewerten: Nummer > Set > exakter Name > Namensanfang
+  const scored = rows.map((r) => {
+    let score = 0;
+    if (nn && normNum(r.number) === nn) score += 100;
+    if (set) {
+      const sim = setSimilarity(set, r.set_name);
+      if (sim >= 0.5) score += 40;
+      else if (sim > 0) score += 15;
+      else score -= 10;
+    }
+    const rn = normLoose(r.name);
+    if (rn === nName) score += 30;
+    else if (rn.startsWith(nName) || nName.startsWith(rn)) score += 12;
+    else if (rn.includes(nName)) score += 4;
+    score -= Math.min(10, Math.abs(rn.length - nName.length) / 3); // kürzere Namen bevorzugen
+    return { r, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  return {
+    best: scored[0]?.r ?? null,
+    candidates: scored.slice(0, 8).map((x) => x.r),
+  };
 }
 
 const byExternalIdStmt = db.prepare(`

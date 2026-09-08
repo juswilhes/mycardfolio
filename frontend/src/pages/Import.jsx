@@ -9,6 +9,20 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+const FIELD_LABELS = {
+  name: "Name",
+  number: "Nummer",
+  set: "Set",
+  quantity: "Menge",
+  price: "Kaufpreis",
+  shipping: "Versand",
+  condition: "Zustand",
+  language: "Sprache",
+  variant: "Variante",
+  date: "Kaufdatum",
+  notes: "Notiz",
+};
+
 const EXAMPLE = `Name\tNummer\tMenge\tKaufpreis\tSprache
 Glurak ex\t223/197\t1\t85,00\tde
 Relaxo\t\t2\t4,50\ten
@@ -20,6 +34,7 @@ export default function Import() {
   const [step, setStep] = useState("input"); // input | preview | done
   const [busy, setBusy] = useState(false);
   const [matched, setMatched] = useState([]); // [{ input, best, candidates, chosen, include, quantity, price }]
+  const [detected, setDetected] = useState(null); // { assignment, header }
   const [result, setResult] = useState(null);
 
   // Globale Vorgaben, wenn die Zeile nichts angibt
@@ -29,8 +44,9 @@ export default function Import() {
   const [defDate, setDefDate] = useState("");
 
   async function preview() {
-    const { rows } = parseImport(text);
+    const { rows, assignment, header } = parseImport(text);
     if (!rows.length) return;
+    setDetected({ assignment, header });
     setBusy(true);
     try {
       const res = await matchImportRows(rows);
@@ -136,6 +152,20 @@ export default function Import() {
 
       {step === "preview" && (
         <>
+          {detected && (
+            <p className="text-xs text-subtle mb-3">
+              Erkannt:{" "}
+              {Object.entries(FIELD_LABELS)
+                .filter(([f]) => detected.assignment[f] != null)
+                .map(([f]) => {
+                  const col = detected.assignment[f];
+                  const h = detected.header?.[col];
+                  return `${FIELD_LABELS[f]} = ${h ? `„${h}"` : `Spalte ${col + 1}`}`;
+                })
+                .join(" · ") || "einspaltige Liste (Kartennamen)"}
+              . Stimmt etwas nicht, korrigier es unten pro Zeile.
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
             <span className="text-subtle">
               {stats.matched} von {stats.total} zugeordnet · {stats.selected} ausgewählt
