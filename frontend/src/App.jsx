@@ -8,6 +8,7 @@ import SetDetail from "./pages/SetDetail.jsx";
 import CardInfo from "./pages/CardInfo.jsx";
 import Sales from "./pages/Sales.jsx";
 import Stats from "./pages/Stats.jsx";
+import Import from "./pages/Import.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 
 export default function App() {
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="/" element={<Collection />} />
           <Route path="/card/:cardId" element={<CardDetail />} />
           <Route path="/add" element={<AddCard />} />
+          <Route path="/import" element={<Import />} />
           <Route path="/verkauft" element={<Sales />} />
           <Route path="/statistik" element={<Stats />} />
           <Route path="/sets" element={<Sets />} />

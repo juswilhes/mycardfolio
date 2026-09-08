@@ -8,7 +8,7 @@ import {
   latestTrend,
   cardmarketBreakdown,
 } from "../services/cardService.js";
-import { getCardByExternalIdLocal } from "../services/cardRepository.js";
+import { getCardByExternalIdLocal, matchCardForImport } from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
 import { recordPortfolioSnapshot, sellCollectionItem } from "../services/portfolioService.js";
 
@@ -109,6 +109,70 @@ router.post("/", async (req, res) => {
   res.status(201).json({ cardId });
   refreshPriceInBackground(cardId, externalId);
   recordPortfolioSnapshot();
+});
+
+// POST /api/collection/import/match  { rows: [{ name, number, set, ... }] }
+// -> pro Zeile die beste Karten-Übereinstimmung + Alternativen (Vorschau).
+router.post("/import/match", (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows.slice(0, 500) : [];
+  res.json(
+    rows.map((row) => {
+      const { best, candidates } = matchCardForImport({
+        name: row.name,
+        number: row.number,
+        set: row.set,
+      });
+      return { input: row, best, candidates };
+    })
+  );
+});
+
+// POST /api/collection/import/commit  { items: [{ externalId, quantity, ... }] }
+router.post("/import/commit", (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 500) : [];
+  if (!items.length) return res.status(400).json({ error: "keine Karten" });
+
+  let added = 0;
+  const externalIds = new Set();
+  const tx = db.transaction(() => {
+    for (const it of items) {
+      const local = getCardByExternalIdLocal(it.externalId);
+      if (!local) continue;
+      const cardId = upsertCardRow("pokemon", local);
+      insertCollectionItem.run({
+        card_id: cardId,
+        quantity: num(it.quantity) ?? 1,
+        condition: it.condition || "near_mint",
+        purchase_price: num(it.purchasePrice),
+        shipping_cost: num(it.shippingCost),
+        purchase_date: it.purchaseDate || null,
+        notes: it.notes || null,
+        language: langOrNull(it.language) ?? "en",
+        variant: variantOrNull(it.variant) ?? "normal",
+      });
+      externalIds.add(it.externalId);
+      added++;
+    }
+  });
+  tx();
+
+  res.json({ ok: true, added });
+  recordPortfolioSnapshot();
+
+  // Preise nacheinander im Hintergrund nachziehen (TCGdex schonen)
+  (async () => {
+    for (const ext of externalIds) {
+      try {
+        const { prices, meta } = await getCardmarketPrices(ext);
+        const local = getCardByExternalIdLocal(ext);
+        if (prices.length && local) recordPrices(upsertCardRow("pokemon", local), prices, meta);
+      } catch {
+        /* ignore */
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    recordPortfolioSnapshot();
+  })();
 });
 
 // PATCH /api/collection/:id

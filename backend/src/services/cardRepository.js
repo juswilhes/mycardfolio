@@ -133,6 +133,42 @@ export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
   return rows;
 }
 
+const normLoose = (s) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const normNum = (n) => {
+  const s = String(n ?? "").trim();
+  return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s.toUpperCase().replace(/^0+/, "");
+};
+
+// Beste Übereinstimmung für eine Zeile aus einem Massen-Import.
+// name kann die Nummer bereits enthalten; number/set schränken zusätzlich ein.
+export function matchCardForImport({ name, number, set }) {
+  if (!name || !name.trim()) return { best: null, candidates: [] };
+
+  let rows = searchCardsLocal(number ? `${name} ${number}` : name, { limit: 25 });
+  if (!rows.length) rows = searchCardsLocal(name, { limit: 25 });
+  if (!rows.length) return { best: null, candidates: [] };
+
+  let pool = rows;
+  if (number) {
+    const nn = normNum(number);
+    const exact = pool.filter((r) => normNum(r.number) === nn);
+    if (exact.length) pool = exact;
+  }
+  if (set) {
+    const s = normLoose(set);
+    const inSet = pool.filter((r) => {
+      const rs = normLoose(r.set_name);
+      return rs && (rs.includes(s) || s.includes(rs));
+    });
+    if (inSet.length) pool = inSet;
+  }
+  // exakter Namenstreffer nach vorn
+  const exactName = pool.filter((r) => normLoose(r.name) === normLoose(name));
+  if (exactName.length) pool = [...exactName, ...pool.filter((r) => !exactName.includes(r))];
+
+  return { best: pool[0] ?? null, candidates: pool.slice(0, 6) };
+}
+
 const byExternalIdStmt = db.prepare(`
   SELECT c.*, s.release_date AS set_release_date, s.logo AS set_logo
   FROM cards c

@@ -60,7 +60,12 @@ export default function AddCard() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">Karte suchen</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-xl font-semibold">Karte suchen</h1>
+        <Link to="/import" className="text-sm text-subtle hover:text-ink underline">
+          Viele Karten? → Massen-Import
+        </Link>
+      </div>
       <p className="text-subtle text-sm mb-5">
         Deutsche Namen gehen auch („Glurak", „Relaxo"), und du kannst die
         Kartennummer anhängen – z. B. „Mega Absol ex 180/132".

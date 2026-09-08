@@ -22,6 +22,26 @@ export async function addToCollection(payload) {
   return res.json();
 }
 
+export async function matchImportRows(rows) {
+  const res = await fetch(`${BASE}/collection/import/match`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows }),
+  });
+  if (!res.ok) throw new Error("Abgleich fehlgeschlagen");
+  return res.json();
+}
+
+export async function commitImport(items) {
+  const res = await fetch(`${BASE}/collection/import/commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) throw new Error("Import fehlgeschlagen");
+  return res.json();
+}
+
 export async function updateCollectionItem(id, payload) {
   const res = await fetch(`${BASE}/collection/${id}`, {
     method: "PATCH",
