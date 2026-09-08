@@ -9,13 +9,16 @@ import CardInfo from "./pages/CardInfo.jsx";
 import Sales from "./pages/Sales.jsx";
 import Stats from "./pages/Stats.jsx";
 import Import from "./pages/Import.jsx";
+import Impressum from "./pages/Impressum.jsx";
+import Datenschutz from "./pages/Datenschutz.jsx";
+import Footer from "./components/Footer.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 
 export default function App() {
   const { isDark, toggleTheme } = useTheme();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <header className="border-b border-line px-6 py-4 flex items-center justify-between">
         <Link to="/" aria-label="mycardfolio – Startseite">
           <Logo className="h-11" />
@@ -76,7 +79,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="px-6 py-8 max-w-5xl mx-auto">
+      <main className="px-6 py-8 max-w-5xl mx-auto w-full flex-1">
         <Routes>
           <Route path="/" element={<Collection />} />
           <Route path="/card/:cardId" element={<CardDetail />} />
@@ -87,8 +90,12 @@ export default function App() {
           <Route path="/sets" element={<Sets />} />
           <Route path="/sets/:setId" element={<SetDetail />} />
           <Route path="/database/:externalId" element={<CardInfo />} />
+          <Route path="/impressum" element={<Impressum />} />
+          <Route path="/datenschutz" element={<Datenschutz />} />
         </Routes>
       </main>
+
+      <Footer />
     </div>
   );
 }
