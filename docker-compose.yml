@@ -1,0 +1,31 @@
+# Produktion auf einem eigenen Server (z. B. IONOS VPS).
+#   docker compose up -d --build
+# Caddy holt automatisch ein Let's-Encrypt-Zertifikat fuer die Domain,
+# sobald der DNS-A-Record auf den Server zeigt.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "3001"
+    volumes:
+      - mcf-data:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  mcf-data:
+  caddy-data:
+  caddy-config:

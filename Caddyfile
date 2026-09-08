@@ -1,0 +1,8 @@
+www.mycardfolio.de {
+	redir https://mycardfolio.de{uri} permanent
+}
+
+mycardfolio.de {
+	encode gzip
+	reverse_proxy app:3001
+}

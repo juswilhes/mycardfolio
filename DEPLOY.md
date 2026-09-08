@@ -1,102 +1,131 @@
 # mycardfolio live schalten
 
 Ziel: die App unter **https://mycardfolio.de** erreichbar machen. Backend
-und Frontend laufen dabei als **ein** Dienst (der Node-Server liefert das
-gebaute Frontend gleich mit aus) – das vermeidet CORS- und Cookie-Sonderfälle.
+und Frontend laufen als **ein** Dienst (der Node-Server liefert das gebaute
+Frontend gleich mit aus). Empfohlener Weg: **IONOS VPS + Docker** – Daten
+bleiben in Deutschland, Hoster ist IONOS (passt zum Impressum).
 
 ---
 
-## 0. Vorher erledigen (Pflicht)
+## 0. Vorher erledigen
 
-- [ ] **`frontend/src/lib/legal.js` ausfüllen** – echter Name, ladungsfähige
-      Anschrift, Kontakt-E-Mail, Hosting-Anbieter. Danach `LEGAL_REVIEWED = true`.
-      Ohne vollständiges Impressum + Datenschutzerklärung ist eine in
-      Deutschland öffentlich erreichbare Seite abmahnbar.
-- [ ] Kontakt-Postfach anlegen (z. B. `kontakt@mycardfolio.de` bei IONOS).
-- [ ] Repo zu **GitHub** pushen (privates Repo genügt):
-      ```bash
-      git remote add origin git@github.com:<user>/mycardfolio.git
-      git push -u origin main
-      ```
-
----
-
-## 1. Hosting (Render – schnellster Weg mit Dockerfile)
-
-1. Auf [render.com](https://render.com) mit GitHub anmelden.
-2. **New → Web Service** → das Repo wählen. Render erkennt das `Dockerfile`
-   automatisch (Environment: „Docker").
-3. **Disk hinzufügen** (für die SQLite-Datei):
-   - Name: `data`, Mount Path: `/data`, Größe: 1 GB.
-4. **Environment Variables** setzen:
-   | Key | Wert |
-   |---|---|
-   | `NODE_ENV` | `production` |
-   | `DATABASE_PATH` | `/data/data.sqlite` |
-   | `FRONTEND_URL` | `https://mycardfolio.de` |
-   | `CORS_ORIGIN` | `https://mycardfolio.de,https://www.mycardfolio.de` |
-   | `TRUST_PROXY` | `1` |
-   | `PORT` | `3001` |
-5. **Deploy**. Nach dem Build läuft der Dienst unter `https://<name>.onrender.com`.
-
-> Alternativen mit demselben Dockerfile: Railway, Fly.io. Der IONOS-VPS geht
-> auch, ist aber mehr Handarbeit (Node + Reverse-Proxy + TLS selbst aufsetzen).
+- [x] `frontend/src/lib/legal.js` ausgefüllt, `LEGAL_REVIEWED = true`.
+- [ ] E-Mail-Postfach `info@mycardfolio.de` bei IONOS anlegen.
+- [ ] Repo zu **GitHub** pushen (privat genügt):
+  ```bash
+  git remote add origin https://github.com/<user>/mycardfolio.git
+  git push -u origin main
+  ```
+- [ ] Rechtstexte vor „echten" Nutzern einmal fachkundig prüfen lassen
+  (eRecht24 / Anwalt). Für den Start / Testbetrieb im kleinen Kreis okay.
 
 ---
 
-## 2. Deine bestehende Sammlung mitnehmen
+## 1. IONOS VPS bestellen
 
-Auf dem Server ist die Datenbank zunächst leer (auch die 20 000 Karten-
-Stammdaten fehlen). Am einfachsten die lokale `data.sqlite` hochladen:
+- IONOS → **VPS** (Linux). Kleinster Tarif reicht (1 vCPU, 2 GB RAM).
+- Betriebssystem: **Ubuntu 24.04**.
+- Nach der Bereitstellung bekommst du **IP-Adresse** + **Root-Passwort**.
 
-1. Lokal Backend stoppen, dann `backend/data.sqlite` sichern.
-2. Über die Render-Shell (Dienst → „Shell") die Datei nach `/data/data.sqlite`
-   kopieren – z. B. Datei kurz irgendwo hochladen und mit `curl` ziehen, oder
-   `render disk`-Upload nutzen.
-3. Dienst neu starten. Im Deploy-Log erscheint der **„Passwort setzen"-Link**
-   (jetzt mit `https://mycardfolio.de/...`). Öffnen → Passwort setzen → deine
-   Sammlung ist da.
+## 2. DNS bei IONOS setzen
 
-Wer frisch startet: einfach registrieren und die Karten neu importieren
-(dazu muss vorher einmal `npm run import` gegen die Server-DB laufen, oder
-die lokale `data.sqlite` mit den Stammdaten hochgeladen werden).
+Domain `mycardfolio.de` → **DNS**:
+- `A`-Record `@` → die VPS-IP
+- `A`-Record `www` → dieselbe VPS-IP
+- `mycardfolio.eu`: als Weiterleitung (301) auf `https://mycardfolio.de`
+
+(DNS kann bis zu einer Stunde brauchen, bis es überall greift.)
+
+## 3. Auf dem Server einrichten
+
+Per SSH einloggen (`ssh root@<VPS-IP>`), dann:
+
+```bash
+# Docker installieren
+curl -fsSL https://get.docker.com | sh
+
+# Firewall: nur SSH, HTTP, HTTPS
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
+
+# Projekt holen
+git clone https://github.com/<user>/mycardfolio.git /srv/mycardfolio
+cd /srv/mycardfolio
+
+# Produktions-Konfiguration anlegen
+cp .env.production.example .env
+nano .env      # Werte prüfen (Domain stimmt schon)
+
+# Bauen und starten
+docker compose up -d --build
+docker compose logs -f app     # Log ansehen (mit Strg+C beenden)
+```
+
+Im Log erscheint einmalig der **„Passwort setzen"-Link** (mit
+`https://mycardfolio.de/...`), sobald deine Daten aus Schritt 4 da sind.
+
+## 4. Deine bestehende Sammlung übernehmen
+
+Auf dem Server ist die Datenbank leer (auch die ~20 000 Karten-Stammdaten).
+Am einfachsten die lokale Datei hochladen. **Lokal** (Windows, im Projekt):
+
+```bash
+# Backend lokal stoppen, dann:
+scp backend/data.sqlite root@<VPS-IP>:/tmp/data.sqlite
+```
+
+**Auf dem Server**:
+
+```bash
+docker compose cp /tmp/data.sqlite app:/data/data.sqlite
+docker compose restart app
+docker compose logs app | grep passwort-zuruecksetzen   # Link kopieren
+```
+
+Link im Browser öffnen → Passwort setzen → deine Sammlung ist da.
+
+> Ohne Upload: einfach registrieren; dann fehlen aber die Karten-Stammdaten.
+> Die kommen mit `docker compose exec app npm run import` (dauert etwas).
+
+## 5. Prüfen
+
+- [ ] `https://mycardfolio.de` lädt, Schloss-Symbol (gültiges Zertifikat).
+- [ ] Registrierung / Login funktioniert, bleibt nach Reload angemeldet.
+- [ ] `/impressum` und `/datenschutz`: keine Platzhalter, kein Entwurf-Banner.
+- [ ] `https://www.mycardfolio.de` leitet auf `https://mycardfolio.de` um.
+
+## 6. Updates einspielen
+
+```bash
+cd /srv/mycardfolio && git pull && docker compose up -d --build
+```
+
+## 7. Backup (wichtig)
+
+Die SQLite-Datei liegt im Docker-Volume `mcf-data`. Tägliches Backup per Cron:
+
+```bash
+echo '0 3 * * * cd /srv/mycardfolio && docker compose exec -T app sh -c "cat /data/data.sqlite" > /srv/backups/mycardfolio-$(date +\%F).sqlite' | crontab -
+mkdir -p /srv/backups
+```
 
 ---
 
-## 3. Domain verbinden (IONOS)
+## 8. Danach (nicht blockierend)
 
-1. In Render: Service → **Settings → Custom Domains** → `mycardfolio.de` und
-   `www.mycardfolio.de` hinzufügen. Render zeigt die Ziel-Werte an.
-2. Im IONOS-DNS-Center:
-   - `mycardfolio.de` → **A-Record** auf die von Render genannte IP
-     (oder ALIAS/ANAME, falls IONOS das unterstützt), **oder** die
-     Nameserver auf Render umstellen.
-   - `www` → **CNAME** auf `<name>.onrender.com`.
-3. TLS-Zertifikat stellt Render automatisch aus (Let's Encrypt), sobald das
-   DNS zeigt. Kann bis zu einer Stunde dauern.
-4. `mycardfolio.eu` als 301-Weiterleitung auf `mycardfolio.de` einrichten
-   (geht bei IONOS direkt in der Domain-Verwaltung).
-
----
-
-## 4. Nach dem Livegang prüfen
-
-- [ ] `https://mycardfolio.de` lädt, Login/Registrierung funktioniert.
-- [ ] `https://mycardfolio.de/impressum` und `/datenschutz` sind erreichbar,
-      Platzhalter sind weg, Entwurf-Banner ist weg.
-- [ ] Cookie wird gesetzt (`mcf_session`, Secure, HttpOnly) – nach Reload noch
-      angemeldet.
-- [ ] E-Mail-Versand: aktuell nur Konsolen-Stub. **Vor echten Nutzern** in
-      `backend/src/services/mailer.js` einen Anbieter einbauen (SMTP von IONOS,
-      Resend oder Postmark) und `FRONTEND_URL` prüfen.
-- [ ] Automatisches Backup der Disk in Render aktivieren.
-
----
-
-## 5. Danach (nicht blockierend für den Launch)
-
-- Kartenbilder über einen eigenen Proxy statt Hotlink (Zuverlässigkeit +
-  Datenschutz).
-- Cardmarket-Datenlizenz prüfen (Weitergabe der Trendpreise).
-- SQLite → PostgreSQL, sobald mehr als eine Handvoll Nutzer.
+- Echter E-Mail-Versand statt Konsolen-Stub (`backend/src/services/mailer.js`)
+  – IONOS-SMTP oder Resend. Erst dann können Fremde ihr Konto bestätigen /
+  Passwort zurücksetzen.
+- Kartenbilder über einen eigenen Proxy statt Hotlink.
+- Cardmarket-Datenlizenz prüfen.
+- SQLite → PostgreSQL, sobald es mehr als eine Handvoll Nutzer sind.
 - Fehler-Monitoring (Sentry).
+
+---
+
+## Alternative: Render (schneller, aber US-Hoster)
+
+Statt VPS: [render.com](https://render.com) erkennt das `Dockerfile`, Disk
+unter `/data` mounten, Env-Variablen wie in `.env.production.example`
+setzen. In dem Fall gehört in `legal.js` unter `HOSTING` **Render Services,
+Inc.** (San Francisco, USA) statt IONOS, und die Datenschutzerklärung
+braucht einen Hinweis auf die Auftragsverarbeitung in den USA.

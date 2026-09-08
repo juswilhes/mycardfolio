@@ -8,14 +8,14 @@
 
 export const OPERATOR = {
   // Vollständiger Name der natürlichen Person, die die Seite betreibt
-  name: "[Vor- und Nachname]",
+  name: "Justus Heß",
   // Ladungsfähige Anschrift
-  street: "[Straße und Hausnummer]",
-  postalCode: "[PLZ]",
-  city: "[Ort]",
+  street: "Alsenstraße 18",
+  postalCode: "42781",
+  city: "Haan",
   country: "Deutschland",
   // Kontakt – am besten eine eigene Adresse auf der Domain, kein privates Postfach
-  email: "kontakt@mycardfolio.de",
+  email: "info@mycardfolio.de",
   phone: "", // optional, z. B. "+49 ..." – leer lassen wenn nicht gewünscht
   // Umsatzsteuer-ID, falls vorhanden (bei Kleinunternehmer §19 UStG meist nicht)
   vatId: "",
@@ -24,8 +24,8 @@ export const OPERATOR = {
 // Wo die Anwendung läuft. Diese Angaben gehören in die
 // Datenschutzerklärung (Server-Logs / Auftragsverarbeitung).
 export const HOSTING = {
-  provider: "[Hosting-Anbieter, z. B. IONOS SE]",
-  address: "[Anschrift des Hosters]",
+  provider: "IONOS SE",
+  address: "Elgendorfer Straße 57, 56410 Montabaur",
   // Serverstandort (für Drittlandübermittlung relevant)
   serverLocation: "Deutschland",
 };
@@ -38,4 +38,4 @@ export const SITE = {
 
 // Fertig ausgefüllt? Dann hier auf true setzen – blendet den Hinweisbanner
 // auf den Rechtstexten aus.
-export const LEGAL_REVIEWED = false;
+export const LEGAL_REVIEWED = true;
