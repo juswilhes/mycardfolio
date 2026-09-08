@@ -6,6 +6,7 @@
     "start": "node src/server.js",
     "dev": "nodemon --quiet --watch src src/server.js",
     "import": "node src/scripts/importCardData.js",
+    "import-tcgdex": "node src/scripts/importFromTcgdex.js",
     "backfill-artists": "node src/scripts/backfillArtists.js",
     "build-de-names": "node src/scripts/buildGermanNames.js"
   },
