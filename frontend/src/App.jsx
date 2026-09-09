@@ -7,6 +7,7 @@ import CardDetail from "./pages/CardDetail.jsx";
 import AllCards from "./pages/AllCards.jsx";
 import SetDetail from "./pages/SetDetail.jsx";
 import CardInfo from "./pages/CardInfo.jsx";
+import Landing from "./pages/Landing.jsx";
 import Sales from "./pages/Sales.jsx";
 import Stats from "./pages/Stats.jsx";
 import Import from "./pages/Import.jsx";
@@ -103,8 +104,13 @@ export default function App() {
           <Route path="/impressum" element={<Impressum />} />
           <Route path="/datenschutz" element={<Datenschutz />} />
 
+          {/* Startseite: öffentliche Landingpage, angemeldet die Sammlung */}
+          <Route
+            path="/"
+            element={loading ? null : user ? <Collection /> : <Landing />}
+          />
+
           {/* Nur mit Login */}
-          <Route path="/" element={<RequireAuth><Collection /></RequireAuth>} />
           <Route path="/card/:cardId" element={<RequireAuth><CardDetail /></RequireAuth>} />
           <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
           <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
