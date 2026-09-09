@@ -5,10 +5,11 @@ const ymd = (d) =>
     d.getDate()
   ).padStart(2, "0")}`;
 
+const one = (sql, ...args) => db.prepare(sql).get(...args).n;
+
 // Kennzahlen für den Tagesbericht. "Gestern" = voriger Kalendertag
-// (Serverzeit). created_at der Nutzer/Sessions ist UTC – bei Serverzeit
-// Europe/Berlin weicht das nur in den ersten 1–2 Nachtstunden ab, für
-// einen Tagesüberblick vernachlässigbar.
+// (Serverzeit). created_at ist UTC – bei Serverzeit Europe/Berlin weicht
+// das nur in den ersten Nachtstunden ab, für einen Tagesüberblick egal.
 export function dailySummary() {
   const now = new Date();
   const y = new Date(now);
@@ -22,64 +23,56 @@ export function dailySummary() {
     days7.push(ymd(d));
   }
 
-  const hitsYesterday =
-    db.prepare(`SELECT COALESCE(SUM(hits),0) AS n FROM daily_hits WHERE day = ?`).get(yesterday).n;
-
-  const topPages = db
-    .prepare(
-      `SELECT path, hits FROM daily_hits WHERE day = ? ORDER BY hits DESC LIMIT 6`
-    )
-    .all(yesterday);
-
-  const trend = days7.map((day) => ({
-    day,
-    hits: db.prepare(`SELECT COALESCE(SUM(hits),0) AS n FROM daily_hits WHERE day = ?`).get(day).n,
-  }));
-
-  const newUsers = db
-    .prepare(`SELECT COUNT(*) AS n FROM users WHERE substr(created_at,1,10) = ?`)
-    .get(yesterday).n;
-  const totalUsers = db.prepare(`SELECT COUNT(*) AS n FROM users`).get().n;
-  const verifiedUsers = db.prepare(`SELECT COUNT(*) AS n FROM users WHERE email_verified = 1`).get().n;
-
-  const loginsYesterday = db
-    .prepare(`SELECT COUNT(*) AS n FROM sessions WHERE substr(created_at,1,10) = ?`)
-    .get(yesterday).n;
-  const activeSessions = db
-    .prepare(`SELECT COUNT(*) AS n FROM sessions WHERE expires_at > datetime('now')`)
-    .get().n;
-
-  const collectors = db
-    .prepare(`SELECT COUNT(DISTINCT user_id) AS n FROM collection_items`)
-    .get().n;
-  const totalCards = db
-    .prepare(`SELECT COALESCE(SUM(quantity),0) AS n FROM collection_items`)
-    .get().n;
-  const salesYesterday = db
-    .prepare(`SELECT COUNT(*) AS n FROM sales WHERE substr(created_at,1,10) = ?`)
-    .get(yesterday).n;
-  const totalSales = db.prepare(`SELECT COUNT(*) AS n FROM sales`).get().n;
+  const hitsOn = (day) => one(`SELECT COALESCE(SUM(hits),0) n FROM daily_hits WHERE day = ?`, day);
+  const visOn = (day) => one(`SELECT COUNT(*) n FROM daily_visitors WHERE day = ?`, day);
 
   return {
     yesterday,
-    hitsYesterday,
-    topPages,
-    trend,
-    newUsers,
-    totalUsers,
-    verifiedUsers,
-    loginsYesterday,
-    activeSessions,
-    collectors,
-    totalCards,
-    salesYesterday,
-    totalSales,
+
+    // Wachstum
+    newUsers: one(`SELECT COUNT(*) n FROM users WHERE substr(created_at,1,10) = ?`, yesterday),
+    totalUsers: one(`SELECT COUNT(*) n FROM users`),
+    verifiedUsers: one(`SELECT COUNT(*) n FROM users WHERE email_verified = 1`),
+
+    // Nutzung gestern
+    visitors: visOn(yesterday),
+    hits: hitsOn(yesterday),
+    logins: one(`SELECT COUNT(*) n FROM sessions WHERE substr(created_at,1,10) = ?`, yesterday),
+    activeCollectors: one(
+      `SELECT COUNT(DISTINCT user_id) n FROM collection_items WHERE substr(created_at,1,10) = ?`,
+      yesterday
+    ),
+    cardsAddedYesterday: one(
+      `SELECT COALESCE(SUM(quantity),0) n FROM collection_items WHERE substr(created_at,1,10) = ?`,
+      yesterday
+    ),
+
+    // Gesundheit
+    errors5xx: one(`SELECT COALESCE(SUM(n),0) n FROM daily_stat WHERE day = ? AND key = '5xx'`, yesterday),
+
+    // Stand jetzt
+    activeSessions: one(`SELECT COUNT(*) n FROM sessions WHERE expires_at > datetime('now')`),
+    collectors: one(`SELECT COUNT(DISTINCT user_id) n FROM collection_items`),
+    totalCards: one(`SELECT COALESCE(SUM(quantity),0) n FROM collection_items`),
+
+    // Top-Seiten gestern
+    topPages: db
+      .prepare(`SELECT path, hits FROM daily_hits WHERE day = ? ORDER BY hits DESC LIMIT 6`)
+      .all(yesterday),
+
+    // 7-Tage-Verlauf
+    trend: days7.map((day) => ({ day, hits: hitsOn(day), visitors: visOn(day) })),
   };
 }
 
-// Alte Zähler aufräumen (älter als 90 Tage).
-export function pruneHits() {
-  const cut = new Date();
-  cut.setDate(cut.getDate() - 90);
-  db.prepare(`DELETE FROM daily_hits WHERE day < ?`).run(ymd(cut));
+// Alte Zähler aufräumen: Seitenaufrufe/Fehler 90 Tage, Besucher-Hashes 7 Tage.
+export function pruneStats() {
+  const cut = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return ymd(d);
+  };
+  db.prepare(`DELETE FROM daily_hits WHERE day < ?`).run(cut(90));
+  db.prepare(`DELETE FROM daily_stat WHERE day < ?`).run(cut(90));
+  db.prepare(`DELETE FROM daily_visitors WHERE day < ?`).run(cut(7));
 }

@@ -1,79 +1,78 @@
 // Täglicher Betreiber-Bericht per E-Mail.
-//   npm run report            (bzw. per Cron: docker compose exec -T app npm run report)
-import { dailySummary, pruneHits } from "../services/stats.js";
+//   npm run report   (per Cron: docker compose exec -T app npm run report)
+import { dailySummary, pruneStats } from "../services/stats.js";
 import { sendAdminMail, mailReady, ADMIN_EMAIL } from "../services/mailer.js";
 
 const s = dailySummary();
 
-const bar = (n, max) => "▮".repeat(max ? Math.round((n / max) * 12) : 0).padEnd(12, "▯");
-const trendMax = Math.max(1, ...s.trend.map((d) => d.hits));
+const trendMax = Math.max(1, ...s.trend.map((d) => Math.max(d.hits, d.visitors)));
+const bar = (n) => "▮".repeat(Math.round((n / trendMax) * 12)).padEnd(12, "▯");
+const health = s.errors5xx === 0 ? "keine Serverfehler" : `${s.errors5xx} Serverfehler (5xx)!`;
 
-const textLines = [
+const text = [
   `mycardfolio – Tagesbericht für ${s.yesterday}`,
   ``,
-  `Seitenaufrufe gestern:   ${s.hitsYesterday}`,
-  `Neue Registrierungen:    ${s.newUsers}`,
-  `Anmeldungen (Sessions):  ${s.loginsYesterday}`,
-  `Verkäufe erfasst:        ${s.salesYesterday}`,
+  `WACHSTUM`,
+  `  Neue Registrierungen:   ${s.newUsers}`,
+  `  Nutzer gesamt:          ${s.totalUsers}  (${s.verifiedUsers} E-Mail bestätigt)`,
   ``,
-  `Gesamt`,
-  `  Nutzer:            ${s.totalUsers} (davon ${s.verifiedUsers} E-Mail bestätigt)`,
-  `  Aktive Sitzungen:  ${s.activeSessions}`,
-  `  Sammler mit Karten:${s.collectors}`,
-  `  Karten insgesamt:  ${s.totalCards}`,
-  `  Verkäufe gesamt:   ${s.totalSales}`,
+  `NUTZUNG GESTERN`,
+  `  Besucher:               ${s.visitors}`,
+  `  Seitenaufrufe:          ${s.hits}`,
+  `  Anmeldungen:            ${s.logins}`,
+  `  Nutzer mit neuen Karten:${s.activeCollectors}  (${s.cardsAddedYesterday} Karten)`,
   ``,
-  `Top-Seiten gestern`,
-  ...s.topPages.map((p) => `  ${String(p.hits).padStart(4)}  ${p.path}`),
+  `GESUNDHEIT`,
+  `  ${health}`,
   ``,
-  `Aufrufe letzte 7 Tage`,
-  ...s.trend.map((d) => `  ${d.day}  ${bar(d.hits, trendMax)} ${d.hits}`),
-];
-const text = textLines.join("\n");
+  `STAND JETZT`,
+  `  Aktive Sitzungen:       ${s.activeSessions}`,
+  `  Sammler mit Karten:     ${s.collectors}`,
+  `  Karten insgesamt:       ${s.totalCards}`,
+  ``,
+  `TOP-SEITEN GESTERN`,
+  ...(s.topPages.length
+    ? s.topPages.map((p) => `  ${String(p.hits).padStart(4)}  ${p.path}`)
+    : [`  (keine)`]),
+  ``,
+  `LETZTE 7 TAGE  (Besucher / Aufrufe)`,
+  ...s.trend.map((d) => `  ${d.day}  ${bar(d.visitors)}  ${d.visitors} / ${d.hits}`),
+].join("\n");
 
-const row = (label, value) =>
-  `<tr><td style="padding:4px 12px 4px 0;color:#6b6b6b">${label}</td><td style="padding:4px 0;font-weight:600">${value}</td></tr>`;
+const c = "#241c15", g = "#6b6b6b";
+const row = (l, v) =>
+  `<tr><td style="padding:3px 14px 3px 0;color:${g}">${l}</td><td style="padding:3px 0;font-weight:600">${v}</td></tr>`;
+const sect = (title, rows) =>
+  `<h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">${title}</h3><table style="border-collapse:collapse;font-size:14px">${rows}</table>`;
 
 const html = `
-  <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#241c15;max-width:520px">
-    <h2 style="margin:0 0 4px">mycardfolio – Tagesbericht</h2>
-    <p style="margin:0 0 16px;color:#6b6b6b">für ${s.yesterday}</p>
-    <table style="border-collapse:collapse;font-size:14px">
-      ${row("Seitenaufrufe gestern", s.hitsYesterday)}
-      ${row("Neue Registrierungen", s.newUsers)}
-      ${row("Anmeldungen (Sessions)", s.loginsYesterday)}
-      ${row("Verkäufe erfasst", s.salesYesterday)}
-    </table>
-    <h3 style="margin:20px 0 6px;font-size:14px">Gesamt</h3>
-    <table style="border-collapse:collapse;font-size:14px">
-      ${row("Nutzer", `${s.totalUsers} <span style="font-weight:400;color:#6b6b6b">(${s.verifiedUsers} bestätigt)</span>`)}
-      ${row("Aktive Sitzungen", s.activeSessions)}
-      ${row("Sammler mit Karten", s.collectors)}
-      ${row("Karten insgesamt", s.totalCards)}
-      ${row("Verkäufe gesamt", s.totalSales)}
-    </table>
-    <h3 style="margin:20px 0 6px;font-size:14px">Top-Seiten gestern</h3>
-    <table style="border-collapse:collapse;font-size:14px">
-      ${s.topPages.map((p) => `<tr><td style="padding:2px 12px 2px 0;font-weight:600">${p.hits}</td><td style="padding:2px 0;color:#6b6b6b">${p.path}</td></tr>`).join("") || '<tr><td style="color:#6b6b6b">–</td></tr>'}
-    </table>
-    <h3 style="margin:20px 0 6px;font-size:14px">Aufrufe – letzte 7 Tage</h3>
-    <pre style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#241c15;margin:0">${s.trend.map((d) => `${d.day}  ${bar(d.hits, trendMax)} ${d.hits}`).join("\n")}</pre>
+  <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:${c};max-width:540px">
+    <h2 style="margin:0">mycardfolio – Tagesbericht</h2>
+    <p style="margin:2px 0 4px;color:${g}">für ${s.yesterday}</p>
+    ${sect("WACHSTUM", row("Neue Registrierungen", s.newUsers) + row("Nutzer gesamt", `${s.totalUsers} <span style="font-weight:400;color:${g}">(${s.verifiedUsers} bestätigt)</span>`))}
+    ${sect("NUTZUNG GESTERN", row("Besucher", s.visitors) + row("Seitenaufrufe", s.hits) + row("Anmeldungen", s.logins) + row("Nutzer mit neuen Karten", `${s.activeCollectors} <span style="font-weight:400;color:${g}">(${s.cardsAddedYesterday} Karten)</span>`))}
+    <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">GESUNDHEIT</h3>
+    <p style="margin:0;font-weight:600;color:${s.errors5xx === 0 ? "#1a7f4b" : "#c02626"}">${health}</p>
+    ${sect("STAND JETZT", row("Aktive Sitzungen", s.activeSessions) + row("Sammler mit Karten", s.collectors) + row("Karten insgesamt", s.totalCards))}
+    <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">TOP-SEITEN GESTERN</h3>
+    <table style="border-collapse:collapse;font-size:14px">${s.topPages.map((p) => `<tr><td style="padding:2px 14px 2px 0;font-weight:600">${p.hits}</td><td style="padding:2px 0;color:${g}">${p.path}</td></tr>`).join("") || `<tr><td style="color:${g}">(keine)</td></tr>`}</table>
+    <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">LETZTE 7 TAGE &nbsp;<span style="font-weight:400">Besucher / Aufrufe</span></h3>
+    <pre style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:${c};margin:0">${s.trend.map((d) => `${d.day}  ${bar(d.visitors)}  ${d.visitors} / ${d.hits}`).join("\n")}</pre>
   </div>
 `;
 
 async function main() {
-  if (!ADMIN_EMAIL) {
-    console.error("[report] ADMIN_EMAIL nicht gesetzt – Bericht wird nur ausgegeben.\n");
-    console.log(text);
-  } else if (!mailReady()) {
-    console.error(`[report] Kein SMTP konfiguriert – Bericht an ${ADMIN_EMAIL} nur im Log:\n`);
+  if (!ADMIN_EMAIL || !mailReady()) {
+    console.error(
+      `[report] ${!ADMIN_EMAIL ? "ADMIN_EMAIL nicht gesetzt" : "Kein SMTP konfiguriert"} – Bericht nur im Log:\n`
+    );
     console.log(text);
   } else {
     await sendAdminMail(`mycardfolio – Tagesbericht ${s.yesterday}`, { text, html });
     console.log(`[report] Bericht für ${s.yesterday} an ${ADMIN_EMAIL} gesendet.`);
   }
   try {
-    pruneHits();
+    pruneStats();
   } catch {
     /* egal */
   }

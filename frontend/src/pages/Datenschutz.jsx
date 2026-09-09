@@ -52,12 +52,27 @@ export default function Datenschutz() {
         eine längere Aufbewahrung erfordert.
       </p>
       <p>
-        Zusätzlich zählen wir serverseitig, wie oft eine Seite aufgerufen wird –
-        gespeichert wird ausschließlich ein Zähler je Kalendertag und Pfad
-        (z. B. „/impressum: 12"). <strong>Es werden dabei keine IP-Adressen und
-        keine sonstigen personenbezogenen Daten gespeichert.</strong> Diese
-        Zähler dienen nur dem Überblick über die Nutzung, ein externer
-        Analyse-Dienst kommt nicht zum Einsatz.
+        Zusätzlich führen wir eine einfache, eigene Nutzungsstatistik – ohne
+        externen Analyse-Dienst:
+      </p>
+      <ul>
+        <li>
+          <strong>Seitenaufrufe:</strong> ein Zähler je Kalendertag und Pfad
+          (z. B. „/impressum: 12"), ohne jeden Personenbezug.
+        </li>
+        <li>
+          <strong>Besucherzahl:</strong> um ungefähr zu wissen, wie viele
+          verschiedene Personen die Seite besuchen, speichern wir pro Tag einen{" "}
+          <em>nicht umkehrbaren Hash</em> aus deiner IP-Adresse, dem Datum und
+          einem geheimen Zufallswert. Aus dem Hash lässt sich die IP nicht
+          zurückrechnen; er wird nur zum Zählen verschiedener Besucher genutzt
+          und nach <strong>spätestens 7 Tagen gelöscht</strong>.
+        </li>
+      </ul>
+      <p>
+        <strong>Rechtsgrundlage</strong> für beides: Art. 6 Abs. 1 lit. f DSGVO
+        (berechtigtes Interesse, die Nutzung der eigenen Seite in
+        datensparsamer Form nachvollziehen zu können).
       </p>
 
       <h2>4. Hosting</h2>

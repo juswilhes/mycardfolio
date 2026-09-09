@@ -127,13 +127,32 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
--- Einfache Seitenaufruf-Zähler (keine IPs, keine Personenbezüge) für den
--- Tagesbericht an den Betreiber.
+-- Kennzahlen für den Tagesbericht an den Betreiber.
+-- daily_hits: Seitenaufrufe je Pfad (keine IPs).
 CREATE TABLE IF NOT EXISTS daily_hits (
   day   TEXT NOT NULL,   -- YYYY-MM-DD (Serverzeit)
   path  TEXT NOT NULL,
   hits  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, path)
+);
+-- daily_visitors: grobe Besucherzahl. Gespeichert wird nur ein
+-- nicht umkehrbarer Hash aus IP + Datum + Geheimnis, max. 7 Tage.
+CREATE TABLE IF NOT EXISTS daily_visitors (
+  day   TEXT NOT NULL,
+  vhash TEXT NOT NULL,
+  PRIMARY KEY (day, vhash)
+);
+-- daily_stat: sonstige Tages-Zähler (z.B. Serverfehler 5xx).
+CREATE TABLE IF NOT EXISTS daily_stat (
+  day TEXT NOT NULL,
+  key TEXT NOT NULL,
+  n   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, key)
+);
+-- app_meta: interne Schlüssel/Werte (z.B. das Besucher-Hash-Geheimnis).
+CREATE TABLE IF NOT EXISTS app_meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
@@ -307,5 +326,10 @@ for (const u of db.prepare(`SELECT id, email FROM users WHERE password_hash = ''
 db.prepare(
   `INSERT OR IGNORE INTO games (slug, name) VALUES ('pokemon', 'Pokémon TCG')`
 ).run();
+
+// Einmaliges Geheimnis für den Besucher-Hash (macht Rückrechnen unmöglich).
+db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES ('visitor_salt', ?)`).run(
+  crypto.randomBytes(24).toString("hex")
+);
 
 export default db;
