@@ -51,6 +51,14 @@ export default function Datenschutz() {
         gelöscht oder anonymisiert, sofern kein sicherheitsrelevanter Vorfall
         eine längere Aufbewahrung erfordert.
       </p>
+      <p>
+        Zusätzlich zählen wir serverseitig, wie oft eine Seite aufgerufen wird –
+        gespeichert wird ausschließlich ein Zähler je Kalendertag und Pfad
+        (z. B. „/impressum: 12"). <strong>Es werden dabei keine IP-Adressen und
+        keine sonstigen personenbezogenen Daten gespeichert.</strong> Diese
+        Zähler dienen nur dem Überblick über die Nutzung, ein externer
+        Analyse-Dienst kommt nicht zum Einsatz.
+      </p>
 
       <h2>4. Hosting</h2>
       <p>

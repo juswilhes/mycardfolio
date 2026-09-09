@@ -14,6 +14,7 @@ import setsRouter from "./routes/sets.js";
 import portfolioRouter from "./routes/portfolio.js";
 import salesRouter from "./routes/sales.js";
 import { authRequired } from "./middleware/auth.js";
+import { countPageView } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import db from "./db/index.js";
@@ -66,6 +67,7 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
+app.use(countPageView); // einfache Seitenaufruf-Zählung (ohne IPs)
 
 // Grundlegendes Rate-Limiting gegen Missbrauch. Die Tipp-Suche feuert pro
 // Tastenanschlag - daher grosszuegig.

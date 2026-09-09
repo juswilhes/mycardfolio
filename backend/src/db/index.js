@@ -127,6 +127,15 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+-- Einfache Seitenaufruf-Zähler (keine IPs, keine Personenbezüge) für den
+-- Tagesbericht an den Betreiber.
+CREATE TABLE IF NOT EXISTS daily_hits (
+  day   TEXT NOT NULL,   -- YYYY-MM-DD (Serverzeit)
+  path  TEXT NOT NULL,
+  hits  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, path)
+);
+
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
 `);
