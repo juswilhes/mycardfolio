@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import AuthCard, { inputCls, primaryBtn } from "../components/AuthCard.jsx";
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, registrationOpen } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "", displayName: "" });
   const [accepted, setAccepted] = useState(false);
@@ -29,6 +29,24 @@ export default function Register() {
       setError(err.message);
       setBusy(false);
     }
+  }
+
+  if (!registrationOpen) {
+    return (
+      <AuthCard
+        title="Registrierung geschlossen"
+        footer={
+          <>
+            Schon ein Konto? <Link to="/login" className="underline hover:text-ink">Anmelden</Link>
+          </>
+        }
+      >
+        <p className="text-sm text-subtle">
+          mycardfolio nimmt gerade keine neuen Anmeldungen an. Schau bald wieder
+          vorbei.
+        </p>
+      </AuthCard>
+    );
   }
 
   return (

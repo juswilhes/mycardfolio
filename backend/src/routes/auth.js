@@ -32,6 +32,9 @@ const authLimiter = rateLimit({
   message: { error: "Zu viele Versuche – bitte später erneut probieren." },
 });
 
+// Registrierung offen? Über REGISTRATION_OPEN=false in der .env schließbar.
+const registrationOpen = () => process.env.REGISTRATION_OPEN !== "false";
+
 const cookieOpts = () => ({
   httpOnly: true,
   sameSite: "lax",
@@ -46,6 +49,9 @@ function startSession(res, user, req) {
 
 // POST /api/auth/register  { email, password, displayName? }
 router.post("/register", authLimiter, (req, res) => {
+  if (!registrationOpen()) {
+    return res.status(403).json({ error: "Die Registrierung ist gerade geschlossen." });
+  }
   const { email, password, displayName } = req.body ?? {};
   const err = validateRegistration({ email, password });
   if (err) return res.status(400).json({ error: err });
@@ -76,9 +82,9 @@ router.post("/logout", (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/auth/me  -> aktueller Nutzer oder null
+// GET /api/auth/me  -> aktueller Nutzer (oder null) + ob Registrierung offen ist
 router.get("/me", authOptional, (req, res) => {
-  res.json({ user: publicUser(req.user) });
+  res.json({ user: publicUser(req.user), registrationOpen: registrationOpen() });
 });
 
 // POST /api/auth/verify  { token }

@@ -35,7 +35,7 @@ function RequireAuth({ children }) {
 
 export default function App() {
   const { isDark, toggleTheme } = useTheme();
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, registrationOpen } = useAuth();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -75,9 +75,11 @@ export default function App() {
             ) : (
               <div className="flex items-center gap-3 text-sm">
                 <NavLink to="/login" className={navCls}>Anmelden</NavLink>
-                <Link to="/register" className="bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full">
-                  Registrieren
-                </Link>
+                {registrationOpen && (
+                  <Link to="/register" className="bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full">
+                    Registrieren
+                  </Link>
+                )}
               </div>
             ))}
           <button

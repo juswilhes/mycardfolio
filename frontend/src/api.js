@@ -26,7 +26,8 @@ async function request(path, { method = "GET", body, headers } = {}) {
 }
 
 // --- Auth ------------------------------------------------------------
-export const getMe = () => request("/auth/me").then((d) => d.user);
+// { user, registrationOpen }
+export const getMe = () => request("/auth/me");
 export const register = (payload) => request("/auth/register", { method: "POST", body: payload }).then((d) => d.user);
 export const login = (email, password) =>
   request("/auth/login", { method: "POST", body: { email, password } }).then((d) => d.user);

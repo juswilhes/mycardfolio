@@ -6,10 +6,13 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   // undefined = wird noch geladen, null = nicht angemeldet, Objekt = angemeldet
   const [user, setUser] = useState(undefined);
+  const [registrationOpen, setRegistrationOpen] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
-      setUser(await api.getMe());
+      const d = await api.getMe();
+      setUser(d.user);
+      setRegistrationOpen(d.registrationOpen !== false);
     } catch {
       setUser(null);
     }
@@ -21,6 +24,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    registrationOpen,
     loading: user === undefined,
     refresh,
     async login(email, password) {
