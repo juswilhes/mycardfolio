@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # --- 1. Frontend bauen ----------------------------------------------------
 FROM node:22-bookworm-slim AS frontend
 WORKDIR /app/frontend
