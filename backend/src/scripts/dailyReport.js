@@ -11,10 +11,11 @@ const health = s.errors5xx === 0 ? "keine Serverfehler" : `${s.errors5xx} Server
 
 const text = [
   `mycardfolio – Tagesbericht für ${s.yesterday}`,
+  s.adminFiltered ? `(ohne deine eigenen Zugriffe)` : ``,
   ``,
   `WACHSTUM`,
   `  Neue Registrierungen:   ${s.newUsers}`,
-  `  Nutzer gesamt:          ${s.totalUsers}  (${s.verifiedUsers} E-Mail bestätigt)`,
+  `  Nutzer:                 ${s.otherUsers}  (${s.verifiedUsers} E-Mail bestätigt)`,
   ``,
   `NUTZUNG GESTERN`,
   `  Besucher:               ${s.visitors}`,
@@ -48,8 +49,8 @@ const sect = (title, rows) =>
 const html = `
   <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:${c};max-width:540px">
     <h2 style="margin:0">mycardfolio – Tagesbericht</h2>
-    <p style="margin:2px 0 4px;color:${g}">für ${s.yesterday}</p>
-    ${sect("WACHSTUM", row("Neue Registrierungen", s.newUsers) + row("Nutzer gesamt", `${s.totalUsers} <span style="font-weight:400;color:${g}">(${s.verifiedUsers} bestätigt)</span>`))}
+    <p style="margin:2px 0 4px;color:${g}">für ${s.yesterday}${s.adminFiltered ? " · ohne deine eigenen Zugriffe" : ""}</p>
+    ${sect("WACHSTUM", row("Neue Registrierungen", s.newUsers) + row("Nutzer", `${s.otherUsers} <span style="font-weight:400;color:${g}">(${s.verifiedUsers} bestätigt)</span>`))}
     ${sect("NUTZUNG GESTERN", row("Besucher", s.visitors) + row("Seitenaufrufe", s.hits) + row("Anmeldungen", s.logins) + row("Nutzer mit neuen Karten", `${s.activeCollectors} <span style="font-weight:400;color:${g}">(${s.cardsAddedYesterday} Karten)</span>`))}
     <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">GESUNDHEIT</h3>
     <p style="margin:0;font-weight:600;color:${s.errors5xx === 0 ? "#1a7f4b" : "#c02626"}">${health}</p>

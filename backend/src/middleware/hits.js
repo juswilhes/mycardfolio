@@ -1,5 +1,8 @@
 import crypto from "node:crypto";
 import db from "../db/index.js";
+import { userForSession } from "../services/authService.js";
+import { SESSION_COOKIE } from "./auth.js";
+import { ADMIN_EMAIL, ADMIN_IPS } from "../lib/admin.js";
 
 const bumpHit = db.prepare(`
   INSERT INTO daily_hits (day, path, hits) VALUES (?, ?, 1)
@@ -36,10 +39,18 @@ const normalize = (path) =>
 const visitorHash = (ip, day) =>
   crypto.createHash("sha256").update(`${ip}|${day}|${SALT}`).digest("hex").slice(0, 20);
 
+// Ist der Zugriff vom Betreiber selbst? (bekannte IP oder als Admin angemeldet)
+function isOperator(req) {
+  if (req.ip && ADMIN_IPS.has(req.ip)) return true;
+  if (!ADMIN_EMAIL) return false;
+  const u = userForSession(req.cookies?.[SESSION_COOKIE]);
+  return !!u && String(u.email).toLowerCase() === ADMIN_EMAIL;
+}
+
 export function countPageView(req, res, next) {
   const day = localDay();
 
-  // Serverfehler (5xx) pro Tag zählen – für die "läuft alles?"-Zeile.
+  // Serverfehler (5xx) IMMER zählen – ein Bug ist ein Bug, egal wer ihn trifft.
   res.on("finish", () => {
     if (res.statusCode >= 500) {
       try {
@@ -51,7 +62,11 @@ export function countPageView(req, res, next) {
   });
 
   try {
-    if (req.method === "GET" && !req.path.startsWith("/api")) {
+    if (
+      req.method === "GET" &&
+      !req.path.startsWith("/api") &&
+      !isOperator(req) // eigene Zugriffe des Betreibers nicht mitzählen
+    ) {
       const last = req.path.split("/").pop() || "";
       if (!last.includes(".")) {
         bumpHit.run(day, normalize(req.path));
