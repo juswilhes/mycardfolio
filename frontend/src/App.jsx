@@ -22,7 +22,7 @@ import Account from "./pages/Account.jsx";
 import Orden from "./pages/Orden.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import Footer from "./components/Footer.jsx";
-import { UserIcon } from "./components/icons.jsx";
+import AccountMenu from "./components/AccountMenu.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -74,36 +74,19 @@ export default function App() {
               </>
             )}
           </nav>
-          {!loading &&
-            (user ? (
-              <div className="flex items-center gap-3 text-sm">
-                <button onClick={() => setConfirmLogout(true)} className="text-subtle hover:text-ink">
-                  Abmelden
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 text-sm">
-                <NavLink to="/login" className={navCls}>Anmelden</NavLink>
-                {registrationOpen && (
-                  <Link to="/register" className="bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full">
-                    Registrieren
-                  </Link>
-                )}
-              </div>
-            ))}
+          {!loading && !user && (
+            <div className="flex items-center gap-3 text-sm">
+              <NavLink to="/login" className={navCls}>Anmelden</NavLink>
+              {registrationOpen && (
+                <Link to="/register" className="bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full">
+                  Registrieren
+                </Link>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            {user && (
-              <NavLink
-                to="/konto"
-                title={user.email}
-                className={({ isActive }) =>
-                  `w-8 h-8 flex items-center justify-center rounded-full border ${
-                    isActive ? "border-ink text-ink" : "border-line text-subtle hover:text-ink"
-                  }`
-                }
-              >
-                <UserIcon className="w-4 h-4" />
-              </NavLink>
+            {!loading && user && (
+              <AccountMenu email={user.email} onLogout={() => setConfirmLogout(true)} />
             )}
             <button
               onClick={toggleTheme}
