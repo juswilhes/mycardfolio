@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { matchImportRows, commitImport } from "../api.js";
+import { matchImportRows, commitImport, searchCards } from "../api.js";
 import { parseImport, normCondition, normLanguage, normVariant } from "../lib/parseImport.js";
 import { CONDITIONS, VARIANTS } from "../components/CollectionItemDialog.jsx";
 
@@ -9,6 +9,72 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 const eur = (n) => `${n.toFixed(2)} €`;
+
+// Die Rohzeile aus einer breiten Tabelle (viele Spalten) kann sehr lang
+// werden - hier gekürzt mit "…", voller Inhalt bleibt als Tooltip erhalten.
+const shorten = (s, max = 60) => (s.length > max ? `${s.slice(0, max).trimEnd()}…` : s);
+
+// Wenn keine automatische Zuordnung gefunden wurde: einfache Karten-Suche
+// direkt in der Zeile, statt die ganze Zeile ergebnislos zu verwerfen.
+function ManualCardPicker({ onPick }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function runSearch() {
+    if (!query.trim()) return;
+    setBusy(true);
+    try {
+      setResults(await searchCards(query.trim()));
+    } catch {
+      setResults([]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), runSearch())}
+          placeholder="Karte suchen …"
+          className="w-full border border-rose rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+        />
+        <button
+          type="button"
+          onClick={runSearch}
+          disabled={busy || !query.trim()}
+          className="shrink-0 text-xs border border-line rounded-lg px-2 py-1 hover:border-ink disabled:opacity-50"
+        >
+          {busy ? "…" : "Suchen"}
+        </button>
+      </div>
+      {results && (
+        results.length ? (
+          <ul className="mt-1 border border-line rounded-lg max-h-40 overflow-y-auto bg-canvas">
+            {results.slice(0, 15).map((c) => (
+              <li key={c.external_id}>
+                <button
+                  type="button"
+                  onClick={() => onPick(c)}
+                  className="w-full flex items-center gap-1.5 px-1.5 py-1 text-left hover:bg-surface"
+                >
+                  <img src={c.image_small} alt="" className="w-5 rounded shrink-0" />
+                  <span className="truncate">{c.name} · {c.set_name} · #{c.number}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-subtle mt-1">keine Treffer</p>
+        )
+      )}
+    </div>
+  );
+}
 
 // Eindeutige Lang-Anzeige ("11. September 2026") direkt neben dem
 // Datumsfeld - falls der Browser beim Tippen (statt Kalender-Klick) das
@@ -255,8 +321,10 @@ export default function Import() {
                           onChange={(e) => setRow(i, { include: e.target.checked })}
                         />
                       </td>
-                      <td className="py-2 pr-2 min-w-[220px]">
-                        <p className="text-subtle truncate mb-1">{m.input.raw}</p>
+                      <td className="py-2 pr-2 min-w-[220px] max-w-[260px]">
+                        <p className="text-subtle truncate mb-1" title={m.input.raw}>
+                          {shorten(m.input.raw)}
+                        </p>
                         {m.candidates.length > 0 ? (
                           <div className="flex items-center gap-1.5">
                             {m.chosen && (
@@ -282,7 +350,12 @@ export default function Import() {
                             </select>
                           </div>
                         ) : (
-                          <span className="text-rose">nicht gefunden</span>
+                          <div>
+                            <p className="text-rose mb-1">nicht gefunden</p>
+                            <ManualCardPicker
+                              onPick={(c) => setRow(i, { chosen: c, candidates: [c], include: true })}
+                            />
+                          </div>
                         )}
                       </td>
                       <td className="py-2 pr-2 min-w-[110px]">
