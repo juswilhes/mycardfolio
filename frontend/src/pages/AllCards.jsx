@@ -124,22 +124,24 @@ export default function AllCards() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {results.map((card) => (
               <div key={card.external_id} className="flex flex-col">
-                <img
-                  src={card.image_large}
-                  alt={`${card.name} (Englisch)`}
-                  className="rounded-2xl mb-2 border border-line shadow-sm"
-                />
-                <p className="text-sm font-medium truncate">{card.name}</p>
-                <p className="text-subtle text-xs truncate">{card.set_name}</p>
-                <p className="text-subtle text-[11px] mb-2 truncate">
-                  {[card.rarity, card.artist && `✎ ${card.artist}`].filter(Boolean).join(" · ")}
-                </p>
+                <Link to={`/database/${card.external_id}`} className="flex flex-col group">
+                  <img
+                    src={card.image_large}
+                    alt={`${card.name} (Englisch)`}
+                    className="rounded-2xl mb-2 border border-line shadow-sm group-hover:border-ink transition"
+                  />
+                  <p className="text-sm font-medium truncate">{card.name}</p>
+                  <p className="text-subtle text-xs truncate">{card.set_name}</p>
+                  <p className="text-subtle text-[11px] mb-2 truncate">
+                    {[card.rarity, card.artist && `✎ ${card.artist}`].filter(Boolean).join(" · ")}
+                  </p>
+                </Link>
                 <div className="mt-auto flex gap-2">
                   <Link
                     to={`/database/${card.external_id}`}
                     className="flex-1 text-center border border-line text-xs py-1.5 rounded-full hover:border-ink"
                   >
-                    Details
+                    Preisverlauf
                   </Link>
                   <button
                     onClick={() =>
