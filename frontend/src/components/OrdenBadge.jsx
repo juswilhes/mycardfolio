@@ -8,7 +8,7 @@ import { shapeToPathD } from "../lib/ordenShapes.js";
 export default function OrdenBadge({ id, earned, size = 64 }) {
   const style = ORDEN_STYLES[id] ?? ORDEN_STYLES.erster_fang;
   const pathD = shapeToPathD(style);
-  const fillRule = style.shape === "crescent" ? "evenodd" : "nonzero";
+  const fillRule = style.fillRule ?? "nonzero";
   const uid = `orden-${id}`;
 
   return (
