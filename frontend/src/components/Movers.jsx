@@ -22,30 +22,41 @@ function Row({ m, positive }) {
   );
 }
 
-// Top-Gewinner / -Verlierer der letzten 7 Tage (Trendpreis-Änderung).
-export default function Movers({ data }) {
-  if (!data) return null;
-  const { gainers = [], losers = [] } = data;
-  if (!gainers.length && !losers.length) return null;
+// Top-3-Gewinner / -Verlierer als eigenständige Karte, passend zum übrigen
+// Dashboard-Look (Sets im Blick / Ordenkoffer). Zeigt auch einen klaren
+// Leer-Zustand statt einfach zu verschwinden, wenn (noch) nichts in
+// Bewegung ist.
+export default function Movers({ data, title = "📈 Top-Bewegungen (7 Tage)" }) {
+  const gainers = data?.gainers ?? [];
+  const losers = data?.losers ?? [];
 
   return (
-    <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2 mb-8">
-      <div>
-        <p className="text-xs text-subtle mb-1">Top-Gewinner (7 Tage)</p>
-        {gainers.length ? (
-          gainers.map((m) => <Row key={m.card_id} m={m} positive />)
-        ) : (
-          <p className="text-subtle text-sm py-1.5">–</p>
-        )}
-      </div>
-      <div>
-        <p className="text-xs text-subtle mb-1">Top-Verlierer (7 Tage)</p>
-        {losers.length ? (
-          losers.map((m) => <Row key={m.card_id} m={m} positive={false} />)
-        ) : (
-          <p className="text-subtle text-sm py-1.5">–</p>
-        )}
-      </div>
+    <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-8">
+      <p className="text-sm font-medium mb-3">{title}</p>
+      {!data ? (
+        <p className="text-subtle text-sm">Lade …</p>
+      ) : !gainers.length && !losers.length ? (
+        <p className="text-subtle text-sm">Noch keine Preisbewegungen in diesem Zeitraum.</p>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2">
+          <div>
+            <p className="text-xs text-subtle mb-1">Top 3 Gewinner</p>
+            {gainers.length ? (
+              gainers.slice(0, 3).map((m) => <Row key={m.card_id} m={m} positive />)
+            ) : (
+              <p className="text-subtle text-sm py-1.5">–</p>
+            )}
+          </div>
+          <div>
+            <p className="text-xs text-subtle mb-1">Top 3 Verlierer</p>
+            {losers.length ? (
+              losers.slice(0, 3).map((m) => <Row key={m.card_id} m={m} positive={false} />)
+            ) : (
+              <p className="text-subtle text-sm py-1.5">–</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

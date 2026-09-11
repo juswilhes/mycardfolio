@@ -95,4 +95,7 @@ export const removeFromWatchlist = (externalId) =>
   request(`/watchlist/${externalId}`, { method: "DELETE" });
 
 // --- Markt-Statistik -------------------------------------------------
-export const getMarketMovers = (days = 7) => request(`/stats/market-movers?days=${days}`);
+export const getMarketMovers = (days = 7, set = null) =>
+  request(`/stats/market-movers?days=${days}${set ? `&set=${encodeURIComponent(set)}` : ""}`);
+export const getTrackedSets = () => request("/stats/tracked-sets");
+export const getWatchlistMovers = (days = 7) => request(`/stats/watchlist-movers?days=${days}`);

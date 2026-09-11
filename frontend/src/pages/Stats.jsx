@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { getCollection } from "../api.js";
+import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import MarketMovers from "../components/MarketMovers.jsx";
+import Movers from "../components/Movers.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const eur0 = (n) =>
@@ -91,9 +92,15 @@ export default function Stats() {
 
 function CollectionStats() {
   const [items, setItems] = useState(null);
+  const [movers, setMovers] = useState(null);
+  const [setDefs, setSetDefs] = useState(null);
+  const [setOwned, setSetOwned] = useState({});
 
   useEffect(() => {
     getCollection().then(setItems).catch(() => setItems([]));
+    getMovers().then(setMovers).catch(() => setMovers(null));
+    getSets().then(setSetDefs).catch(() => setSetDefs([]));
+    getSetProgress().then(setSetOwned).catch(() => setSetOwned({}));
   }, []);
 
   const data = useMemo(() => {
@@ -104,10 +111,25 @@ function CollectionStats() {
     const gain = withCost.reduce((s, i) => s + val(i), 0) - totalCost;
     const bySet = breakdownBy(items, (i) => i.set_name, 8);
     const byRarity = breakdownBy(items, (i) => i.rarity, 7);
+    const byArtist = breakdownBy(items, (i) => i.artist, 8);
     const byLang = breakdownBy(items, (i) => (i.language === "de" ? "Deutsch" : "Englisch"));
     const top = [...items].sort((a, b) => val(b) - val(a)).slice(0, 10);
-    return { totalValue, totalCost, gain, withCost, bySet, byRarity, byLang, top };
+    const totalCards = items.reduce((s, i) => s + (i.quantity ?? 1), 0);
+    const avgValue = totalCards ? totalValue / totalCards : 0;
+    return { totalValue, totalCost, gain, withCost, bySet, byRarity, byArtist, byLang, top, totalCards, avgValue };
   }, [items]);
+
+  // Sets, an denen der Nutzer schon dran ist, nach Fortschritt sortiert -
+  // "was fehlt mir noch, um ein Set fertigzumachen".
+  const setProgress = useMemo(() => {
+    if (!setDefs) return [];
+    return setDefs
+      .map((s) => ({ ...s, owned: setOwned[s.id] ?? 0 }))
+      .filter((s) => s.total > 0 && s.owned > 0)
+      .map((s) => ({ ...s, pct: s.owned / s.total }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 6);
+  }, [setDefs, setOwned]);
 
   if (!items) return <p className="text-subtle text-sm">Lade Statistik …</p>;
   if (items.length === 0) {
@@ -121,22 +143,49 @@ function CollectionStats() {
     );
   }
 
-  const { totalValue, totalCost, gain, withCost, bySet, byRarity, byLang, top } = data;
+  const { totalValue, totalCost, gain, withCost, bySet, byRarity, byArtist, byLang, top, totalCards, avgValue } = data;
 
   return (
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <Stat label="Gesamtwert" value={eur(totalValue)} />
-        <Stat label="Karten" value={items.reduce((s, i) => s + (i.quantity ?? 1), 0)} />
-        {withCost.length > 0 && <Stat label="Investiert" value={eur(totalCost)} />}
-        {withCost.length > 0 && (
+        <Stat label="Karten" value={totalCards} />
+        <Stat label="Ø Kartenwert" value={eur(avgValue)} />
+        {withCost.length > 0 ? (
           <Stat
             label="Gewinn / Verlust"
             value={`${gain >= 0 ? "+" : "−"}${eur(Math.abs(gain))}`}
             tone={gain >= 0 ? "mint" : "rose"}
           />
+        ) : (
+          <Stat label="Wertvollste Karte" value={eur(top[0] ? val(top[0]) : 0)} />
         )}
       </div>
+
+      <Movers data={movers} title="📈 Deine Top-Bewegungen (7 Tage)" />
+
+      {setProgress.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm text-subtle mb-3">
+            🧩 Set-Fortschritt – was fehlt noch, um ein Set fertigzumachen?
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+            {setProgress.map((s) => (
+              <Link key={s.id} to={`/sets/${s.id}`} className="block group">
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="truncate group-hover:text-ink">{s.name}</span>
+                  <span className="text-subtle text-xs shrink-0 ml-2">
+                    {s.owned} / {s.total} · fehlen {s.total - s.owned}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-line overflow-hidden">
+                  <div className="h-full bg-yellow" style={{ width: `${s.pct * 100}%` }} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid md:grid-cols-2 gap-8">
         <section>
@@ -203,10 +252,17 @@ function CollectionStats() {
         </div>
       </section>
 
-      <section className="mt-8 max-w-xs">
-        <h2 className="text-sm text-subtle mb-3">Wert nach Sprache</h2>
-        <BarList rows={byLang} total={totalValue} />
-      </section>
+      <div className="grid md:grid-cols-2 gap-8 mt-8">
+        <section className="max-w-xs">
+          <h2 className="text-sm text-subtle mb-3">Wert nach Sprache</h2>
+          <BarList rows={byLang} total={totalValue} />
+        </section>
+
+        <section>
+          <h2 className="text-sm text-subtle mb-3">Wert nach Illustrator</h2>
+          <BarList rows={byArtist} total={totalValue} />
+        </section>
+      </div>
     </div>
   );
 }
