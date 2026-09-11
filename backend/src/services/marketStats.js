@@ -106,8 +106,8 @@ export function getSetMomentum({ days = 30, minCards = 3, limit = 8 } = {}) {
       cardCount: pcts.length,
     }));
 
-  const rising = [...sets].sort((a, b) => b.avg_pct - a.avg_pct).slice(0, limit);
-  const falling = [...sets].sort((a, b) => a.avg_pct - b.avg_pct).slice(0, limit);
+  const rising = sets.filter((s) => s.avg_pct > 0).sort((a, b) => b.avg_pct - a.avg_pct).slice(0, limit);
+  const falling = sets.filter((s) => s.avg_pct < 0).sort((a, b) => a.avg_pct - b.avg_pct).slice(0, limit);
   return { rising, falling };
 }
 
