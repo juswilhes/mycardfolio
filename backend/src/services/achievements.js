@@ -6,21 +6,21 @@ import { listSales } from "./portfolioService.js";
 // bereits vorhandenen Daten berechnet (keine neue Aktivitäts-Verfolgung nötig).
 export const ACHIEVEMENTS = [
   { id: "erster_fang", icon: "🃏", title: "Erster Fang", desc: "Deine erste Karte zur Sammlung hinzugefügt" },
-  { id: "kleiner_schatz", icon: "📦", title: "Kleiner Schatz", desc: "10 Karten in deiner Sammlung" },
-  { id: "grosse_sammlung", icon: "🏰", title: "Große Sammlung", desc: "100 Karten in deiner Sammlung" },
-  { id: "schatzkammer", icon: "💎", title: "Schatzkammer", desc: "500 Karten in deiner Sammlung" },
-  { id: "entdecker", icon: "🗺️", title: "Entdecker", desc: "Karten aus 5 verschiedenen Sets" },
-  { id: "weltenbummler", icon: "🌍", title: "Weltenbummler", desc: "Karten aus 10 verschiedenen Sets" },
-  { id: "halber_weg", icon: "🧩", title: "Halber Weg", desc: "Ein Set zur Hälfte vervollständigt" },
+  { id: "kleiner_schatz", icon: "📦", title: "Kleiner Schatz", desc: "25 Karten in deiner Sammlung" },
+  { id: "grosse_sammlung", icon: "🏰", title: "Große Sammlung", desc: "250 Karten in deiner Sammlung" },
+  { id: "schatzkammer", icon: "💎", title: "Schatzkammer", desc: "1.000 Karten in deiner Sammlung" },
+  { id: "entdecker", icon: "🗺️", title: "Entdecker", desc: "Karten aus 8 verschiedenen Sets" },
+  { id: "weltenbummler", icon: "🌍", title: "Weltenbummler", desc: "Karten aus 20 verschiedenen Sets" },
+  { id: "halber_weg", icon: "🧩", title: "Halber Weg", desc: "Ein Set zu 60 % vervollständigt" },
   { id: "meistersammler", icon: "🏆", title: "Meistersammler", desc: "Ein Set komplett vervollständigt" },
-  { id: "kunstkenner", icon: "🎨", title: "Kunstkenner", desc: "Karten von 5 verschiedenen Illustratoren" },
-  { id: "wertvoller_fund", icon: "💰", title: "Wertvoller Fund", desc: "Eine Karte im Wert von 50 € oder mehr" },
-  { id: "kostbarkeit", icon: "👑", title: "Kostbarkeit", desc: "Eine Karte im Wert von 200 € oder mehr" },
+  { id: "kunstkenner", icon: "🎨", title: "Kunstkenner", desc: "Karten von 15 verschiedenen Illustratoren" },
+  { id: "wertvoller_fund", icon: "💰", title: "Wertvoller Fund", desc: "Eine Karte im Wert von 100 € oder mehr" },
+  { id: "kostbarkeit", icon: "👑", title: "Kostbarkeit", desc: "Eine Karte im Wert von 500 € oder mehr" },
   { id: "erster_handel", icon: "🤝", title: "Erster Handel", desc: "Deine erste Karte verkauft" },
-  { id: "cleveres_naeschen", icon: "📈", title: "Cleveres Näschen", desc: "Eine Karte mit Gewinn verkauft" },
-  { id: "sprachtalent", icon: "🌐", title: "Sprachtalent", desc: "Karten in Deutsch und Englisch gesammelt" },
-  { id: "erste_bewertung", icon: "🥇", title: "Erste Bewertung", desc: "Eine gegradete Karte (PSA, BGS, …) in der Sammlung" },
-  { id: "treuer_trainer", icon: "⭐", title: "Treuer Trainer", desc: "Seit 30 Tagen bei mycardfolio dabei" },
+  { id: "cleveres_naeschen", icon: "📈", title: "Cleveres Näschen", desc: "5 Karten mit Gewinn verkauft" },
+  { id: "sprachtalent", icon: "🌐", title: "Sprachtalent", desc: "Mindestens 10 Karten in Deutsch und 10 in Englisch" },
+  { id: "erste_bewertung", icon: "🥇", title: "Erste Bewertung", desc: "5 gegradete Karten (PSA, BGS, …) in der Sammlung" },
+  { id: "treuer_trainer", icon: "⭐", title: "Treuer Trainer", desc: "Seit 180 Tagen bei mycardfolio dabei" },
 ];
 
 const setProgressWithTotal = db.prepare(`
@@ -41,8 +41,14 @@ function computeProgress(userId) {
   const totalQuantity = items.reduce((s, i) => s + (i.quantity ?? 1), 0);
   const sets = new Set(items.map((i) => i.set_id).filter(Boolean));
   const artists = new Set(items.map((i) => i.artist).filter(Boolean));
-  const languages = new Set(items.map((i) => i.language).filter(Boolean));
-  const hasGraded = items.some((i) => i.grading_company);
+  const langCount = { de: 0, en: 0 };
+  for (const i of items) {
+    if (i.language === "de" || i.language === "en") langCount[i.language] += i.quantity ?? 1;
+  }
+  const minLangCount = Math.min(langCount.de, langCount.en);
+  const gradedCount = items
+    .filter((i) => i.grading_company)
+    .reduce((s, i) => s + (i.quantity ?? 1), 0);
   const maxCardValue = items.reduce((max, i) => {
     const price = latestTrend(i.card_id, i.variant || "normal")?.price ?? 0;
     return Math.max(max, price);
@@ -52,7 +58,7 @@ function computeProgress(userId) {
   const hasCompleteSet = setRows.some((r) => r.owned >= r.total);
 
   const { sales } = listSales(userId);
-  const hasProfitableSale = sales.some((s) => s.realized > 0);
+  const profitableSaleCount = sales.filter((s) => s.realized > 0).length;
 
   const createdAt = userCreatedAt.get(userId)?.created_at;
   const accountAgeDays = createdAt
@@ -61,21 +67,21 @@ function computeProgress(userId) {
 
   return {
     erster_fang: { current: totalQuantity, target: 1 },
-    kleiner_schatz: { current: totalQuantity, target: 10 },
-    grosse_sammlung: { current: totalQuantity, target: 100 },
-    schatzkammer: { current: totalQuantity, target: 500 },
-    entdecker: { current: sets.size, target: 5 },
-    weltenbummler: { current: sets.size, target: 10 },
-    halber_weg: { current: Math.round(bestSetPct * 100), target: 50 },
+    kleiner_schatz: { current: totalQuantity, target: 25 },
+    grosse_sammlung: { current: totalQuantity, target: 250 },
+    schatzkammer: { current: totalQuantity, target: 1000 },
+    entdecker: { current: sets.size, target: 8 },
+    weltenbummler: { current: sets.size, target: 20 },
+    halber_weg: { current: Math.round(bestSetPct * 100), target: 60 },
     meistersammler: { current: hasCompleteSet ? 1 : 0, target: 1 },
-    kunstkenner: { current: artists.size, target: 5 },
-    wertvoller_fund: { current: Math.round(maxCardValue), target: 50 },
-    kostbarkeit: { current: Math.round(maxCardValue), target: 200 },
+    kunstkenner: { current: artists.size, target: 15 },
+    wertvoller_fund: { current: Math.round(maxCardValue), target: 100 },
+    kostbarkeit: { current: Math.round(maxCardValue), target: 500 },
     erster_handel: { current: sales.length, target: 1 },
-    cleveres_naeschen: { current: hasProfitableSale ? 1 : 0, target: 1 },
-    sprachtalent: { current: languages.size, target: 2 },
-    erste_bewertung: { current: hasGraded ? 1 : 0, target: 1 },
-    treuer_trainer: { current: Math.floor(accountAgeDays), target: 30 },
+    cleveres_naeschen: { current: profitableSaleCount, target: 5 },
+    sprachtalent: { current: minLangCount, target: 10 },
+    erste_bewertung: { current: gradedCount, target: 5 },
+    treuer_trainer: { current: Math.floor(accountAgeDays), target: 180 },
   };
 }
 
