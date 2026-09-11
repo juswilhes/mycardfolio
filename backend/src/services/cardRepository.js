@@ -215,10 +215,95 @@ export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
     if (pool.length) rows = pool.slice(0, limit);
     else if (rows.length === 0) rows = wide.slice(0, limit);
   }
+
+  // Letzter Versuch bei Null Treffern: Tippfehler im Namen abfangen
+  // ("Pikuchu", "mGuardevour ex" statt "Mega Gardevoir ex"/"M Gardevoir-EX").
+  if (rows.length === 0 && text) {
+    let fuzzy = fuzzyNameSearch(text, game, Math.max(limit, 80));
+    if (setIds) fuzzy = fuzzy.filter((r) => r.set_id && setIds.has(r.set_id));
+    if (want) {
+      const hit = fuzzy.filter((r) => normNum(r.number) === want);
+      if (hit.length) fuzzy = hit;
+    }
+    rows = fuzzy.slice(0, limit);
+  }
   return rows;
 }
 
 const normLoose = (s) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// --- Tippfehler-Toleranz für die Namenssuche ---------------------------
+// Nur als letzter Fallback (siehe oben) - vergleicht den ganzen
+// normalisierten Suchtext gegen alle bekannten Kartennamen per
+// Levenshtein-Distanz. Absichtlich strikt: lieber "nichts gefunden" als
+// bei einem kurzen, mehrdeutigen Wort eine zufällige falsche Karte raten.
+let nameVocabCache = null;
+function nameVocab(game) {
+  if (!nameVocabCache) nameVocabCache = new Map();
+  if (!nameVocabCache.has(game)) {
+    const rows = db
+      .prepare(`SELECT DISTINCT c.name FROM cards c WHERE c.game_id = (SELECT id FROM games WHERE slug = ?)`)
+      .all(game);
+    nameVocabCache.set(game, rows.map((r) => ({ name: r.name, norm: normLoose(r.name) })));
+  }
+  return nameVocabCache.get(game);
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  let curr = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+// Länger erlaubt mehr Abweichung, aber nie beliebig viel - sonst würde
+// z.B. ein kurzes Wort quasi jeden ähnlich kurzen Namen "treffen".
+function fuzzyThreshold(len) {
+  if (len <= 6) return 1;
+  if (len <= 10) return 2;
+  if (len <= 16) return 3;
+  return 4;
+}
+
+function fuzzyNameSearch(text, game, limit) {
+  const nq = normLoose(text);
+  if (nq.length < 4) return [];
+  const th = fuzzyThreshold(nq.length);
+  const scored = [];
+  for (const { name, norm } of nameVocab(game)) {
+    if (Math.abs(norm.length - nq.length) > th) continue;
+    const d = levenshtein(nq, norm);
+    if (d <= th) scored.push({ name, d });
+  }
+  if (!scored.length) return [];
+  scored.sort((a, b) => a.d - b.d);
+  const names = [...new Set(scored.map((s) => s.name))].slice(0, 5);
+  const rank = new Map(names.map((n, i) => [n, i]));
+  const placeholders = names.map(() => "?").join(",");
+  const rows = db
+    .prepare(
+      `SELECT c.* FROM cards c
+       WHERE c.game_id = (SELECT id FROM games WHERE slug = ?) AND c.name IN (${placeholders})`
+    )
+    .all(game, ...names)
+    .map(rowToCard);
+  // Reihenfolge nach Tippfehler-Nähe (kleinste Distanz zuerst) statt
+  // alphabetisch/nach Namenslänge - sonst verdrängen z.B. viele "Pichu"-
+  // Drucke (kürzerer, aber weiter entfernter Name) das eigentlich näher
+  // passende "Pikachu".
+  rows.sort((a, b) => rank.get(a.name) - rank.get(b.name));
+  return rows.slice(0, limit);
+}
 
 const words = (s) => (s ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 2);
 // Wort-Überlappung zweier Set-Namen (0..1). "Obsidian Flames" vs
