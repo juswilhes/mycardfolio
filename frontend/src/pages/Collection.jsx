@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCollection, getPortfolioHistory, getMovers } from "../api.js";
+import {
+  getCollection,
+  getPortfolioHistory,
+  getMovers,
+  getSets,
+  getSetProgress,
+  getAchievements,
+} from "../api.js";
 import CollectionGroup from "../components/CollectionGroup.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
+import OrdenBadge from "../components/OrdenBadge.jsx";
 import { SortIcon, FilterIcon } from "../components/icons.jsx";
 
 const eur = (n) => `${n.toFixed(2)} €`;
@@ -71,6 +79,9 @@ export default function Collection() {
   const [loadError, setLoadError] = useState(false);
   const [history, setHistory] = useState(null);
   const [movers, setMovers] = useState(null);
+  const [setDefs, setSetDefs] = useState(null);
+  const [setOwned, setSetOwned] = useState({});
+  const [achievements, setAchievements] = useState(null);
   const down = useMemo(
     () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
     []
@@ -103,7 +114,30 @@ export default function Collection() {
 
   useEffect(() => {
     load();
+    getSets().then(setSetDefs).catch(() => setSetDefs([]));
+    getSetProgress().then(setSetOwned).catch(() => setSetOwned({}));
+    getAchievements().then(setAchievements).catch(() => setAchievements(null));
   }, [load]);
+
+  // Die 3 Sets, an denen am meisten "dran" ist - also am weitesten fortgeschritten,
+  // aber noch nicht komplett.
+  const topSets = useMemo(() => {
+    if (!setDefs) return [];
+    return setDefs
+      .map((s) => ({ ...s, owned: setOwned[s.id] ?? 0 }))
+      .filter((s) => s.total > 0 && s.owned > 0)
+      .map((s) => ({ ...s, pct: s.owned / s.total }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 3);
+  }, [setDefs, setOwned]);
+
+  const nextAchievement = useMemo(() => {
+    if (!achievements) return null;
+    const open = achievements.filter((a) => !a.earned);
+    if (!open.length) return null;
+    return open.sort((a, b) => b.current / b.target - a.current / a.target)[0];
+  }, [achievements]);
+  const earnedCount = achievements ? achievements.filter((a) => a.earned).length : 0;
 
   // Verlaufsgraph an die aktive Filterung anpassen.
   useEffect(() => {
@@ -308,6 +342,69 @@ export default function Collection() {
             G/V basiert auf {withCost.length} von {items.length} Karten mit hinterlegtem Kaufpreis.
           </p>
         )}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 mb-8">
+        <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium">🧩 Sets im Blick</p>
+            <Link to="/sets" className="text-xs text-subtle hover:text-ink underline">
+              Alle Sets
+            </Link>
+          </div>
+          {topSets.length === 0 ? (
+            <p className="text-subtle text-sm">
+              Noch kein Set begonnen. <Link to="/sets" className="underline hover:text-ink">Jetzt stöbern</Link>.
+            </p>
+          ) : (
+            <div className="space-y-2.5">
+              {topSets.map((s) => (
+                <Link key={s.id} to={`/sets/${s.id}`} className="block group">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="truncate group-hover:text-ink">{s.name}</span>
+                    <span className="text-subtle shrink-0 ml-2">
+                      {s.owned} / {s.total}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-line overflow-hidden">
+                    <div className="h-full bg-yellow" style={{ width: `${s.pct * 100}%` }} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium">🏅 Ordenkoffer</p>
+            <Link to="/orden" className="text-xs text-subtle hover:text-ink underline">
+              Ansehen
+            </Link>
+          </div>
+          {achievements === null ? (
+            <p className="text-subtle text-sm">Lade …</p>
+          ) : (
+            <>
+              <p className="text-xs text-subtle mb-1.5">{earnedCount} von {achievements.length} Orden gesammelt</p>
+              <div className="h-1.5 rounded-full bg-line overflow-hidden mb-3">
+                <div
+                  className="h-full bg-yellow"
+                  style={{ width: `${(earnedCount / achievements.length) * 100}%` }}
+                />
+              </div>
+              {nextAchievement && (
+                <Link to="/orden" className="flex items-center gap-2 text-xs hover:text-ink group">
+                  <OrdenBadge id={nextAchievement.id} earned={false} size={28} />
+                  <span className="text-subtle group-hover:text-ink">
+                    Nächster Orden: <b className="text-ink">{nextAchievement.title}</b>{" "}
+                    ({Math.min(nextAchievement.current, nextAchievement.target)}/{nextAchievement.target})
+                  </span>
+                </Link>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       <Movers data={movers} />

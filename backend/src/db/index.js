@@ -127,6 +127,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+-- Orden-System: welche Orden hat welcher Nutzer wann erhalten (Definitionen
+-- selbst liegen im Code, nicht in der DB - so lassen sich neue Orden ohne
+-- Migration hinzufügen).
+CREATE TABLE IF NOT EXISTS user_achievements (
+  user_id         INTEGER NOT NULL REFERENCES users(id),
+  achievement_id  TEXT NOT NULL,
+  earned_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, achievement_id)
+);
+
 -- Kennzahlen für den Tagesbericht an den Betreiber.
 -- daily_hits: Seitenaufrufe je Pfad (keine IPs).
 CREATE TABLE IF NOT EXISTS daily_hits (

@@ -19,6 +19,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 import Account from "./pages/Account.jsx";
+import Orden from "./pages/Orden.jsx";
 import Footer from "./components/Footer.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 import { useAuth } from "./context/AuthContext.jsx";
@@ -66,6 +67,7 @@ export default function App() {
               <>
                 <NavLink to="/verkauft" className={navCls}>Verkauft</NavLink>
                 <NavLink to="/statistik" className={navCls}>Statistik</NavLink>
+                <NavLink to="/orden" className={navCls}>🏅 Orden</NavLink>
               </>
             )}
           </nav>
@@ -127,6 +129,7 @@ export default function App() {
           <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
           <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />
           <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
+          <Route path="/orden" element={<RequireAuth><Orden /></RequireAuth>} />
         </Routes>
       </main>
 

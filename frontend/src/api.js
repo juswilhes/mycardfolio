@@ -82,3 +82,6 @@ export const getSet = (setId) => request(`/sets/${setId}`);
 export const getCardsForSet = (setId) => request(`/sets/${setId}/cards`);
 export const getSetProgress = () => request("/sets/progress");
 export const getOwnedInSet = (setId) => request(`/sets/${setId}/owned`);
+
+// --- Orden ---------------------------------------------------------
+export const getAchievements = () => request("/achievements");
