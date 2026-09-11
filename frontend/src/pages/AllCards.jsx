@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchCards, addToCollection, getSets, getSetProgress } from "../api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
-// "Alle Karten": oben die Kartensuche (zum Hinzufügen), darunter – solange
-// nichts gesucht wird – die Set-Übersicht mit Sammlungs-Fortschritt.
+// "Alle Karten": oben die Kartensuche – funktioniert auch ohne Konto.
+// Darunter, solange nichts gesucht wird, die Set-Übersicht. Zur Sammlung
+// hinzufügen geht nur angemeldet.
 export default function AllCards() {
+  const { user, registrationOpen } = useAuth();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [results, setResults] = useState([]);
@@ -85,9 +88,10 @@ export default function AllCards() {
         </Link>
       </div>
       <p className="text-subtle text-sm mb-4">
-        Karte suchen und zur Sammlung hinzufügen – deutsche Namen gehen auch
-        („Glurak"), und du kannst die Kartennummer anhängen (z. B. „Mega Absol
-        ex 180/132"). Ohne Suche siehst du unten alle Sets.
+        Karte suchen – ganz ohne Konto. Deutsche Namen gehen auch („Glurak"),
+        und du kannst die Kartennummer anhängen (z. B. „Mega Absol ex
+        180/132"). Ohne Suche siehst du unten alle Sets.
+        {!user && " Zum Hinzufügen zu einer Sammlung meldest du dich an."}
       </p>
 
       <form
@@ -138,10 +142,14 @@ export default function AllCards() {
                     Details
                   </Link>
                   <button
-                    onClick={() => setDialogCard(card)}
+                    onClick={() =>
+                      user
+                        ? setDialogCard(card)
+                        : navigate(registrationOpen ? "/register" : "/login")
+                    }
                     className="flex-1 border border-line text-xs py-1.5 rounded-full hover:border-ink"
                   >
-                    + Sammlung
+                    {user ? "+ Sammlung" : "Anmelden"}
                   </button>
                 </div>
               </div>

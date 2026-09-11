@@ -57,14 +57,18 @@ export default function App() {
           <Logo className="h-11" />
         </Link>
         <div className="flex items-center gap-6">
-          {user && (
-            <nav className="flex gap-6 text-sm">
+          <nav className="flex gap-6 text-sm">
+            {user && (
               <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
-              <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
-              <NavLink to="/verkauft" className={navCls}>Verkauft</NavLink>
-              <NavLink to="/statistik" className={navCls}>Statistik</NavLink>
-            </nav>
-          )}
+            )}
+            <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
+            {user && (
+              <>
+                <NavLink to="/verkauft" className={navCls}>Verkauft</NavLink>
+                <NavLink to="/statistik" className={navCls}>Statistik</NavLink>
+              </>
+            )}
+          </nav>
           {!loading &&
             (user ? (
               <div className="flex items-center gap-3 text-sm">
@@ -104,6 +108,13 @@ export default function App() {
           <Route path="/impressum" element={<Impressum />} />
           <Route path="/datenschutz" element={<Datenschutz />} />
 
+          {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
+          <Route path="/sets" element={<AllCards />} />
+          <Route path="/sets/:setId" element={<SetDetail />} />
+          <Route path="/database/:externalId" element={<CardInfo />} />
+          {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
+          <Route path="/add" element={<Navigate to="/sets" replace />} />
+
           {/* Startseite: öffentliche Landingpage, angemeldet die Sammlung */}
           <Route
             path="/"
@@ -115,11 +126,6 @@ export default function App() {
           <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
           <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
           <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />
-          <Route path="/sets" element={<RequireAuth><AllCards /></RequireAuth>} />
-          {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
-          <Route path="/add" element={<Navigate to="/sets" replace />} />
-          <Route path="/sets/:setId" element={<RequireAuth><SetDetail /></RequireAuth>} />
-          <Route path="/database/:externalId" element={<RequireAuth><CardInfo /></RequireAuth>} />
           <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
         </Routes>
       </main>

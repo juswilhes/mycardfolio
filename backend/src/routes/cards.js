@@ -12,6 +12,7 @@ import {
 } from "../services/cardService.js";
 import { searchCardsLocal, getCardByExternalIdLocal } from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
+import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -68,7 +69,9 @@ router.get("/external/:externalId/prices", (req, res) => {
 });
 
 // PATCH /api/cards/external/:externalId/artist  { artist }
-router.patch("/external/:externalId/artist", (req, res) => {
+// Angemeldet, damit nicht anonym Kartendaten verändert werden können
+// (die Suche selbst bleibt öffentlich).
+router.patch("/external/:externalId/artist", authRequired, (req, res) => {
   const artist = (req.body?.artist ?? "").trim();
   if (!artist) return res.status(400).json({ error: "artist fehlt" });
   const info = setArtistManual.run(artist, req.params.externalId);

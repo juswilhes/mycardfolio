@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getSet, getCardsForSet, getOwnedInSet } from "../api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
-// Route: /sets/:setId  – Set-Kopf + Raster aller Karten. Karten, die du
-// besitzt, sind hervorgehoben; ein Filter zeigt wahlweise nur besessene
-// oder nur fehlende.
+// Route: /sets/:setId  – frei zugänglich. Angemeldet sind Karten, die du
+// besitzt, hervorgehoben; ein Filter zeigt wahlweise nur besessene oder
+// nur fehlende. Ohne Konto einfach die Kartenübersicht des Sets.
 export default function SetDetail() {
+  const { user } = useAuth();
   const { setId } = useParams();
   const [set, setSet] = useState(null);
   const [cards, setCards] = useState(null);
@@ -15,8 +17,12 @@ export default function SetDetail() {
   useEffect(() => {
     getSet(setId).then(setSet);
     getCardsForSet(setId).then(setCards);
-    getOwnedInSet(setId).then((ids) => setOwned(new Set(ids))).catch(() => setOwned(new Set()));
-  }, [setId]);
+    if (user) {
+      getOwnedInSet(setId).then((ids) => setOwned(new Set(ids))).catch(() => setOwned(new Set()));
+    } else {
+      setOwned(new Set());
+    }
+  }, [setId, user]);
 
   const shown = useMemo(() => {
     if (!cards) return [];
@@ -56,7 +62,7 @@ export default function SetDetail() {
         </div>
       )}
 
-      {cards && (
+      {cards && user && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <p className="text-sm font-medium">
@@ -76,6 +82,15 @@ export default function SetDetail() {
             {btn("missing", `Fehlt mir (${total - have})`)}
           </div>
         </div>
+      )}
+      {cards && !user && (
+        <p className="text-subtle text-sm mb-6">
+          {total} Karten in diesem Set.{" "}
+          <Link to="/register" className="underline hover:text-ink">
+            Anmelden
+          </Link>
+          , um deinen Sammlungsfortschritt zu sehen.
+        </p>
       )}
 
       {cards === null ? (

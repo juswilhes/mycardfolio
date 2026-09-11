@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection } from "../api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 
-// Route: /database/:externalId
+// Route: /database/:externalId – frei zugänglich, auch ohne Konto.
 // Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
-// Illustrator-Angabe lässt sich hier von Hand ergänzen/korrigieren.
+// Illustrator-Angabe lässt sich hier von Hand ergänzen/korrigieren
+// (angemeldet – schützt vor anonymem Vandalismus).
 export default function CardInfo() {
+  const { user, registrationOpen } = useAuth();
   const { externalId } = useParams();
   const [card, setCard] = useState(null);
   const [history, setHistory] = useState(null);
@@ -81,13 +84,15 @@ export default function CardInfo() {
             {card.number ? ` · #${card.number}` : ""}
           </p>
 
-          <ArtistLine card={card} externalId={externalId} onSaved={setCard} />
+          {user && <ArtistLine card={card} externalId={externalId} onSaved={setCard} />}
 
           <button
-            onClick={() => setDialogOpen(true)}
+            onClick={() =>
+              user ? setDialogOpen(true) : navigate(registrationOpen ? "/register" : "/login")
+            }
             className="mt-4 bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
           >
-            + Zum Portfolio hinzufügen
+            {user ? "+ Zum Portfolio hinzufügen" : "Anmelden zum Hinzufügen"}
           </button>
         </div>
       </div>
