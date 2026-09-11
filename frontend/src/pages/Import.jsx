@@ -8,6 +8,7 @@ const num = (v) => {
   const n = parseFloat(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : null;
 };
+const eur = (n) => `${n.toFixed(2)} €`;
 
 // Eindeutige Lang-Anzeige ("11. September 2026") direkt neben dem
 // Datumsfeld - falls der Browser beim Tippen (statt Kalender-Klick) das
@@ -38,16 +39,20 @@ Glurak ex\t223/197\t1\t85,00\tde
 Relaxo\t\t2\t4,50\ten
 Pikachu VMAX\tTG17\t1\t12,00\tde`;
 
+const inputCls =
+  "w-full border border-line rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink focus:outline-none focus:border-ink";
+
 export default function Import() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const [step, setStep] = useState("input"); // input | preview | done
   const [busy, setBusy] = useState(false);
-  const [matched, setMatched] = useState([]); // [{ input, best, candidates, chosen, include, quantity, price }]
+  const [matched, setMatched] = useState([]); // [{ input, best, candidates, chosen, include, quantity, price, shipping, condition, language, variant, date, notes }]
   const [detected, setDetected] = useState(null); // { assignment, header }
   const [result, setResult] = useState(null);
 
-  // Globale Vorgaben, wenn die Zeile nichts angibt
+  // Globale Vorgaben, wenn eine Zeile nichts Eigenes einträgt - Zeilen
+  // können das unten jederzeit einzeln überschreiben.
   const [defCond, setDefCond] = useState("near_mint");
   const [defLang, setDefLang] = useState("de");
   const [defVariant, setDefVariant] = useState("normal");
@@ -67,6 +72,12 @@ export default function Import() {
           include: !!r.best,
           quantity: r.input.quantity || "1",
           price: r.input.price || "",
+          shipping: r.input.shipping || "",
+          condition: normCondition(r.input.condition) || "",
+          language: normLanguage(r.input.language) || "",
+          variant: normVariant(r.input.variant) || "",
+          date: r.input.date || "",
+          notes: r.input.notes || "",
         }))
       );
       setStep("preview");
@@ -91,12 +102,12 @@ export default function Import() {
         externalId: m.chosen.external_id,
         quantity: num(m.quantity) ?? 1,
         purchasePrice: num(m.price),
-        shippingCost: num(m.input.shipping),
-        purchaseDate: m.input.date || defDate || null,
-        notes: m.input.notes || null,
-        condition: normCondition(m.input.condition) ?? defCond,
-        language: normLanguage(m.input.language) ?? defLang,
-        variant: normVariant(m.input.variant) ?? defVariant,
+        shippingCost: num(m.shipping),
+        purchaseDate: m.date || defDate || null,
+        notes: m.notes || null,
+        condition: m.condition || defCond,
+        language: m.language || defLang,
+        variant: m.variant || defVariant,
       }));
     if (!items.length) return;
     setBusy(true);
@@ -173,15 +184,15 @@ export default function Import() {
                   return `${FIELD_LABELS[f]} = ${h ? `„${h}"` : `Spalte ${col + 1}`}`;
                 })
                 .join(" · ") || "einspaltige Liste (Kartennamen)"}
-              . Stimmt etwas nicht, korrigier es unten pro Zeile.
+              . Jede Zeile lässt sich unten einzeln zur Kontrolle korrigieren.
             </p>
           )}
           <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
             <span className="text-subtle">
               {stats.matched} von {stats.total} zugeordnet · {stats.selected} ausgewählt
             </span>
-            <span className="flex items-center gap-2">
-              <span className="text-xs text-subtle">Vorgaben:</span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-subtle">Vorgaben (gelten, wenn eine Zeile nichts Eigenes hat):</span>
               <select value={defCond} onChange={(e) => setDefCond(e.target.value)} className={selCls}>
                 {CONDITIONS.map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -211,67 +222,150 @@ export default function Import() {
             </span>
           </div>
 
-          <div className="border-t border-line">
-            {matched.map((m, i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5 border-b border-line text-sm">
-                <input
-                  type="checkbox"
-                  checked={m.include}
-                  disabled={!m.chosen}
-                  onChange={(e) => setRow(i, { include: e.target.checked })}
-                  className="shrink-0"
-                />
-                <div className="w-40 shrink-0 min-w-0">
-                  <p className="text-xs text-subtle truncate">{m.input.raw}</p>
-                </div>
-                <div className="flex-1 min-w-0">
-                  {m.candidates.length > 0 ? (
-                    <select
-                      value={m.chosen?.external_id ?? ""}
-                      onChange={(e) =>
-                        setRow(i, {
-                          chosen: m.candidates.find((c) => c.external_id === e.target.value) ?? null,
-                          include: !!e.target.value,
-                        })
-                      }
-                      className="w-full border border-line rounded-lg px-2 py-1 text-xs bg-canvas text-ink"
-                    >
-                      {m.candidates.map((c) => (
-                        <option key={c.external_id} value={c.external_id}>
-                          {c.name} · {c.set_name} · #{c.number}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-rose text-xs">nicht gefunden</span>
-                  )}
-                </div>
-                {m.chosen && (
-                  <img src={m.chosen.image_small} alt="" className="w-8 rounded shrink-0" />
-                )}
-                <input
-                  value={m.quantity}
-                  onChange={(e) => setRow(i, { quantity: e.target.value })}
-                  className="w-12 border border-line rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink text-center"
-                  title="Menge"
-                />
-                <input
-                  value={m.price}
-                  onChange={(e) => setRow(i, { price: e.target.value })}
-                  placeholder="€"
-                  className="w-16 border border-line rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink text-center"
-                  title="Kaufpreis"
-                />
-                {(m.input.date || defDate) && (
-                  <span
-                    className="text-[11px] text-subtle w-24 shrink-0 truncate"
-                    title="Erkanntes Kaufdatum dieser Zeile - bei Tippfehlern in der Ursprungsliste prüfen"
-                  >
-                    {formatLongDate(m.input.date || defDate)}
-                  </span>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="text-left text-subtle border-b border-line">
+                  <th className="py-2 pr-2 font-normal"></th>
+                  <th className="py-2 pr-2 font-normal min-w-[220px]">Karte</th>
+                  <th className="py-2 pr-2 font-normal">Menge</th>
+                  <th className="py-2 pr-2 font-normal">Kaufpreis</th>
+                  <th className="py-2 pr-2 font-normal">Versand</th>
+                  <th className="py-2 pr-2 font-normal">Einstand</th>
+                  <th className="py-2 pr-2 font-normal">Zustand</th>
+                  <th className="py-2 pr-2 font-normal">Sprache</th>
+                  <th className="py-2 pr-2 font-normal">Variante</th>
+                  <th className="py-2 pr-2 font-normal min-w-[130px]">Kaufdatum</th>
+                  <th className="py-2 pr-2 font-normal min-w-[120px]">Notiz</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matched.map((m, i) => {
+                  const effDate = m.date || defDate;
+                  const einstand = (num(m.price) ?? 0) + (num(m.shipping) ?? 0);
+                  const einstandTotal = einstand * (num(m.quantity) ?? 1);
+                  return (
+                    <tr key={i} className="border-b border-line align-top">
+                      <td className="py-2 pr-2">
+                        <input
+                          type="checkbox"
+                          checked={m.include}
+                          disabled={!m.chosen}
+                          onChange={(e) => setRow(i, { include: e.target.checked })}
+                        />
+                      </td>
+                      <td className="py-2 pr-2 min-w-[220px]">
+                        <p className="text-subtle truncate mb-1">{m.input.raw}</p>
+                        {m.candidates.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            {m.chosen && (
+                              <img src={m.chosen.image_small} alt="" className="w-6 rounded shrink-0" />
+                            )}
+                            <select
+                              value={m.chosen?.external_id ?? ""}
+                              onChange={(e) =>
+                                setRow(i, {
+                                  chosen: m.candidates.find((c) => c.external_id === e.target.value) ?? null,
+                                  include: !!e.target.value,
+                                })
+                              }
+                              className="w-full border border-line rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink"
+                            >
+                              {m.candidates.map((c) => (
+                                <option key={c.external_id} value={c.external_id}>
+                                  {c.name} · {c.set_name} · #{c.number}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <span className="text-rose">nicht gefunden</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input
+                          value={m.quantity}
+                          onChange={(e) => setRow(i, { quantity: e.target.value })}
+                          className={`${inputCls} w-12 text-center`}
+                        />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input
+                          value={m.price}
+                          onChange={(e) => setRow(i, { price: e.target.value })}
+                          placeholder="€"
+                          className={`${inputCls} w-16 text-center`}
+                        />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input
+                          value={m.shipping}
+                          onChange={(e) => setRow(i, { shipping: e.target.value })}
+                          placeholder="€"
+                          className={`${inputCls} w-16 text-center`}
+                        />
+                      </td>
+                      <td className="py-2 pr-2 font-mono whitespace-nowrap">
+                        {einstand > 0 ? eur(einstandTotal) : "—"}
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={m.condition || defCond}
+                          onChange={(e) => setRow(i, { condition: e.target.value })}
+                          className={`${inputCls} min-w-[110px]`}
+                        >
+                          {CONDITIONS.map(([v, l]) => (
+                            <option key={v} value={v}>{l}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={m.language || defLang}
+                          onChange={(e) => setRow(i, { language: e.target.value })}
+                          className={`${inputCls} min-w-[80px]`}
+                        >
+                          <option value="de">Deutsch</option>
+                          <option value="en">Englisch</option>
+                        </select>
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          value={m.variant || defVariant}
+                          onChange={(e) => setRow(i, { variant: e.target.value })}
+                          className={`${inputCls} min-w-[100px]`}
+                        >
+                          {VARIANTS.map(([v, l]) => (
+                            <option key={v} value={v}>{l}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 pr-2 min-w-[130px]">
+                        <input
+                          type="date"
+                          value={effDate}
+                          onChange={(e) => setRow(i, { date: e.target.value })}
+                          className={inputCls}
+                        />
+                        {effDate && (
+                          <p className="text-subtle mt-0.5 whitespace-nowrap" title="So wird das Datum verstanden">
+                            {formatLongDate(effDate)}
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-2 pr-2 min-w-[120px]">
+                        <input
+                          value={m.notes}
+                          onChange={(e) => setRow(i, { notes: e.target.value })}
+                          placeholder="optional"
+                          className={inputCls}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           <div className="flex items-center gap-3 mt-4">
