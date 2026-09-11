@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getSet, getCardsForSet, getOwnedInSet } from "../api.js";
+import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import WatchlistHeart from "../components/WatchlistHeart.jsx";
 
 // Route: /sets/:setId  – frei zugänglich. Angemeldet sind Karten, die du
 // besitzt, hervorgehoben; ein Filter zeigt wahlweise nur besessene oder
@@ -12,6 +13,7 @@ export default function SetDetail() {
   const [set, setSet] = useState(null);
   const [cards, setCards] = useState(null);
   const [owned, setOwned] = useState(new Set());
+  const [watchedIds, setWatchedIds] = useState(new Set());
   const [filter, setFilter] = useState("all"); // all | have | missing
 
   useEffect(() => {
@@ -19,8 +21,10 @@ export default function SetDetail() {
     getCardsForSet(setId).then(setCards);
     if (user) {
       getOwnedInSet(setId).then((ids) => setOwned(new Set(ids))).catch(() => setOwned(new Set()));
+      getWatchlistIds().then((ids) => setWatchedIds(new Set(ids))).catch(() => {});
     } else {
       setOwned(new Set());
+      setWatchedIds(new Set());
     }
   }, [setId, user]);
 
@@ -119,6 +123,20 @@ export default function SetDetail() {
                     <span className="absolute top-1 right-1 bg-mint text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center shadow">
                       ✓
                     </span>
+                  )}
+                  {user && !has && (
+                    <WatchlistHeart
+                      externalId={card.external_id}
+                      watched={watchedIds.has(card.external_id)}
+                      onChange={(now) =>
+                        setWatchedIds((prev) => {
+                          const next = new Set(prev);
+                          now ? next.add(card.external_id) : next.delete(card.external_id);
+                          return next;
+                        })
+                      }
+                      className="absolute top-1 right-1 bg-canvas/90 rounded-full w-6 h-6 flex items-center justify-center text-base shadow"
+                    />
                   )}
                 </div>
                 <p className="text-xs font-medium truncate">{card.name}</p>

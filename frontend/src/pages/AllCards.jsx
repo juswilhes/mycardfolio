@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { searchCards, addToCollection, getSets, getSetProgress } from "../api.js";
+import { searchCards, addToCollection, getSets, getSetProgress, getWatchlistIds } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
+import WatchlistHeart from "../components/WatchlistHeart.jsx";
 
 // "Alle Karten": oben die Kartensuche – funktioniert auch ohne Konto.
 // Darunter, solange nichts gesucht wird, die Set-Übersicht. Zur Sammlung
@@ -18,6 +19,7 @@ export default function AllCards() {
 
   const [sets, setSets] = useState(null);
   const [progress, setProgress] = useState({});
+  const [watchedIds, setWatchedIds] = useState(new Set());
 
   const [dialogCard, setDialogCard] = useState(null);
   const [celebrateCard, setCelebrateCard] = useState(null);
@@ -31,6 +33,11 @@ export default function AllCards() {
     getSets().then(setSets).catch(() => setSets([]));
     getSetProgress().then(setProgress).catch(() => setProgress({}));
   }, []);
+
+  useEffect(() => {
+    if (!user) return setWatchedIds(new Set());
+    getWatchlistIds().then((ids) => setWatchedIds(new Set(ids))).catch(() => {});
+  }, [user]);
 
   async function runSearch(q) {
     const term = q.trim();
@@ -124,12 +131,26 @@ export default function AllCards() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {results.map((card) => (
               <div key={card.external_id} className="flex flex-col">
-                <Link to={`/database/${card.external_id}`} className="flex flex-col group">
+                <Link to={`/database/${card.external_id}`} className="flex flex-col group relative">
                   <img
                     src={card.image_large}
                     alt={`${card.name} (Englisch)`}
                     className="rounded-2xl mb-2 border border-line shadow-sm group-hover:border-ink transition"
                   />
+                  {user && (
+                    <WatchlistHeart
+                      externalId={card.external_id}
+                      watched={watchedIds.has(card.external_id)}
+                      onChange={(now) =>
+                        setWatchedIds((prev) => {
+                          const next = new Set(prev);
+                          now ? next.add(card.external_id) : next.delete(card.external_id);
+                          return next;
+                        })
+                      }
+                      className="absolute top-1.5 right-1.5 bg-canvas/90 rounded-full w-7 h-7 flex items-center justify-center text-lg shadow-sm"
+                    />
+                  )}
                   <p className="text-sm font-medium truncate">{card.name}</p>
                   <p className="text-subtle text-xs truncate">{card.set_name}</p>
                   <p className="text-subtle text-[11px] mb-2 truncate">

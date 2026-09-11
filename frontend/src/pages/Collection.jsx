@@ -12,7 +12,46 @@ import CollectionGroup from "../components/CollectionGroup.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
 import OrdenBadge from "../components/OrdenBadge.jsx";
+import OrdenUnlockAnimation from "../components/OrdenUnlockAnimation.jsx";
 import { SortIcon, FilterIcon } from "../components/icons.jsx";
+
+const ORDEN_SEEN_KEY = "mcf-orden-seen";
+
+// Vergleicht frisch geladene Orden mit den zuletzt gesehenen (localStorage)
+// und gibt die neu freigeschalteten zurück. Beim allerersten Check in
+// diesem Browser wird nur eine Basislinie gesetzt, ohne zu feiern - sonst
+// würden nach dem Feature-Launch alle bereits vorhandenen Orden auf einmal
+// als "neu" durchgehen.
+function detectNewlyEarned(list) {
+  let seenRaw;
+  try {
+    seenRaw = localStorage.getItem(ORDEN_SEEN_KEY);
+  } catch {
+    return [];
+  }
+  const earnedIds = list.filter((a) => a.earned).map((a) => a.id);
+  if (seenRaw === null) {
+    try {
+      localStorage.setItem(ORDEN_SEEN_KEY, JSON.stringify(earnedIds));
+    } catch {
+      /* ignore */
+    }
+    return [];
+  }
+  let seen;
+  try {
+    seen = new Set(JSON.parse(seenRaw));
+  } catch {
+    seen = new Set();
+  }
+  const newly = list.filter((a) => a.earned && !seen.has(a.id));
+  try {
+    localStorage.setItem(ORDEN_SEEN_KEY, JSON.stringify([...new Set([...seen, ...earnedIds])]));
+  } catch {
+    /* ignore */
+  }
+  return newly;
+}
 
 const eur = (n) => `${n.toFixed(2)} €`;
 
@@ -82,6 +121,7 @@ export default function Collection() {
   const [setDefs, setSetDefs] = useState(null);
   const [setOwned, setSetOwned] = useState({});
   const [achievements, setAchievements] = useState(null);
+  const [unlockQueue, setUnlockQueue] = useState([]);
   const down = useMemo(
     () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
     []
@@ -116,7 +156,13 @@ export default function Collection() {
     load();
     getSets().then(setSetDefs).catch(() => setSetDefs([]));
     getSetProgress().then(setSetOwned).catch(() => setSetOwned({}));
-    getAchievements().then(setAchievements).catch(() => setAchievements(null));
+    getAchievements()
+      .then((list) => {
+        setAchievements(list);
+        const newly = detectNewlyEarned(list);
+        if (newly.length) setUnlockQueue((prev) => [...prev, ...newly]);
+      })
+      .catch(() => setAchievements(null));
   }, [load]);
 
   // Die 3 Sets, an denen am meisten "dran" ist - also am weitesten fortgeschritten,
@@ -469,6 +515,13 @@ export default function Collection() {
       <p className="text-xs text-subtle mt-6">
         <Link to="/verkauft" className="underline hover:text-ink">Verkaufshistorie ansehen</Link>
       </p>
+
+      {unlockQueue.length > 0 && (
+        <OrdenUnlockAnimation
+          achievement={unlockQueue[0]}
+          onDone={() => setUnlockQueue((q) => q.slice(1))}
+        />
+      )}
     </div>
   );
 }

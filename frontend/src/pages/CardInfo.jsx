@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection } from "../api.js";
+import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection, getWatchlistIds } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
+import WatchlistHeart from "../components/WatchlistHeart.jsx";
 
 // Route: /database/:externalId – frei zugänglich, auch ohne Konto.
 // Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
@@ -19,7 +20,13 @@ export default function CardInfo() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [watched, setWatched] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return setWatched(false);
+    getWatchlistIds().then((ids) => setWatched(ids.includes(externalId))).catch(() => {});
+  }, [externalId, user]);
 
   useEffect(() => {
     setCard(null);
@@ -86,14 +93,24 @@ export default function CardInfo() {
 
           {user && <ArtistLine card={card} externalId={externalId} onSaved={setCard} />}
 
-          <button
-            onClick={() =>
-              user ? setDialogOpen(true) : navigate(registrationOpen ? "/register" : "/login")
-            }
-            className="mt-4 bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
-          >
-            {user ? "+ Zum Portfolio hinzufügen" : "Anmelden zum Hinzufügen"}
-          </button>
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              onClick={() =>
+                user ? setDialogOpen(true) : navigate(registrationOpen ? "/register" : "/login")
+              }
+              className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
+            >
+              {user ? "+ Zum Portfolio hinzufügen" : "Anmelden zum Hinzufügen"}
+            </button>
+            {user && (
+              <WatchlistHeart
+                externalId={externalId}
+                watched={watched}
+                onChange={setWatched}
+                className="w-10 h-10 flex items-center justify-center rounded-full border border-line text-xl hover:border-ink"
+              />
+            )}
+          </div>
         </div>
       </div>
 

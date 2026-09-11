@@ -85,3 +85,11 @@ export const getOwnedInSet = (setId) => request(`/sets/${setId}/owned`);
 
 // --- Orden ---------------------------------------------------------
 export const getAchievements = () => request("/achievements");
+
+// --- Watchlist -----------------------------------------------------
+export const getWatchlist = () => request("/watchlist");
+export const getWatchlistIds = () => request("/watchlist/ids");
+export const addToWatchlist = (externalId) =>
+  request("/watchlist", { method: "POST", body: { externalId } });
+export const removeFromWatchlist = (externalId) =>
+  request(`/watchlist/${externalId}`, { method: "DELETE" });

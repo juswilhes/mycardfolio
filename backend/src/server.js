@@ -14,6 +14,7 @@ import setsRouter from "./routes/sets.js";
 import portfolioRouter from "./routes/portfolio.js";
 import salesRouter from "./routes/sales.js";
 import achievementsRouter from "./routes/achievements.js";
+import watchlistRouter from "./routes/watchlist.js";
 import { authRequired } from "./middleware/auth.js";
 import { countPageView } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
@@ -93,6 +94,7 @@ app.use("/api/collection", authRequired, collectionRouter);
 app.use("/api/portfolio", authRequired, portfolioRouter);
 app.use("/api/sales", authRequired, salesRouter);
 app.use("/api/achievements", authRequired, achievementsRouter);
+app.use("/api/watchlist", authRequired, watchlistRouter);
 
 // Manueller Trigger, praktisch zum Testen (normalerweise übernimmt der Cron-Job das)
 app.post("/api/refresh-prices", authRequired, async (_req, res) => {

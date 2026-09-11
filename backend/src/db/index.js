@@ -137,6 +137,15 @@ CREATE TABLE IF NOT EXISTS user_achievements (
   PRIMARY KEY (user_id, achievement_id)
 );
 
+-- Watchlist: Karten, die ein Nutzer im Auge behalten will, ohne sie schon
+-- zu besitzen (Herzchen auf der Kartensuche/-detailseite).
+CREATE TABLE IF NOT EXISTS watchlist_items (
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  card_id     INTEGER NOT NULL REFERENCES cards(id),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, card_id)
+);
+
 -- Kennzahlen für den Tagesbericht an den Betreiber.
 -- daily_hits: Seitenaufrufe je Pfad (keine IPs).
 CREATE TABLE IF NOT EXISTS daily_hits (
