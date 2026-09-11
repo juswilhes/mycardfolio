@@ -22,6 +22,7 @@ import Account from "./pages/Account.jsx";
 import Orden from "./pages/Orden.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import Footer from "./components/Footer.jsx";
+import { UserIcon } from "./components/icons.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -76,7 +77,6 @@ export default function App() {
           {!loading &&
             (user ? (
               <div className="flex items-center gap-3 text-sm">
-                <NavLink to="/konto" className={navCls} title={user.email}>Konto</NavLink>
                 <button onClick={() => setConfirmLogout(true)} className="text-subtle hover:text-ink">
                   Abmelden
                 </button>
@@ -91,13 +91,28 @@ export default function App() {
                 )}
               </div>
             ))}
-          <button
-            onClick={toggleTheme}
-            aria-label="Hell-/Dunkelmodus wechseln"
-            className="w-8 h-8 flex items-center justify-center rounded-full border border-line text-sm"
-          >
-            {isDark ? "☀︎" : "☾"}
-          </button>
+          <div className="flex items-center gap-2">
+            {user && (
+              <NavLink
+                to="/konto"
+                title={user.email}
+                className={({ isActive }) =>
+                  `w-8 h-8 flex items-center justify-center rounded-full border ${
+                    isActive ? "border-ink text-ink" : "border-line text-subtle hover:text-ink"
+                  }`
+                }
+              >
+                <UserIcon className="w-4 h-4" />
+              </NavLink>
+            )}
+            <button
+              onClick={toggleTheme}
+              aria-label="Hell-/Dunkelmodus wechseln"
+              className="w-8 h-8 flex items-center justify-center rounded-full border border-line text-sm"
+            >
+              {isDark ? "☀︎" : "☾"}
+            </button>
+          </div>
         </div>
       </header>
 
