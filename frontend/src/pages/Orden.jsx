@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAchievements } from "../api.js";
 import OrdenBadge from "../components/OrdenBadge.jsx";
+import Ordenkoffer from "../components/Ordenkoffer.jsx";
 
 const fmtDate = (iso) =>
   new Date(iso + "Z").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -10,24 +11,22 @@ function Badge({ a }) {
   return (
     <div
       className={`rounded-2xl p-4 flex flex-col items-center text-center gap-1.5 border transition ${
-        a.earned
-          ? "bg-yellow/10 border-yellow shadow-sm"
-          : "bg-surface/60 border-line border-dashed"
+        a.earned ? "bg-white/50 border-[#c9a24a] shadow-sm" : "bg-white/20 border-[#c9b285] border-dashed"
       }`}
     >
       <div className="mb-1">
         <OrdenBadge id={a.id} earned={a.earned} size={64} />
       </div>
-      <p className={`text-sm font-medium ${a.earned ? "" : "text-subtle"}`}>{a.title}</p>
-      <p className="text-[11px] text-subtle leading-snug">{a.desc}</p>
+      <p className={`text-sm font-medium ${a.earned ? "text-[#3b2611]" : "text-[#8a6f4d]"}`}>{a.title}</p>
+      <p className="text-[11px] text-[#6b563a] leading-snug">{a.desc}</p>
       {a.earned ? (
-        <p className="text-[10px] text-subtle mt-0.5">Erhalten am {fmtDate(a.earned_at)}</p>
+        <p className="text-[10px] text-[#8a7355] mt-0.5">Erhalten am {fmtDate(a.earned_at)}</p>
       ) : (
         <div className="w-full mt-1">
-          <div className="h-1.5 rounded-full bg-line overflow-hidden">
-            <div className="h-full bg-yellow" style={{ width: `${pct}%` }} />
+          <div className="h-1.5 rounded-full bg-[#e2cfa4] overflow-hidden">
+            <div className="h-full bg-[#c9a24a]" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-[10px] text-subtle">
+          <span className="text-[10px] text-[#8a7355]">
             {Math.min(a.current, a.target)} / {a.target}
           </span>
         </div>
@@ -36,9 +35,9 @@ function Badge({ a }) {
   );
 }
 
-// Route: /orden – der "Ordenkoffer". 16 niedliche Orden für Meilensteine
-// in der Sammlung, ganz an Pokémon-Arenaorden angelehnt: alle sichtbar,
-// erhaltene bunt, offene grau mit Fortschrittsbalken.
+// Route: /orden – der "Ordenkoffer". 16 Orden für Meilensteine in der
+// Sammlung, als Pixel-Sprites gestaltet und in einem echten kleinen
+// Reisekoffer präsentiert: erhaltene bunt, offene grau mit Fortschrittsbalken.
 export default function Orden() {
   const [achievements, setAchievements] = useState(null);
 
@@ -58,26 +57,23 @@ export default function Orden() {
         Für jeden kleinen und großen Meilenstein deiner Sammelreise gibt es einen Orden.
       </p>
 
-      <div className="bg-surface border border-line rounded-2xl px-6 py-4 mb-6 shadow-sm flex items-center gap-4">
-        <div className="flex-1">
-          <p className="text-sm font-medium mb-1">
-            {earnedCount} von {total} Orden gesammelt
-          </p>
-          <div className="h-2.5 rounded-full bg-line overflow-hidden">
-            <div
-              className="h-full bg-yellow transition-all"
-              style={{ width: `${(earnedCount / total) * 100}%` }}
-            />
-          </div>
+      <Ordenkoffer>
+        <p className="text-sm font-medium mb-1 text-[#3b2611]">
+          {earnedCount} von {total} Orden gesammelt
+        </p>
+        <div className="h-2.5 rounded-full bg-[#e2cfa4] overflow-hidden mb-5">
+          <div
+            className="h-full bg-[#c9a24a] transition-all"
+            style={{ width: `${(earnedCount / total) * 100}%` }}
+          />
         </div>
-        <span className="text-3xl shrink-0">🧳</span>
-      </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {achievements.map((a) => (
-          <Badge key={a.id} a={a} />
-        ))}
-      </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {achievements.map((a) => (
+            <Badge key={a.id} a={a} />
+          ))}
+        </div>
+      </Ordenkoffer>
     </div>
   );
 }
