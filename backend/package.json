@@ -9,7 +9,8 @@
     "import": "node src/scripts/importCardData.js",
     "import-tcgdex": "node src/scripts/importFromTcgdex.js",
     "backfill-artists": "node src/scripts/backfillArtists.js",
-    "build-de-names": "node src/scripts/buildGermanNames.js"
+    "build-de-names": "node src/scripts/buildGermanNames.js",
+    "seed-set-prices": "node src/scripts/seedSetPrices.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

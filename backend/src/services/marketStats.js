@@ -58,6 +58,55 @@ export function getTrackedSets() {
   return trackedSetsStmt.all().map((r) => r.set_name);
 }
 
+// Allgemeine Set-Übersicht: ALLE Sets aus dem Datensatz (nicht nur die mit
+// zufällig angesehenen Karten), mit Preisdaten der "Chase"-Karten (jenseits
+// von Common/Uncommon/Rare/Rare Holo/Promo) je Set, sofern vorhanden -
+// siehe scripts/seedSetPrices.js für die gezielte Vorab-Befüllung.
+const setsOverviewStmt = db.prepare(`
+  SELECT cs.id, cs.name, cs.series, cs.total, cs.release_date, cs.logo,
+         COUNT(DISTINCT lp.card_id) AS tracked_count,
+         COALESCE(SUM(lp.price), 0) AS sum_price
+  FROM card_sets cs
+  LEFT JOIN cards c ON c.set_id = cs.id
+  LEFT JOIN (
+    SELECT ps.card_id, ps.price,
+           ROW_NUMBER() OVER (PARTITION BY ps.card_id ORDER BY ps.fetched_at DESC) AS rn
+    FROM price_snapshots ps
+    WHERE ps.price_type = 'trend' AND ps.variant = 'normal'
+  ) lp ON lp.card_id = c.id AND lp.rn = 1
+  GROUP BY cs.id
+  ORDER BY cs.release_date DESC
+`);
+
+const topCardForSetStmt = db.prepare(`
+  SELECT c.name, c.external_id, c.image_small, lp.price
+  FROM cards c
+  JOIN (
+    SELECT ps.card_id, ps.price,
+           ROW_NUMBER() OVER (PARTITION BY ps.card_id ORDER BY ps.fetched_at DESC) AS rn
+    FROM price_snapshots ps
+    WHERE ps.price_type = 'trend' AND ps.variant = 'normal'
+  ) lp ON lp.card_id = c.id AND lp.rn = 1
+  WHERE c.set_id = ? AND lp.rn = 1
+  ORDER BY lp.price DESC
+  LIMIT 1
+`);
+
+export function getSetsOverview() {
+  return setsOverviewStmt.all().map((s) => ({
+    id: s.id,
+    name: s.name,
+    series: s.series,
+    total: s.total,
+    release_date: s.release_date,
+    logo: s.logo,
+    trackedCount: s.tracked_count,
+    sumValue: s.sum_price,
+    avgValue: s.tracked_count ? s.sum_price / s.tracked_count : 0,
+    topCard: s.tracked_count ? topCardForSetStmt.get(s.id) : null,
+  }));
+}
+
 // Größte Gewinner/Verlierer (Trendpreis, Variante 'normal') über alle
 // jemals angesehenen Karten - unabhängig davon, wer sie besitzt. Wächst mit
 // der Zeit, je mehr Karten Nutzer sich ansehen (siehe priceFetcher.js).

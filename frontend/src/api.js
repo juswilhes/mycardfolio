@@ -101,3 +101,4 @@ export const getTrackedSets = () => request("/stats/tracked-sets");
 export const getWatchlistMovers = (days = 7) => request(`/stats/watchlist-movers?days=${days}`);
 export const getSetMomentum = (days = 30) => request(`/stats/set-momentum?days=${days}`);
 export const getThawing = () => request("/stats/thawing");
+export const getSetsOverview = () => request("/stats/sets-overview");

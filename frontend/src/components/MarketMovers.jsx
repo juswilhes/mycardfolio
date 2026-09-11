@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing } from "../api.js";
 import GradingCalculator from "./GradingCalculator.jsx";
+import SetsOverview from "./SetsOverview.jsx";
 
 const eur = (n) => `${Math.abs(Number(n)).toFixed(2)} €`;
 
@@ -90,6 +91,8 @@ export default function MarketMovers() {
 
   return (
     <div>
+      <SetsOverview />
+
       {watch && watch.length > 0 && (
         <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-8">
           <div className="flex items-center justify-between mb-2">

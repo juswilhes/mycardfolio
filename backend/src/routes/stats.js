@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing } from "../services/marketStats.js";
+import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing, getSetsOverview } from "../services/marketStats.js";
 
 const router = Router();
 
@@ -31,6 +31,12 @@ router.get("/set-momentum", (req, res) => {
 // GET /api/stats/thawing -> lang gefallen, zuletzt aber wieder im Aufwind
 router.get("/thawing", (_req, res) => {
   res.json(getThawing());
+});
+
+// GET /api/stats/sets-overview -> Preisübersicht über ALLE Sets, nicht nur
+// zufällig angesehene Karten
+router.get("/sets-overview", (_req, res) => {
+  res.json(getSetsOverview());
 });
 
 export default router;
