@@ -224,6 +224,37 @@ function setSimilarity(a, b) {
   return hit / Math.max(wa.size, wb.length);
 }
 
+// Deutschen Kartennamen fürs Scoring übersetzen ("Glurak ex" -> "Charizardex").
+// Unser Datensatz ist englisch, Import-Listen oft deutsch. Ohne das bleibt
+// der Namens-Bonus unten bei jeder deutschen Eingabe 0 (z.B. "glurakex"
+// passt nie zu "charizardex"), obwohl die Suche (die DE_EN bereits über
+// expandQuery nutzt) die richtige Karte längst gefunden hat - der Import
+// wählt dann faktisch zufällig zwischen den Treffern.
+function translateGermanName(name) {
+  const q = (name ?? "").trim();
+  const ql = q.toLowerCase();
+  let best = null;
+  for (const de of Object.keys(DE_EN)) {
+    if ((ql === de || ql.startsWith(de + " ")) && (!best || de.length > best.length)) {
+      best = de;
+    }
+  }
+  return best ? DE_EN[best] + q.slice(best.length) : null;
+}
+
+// Bester Namens-Treffer über ggf. mehrere Zielformen (Original + Übersetzung).
+function bestNameMatch(rn, targets) {
+  let best = { score: 0, target: targets[0] };
+  for (const target of targets) {
+    let score = 0;
+    if (rn === target) score = 30;
+    else if (rn.startsWith(target) || target.startsWith(rn)) score = 12;
+    else if (rn.includes(target)) score = 4;
+    if (score > best.score) best = { score, target };
+  }
+  return best;
+}
+
 // Beste Übereinstimmung für eine Zeile aus einem Massen-Import.
 // name kann die Nummer bereits enthalten; number/set schränken zusätzlich ein.
 export function matchCardForImport({ name, number, set }) {
@@ -235,6 +266,8 @@ export function matchCardForImport({ name, number, set }) {
 
   const nn = number ? normNum(number) : null;
   const nName = normLoose(name);
+  const nNameEn = normLoose(translateGermanName(name) ?? "");
+  const nameTargets = nNameEn && nNameEn !== nName ? [nName, nNameEn] : [nName];
 
   // jede Karte bewerten: Nummer > Set > exakter Name > Namensanfang
   const scored = rows.map((r) => {
@@ -247,17 +280,24 @@ export function matchCardForImport({ name, number, set }) {
       else score -= 10;
     }
     const rn = normLoose(r.name);
-    if (rn === nName) score += 30;
-    else if (rn.startsWith(nName) || nName.startsWith(rn)) score += 12;
-    else if (rn.includes(nName)) score += 4;
-    score -= Math.min(10, Math.abs(rn.length - nName.length) / 3); // kürzere Namen bevorzugen
+    const { score: nameScore, target } = bestNameMatch(rn, nameTargets);
+    score += nameScore;
+    score -= Math.min(10, Math.abs(rn.length - target.length) / 3); // kürzere Namen bevorzugen
     return { r, score };
   });
   scored.sort((a, b) => b.score - a.score);
 
+  const best = scored[0]?.r ?? null;
+  // Niedrige Konfidenz = bester und zweitbester Treffer fast gleichauf, oder
+  // insgesamt schwacher Treffer -> im Import-Screen extra markieren statt
+  // blind zu übernehmen.
+  const gap = scored.length > 1 ? scored[0].score - scored[1].score : Infinity;
+  const confidence = !best ? null : scored[0].score >= 30 && gap >= 20 ? "high" : "low";
+
   return {
-    best: scored[0]?.r ?? null,
+    best,
     candidates: scored.slice(0, 8).map((x) => x.r),
+    confidence,
   };
 }
 

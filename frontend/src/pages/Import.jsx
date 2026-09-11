@@ -269,7 +269,9 @@ export default function Import() {
                                   include: !!e.target.value,
                                 })
                               }
-                              className="w-full border border-line rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink"
+                              className={`w-full border rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink ${
+                                m.confidence === "low" ? "border-amber-500" : "border-line"
+                              }`}
                             >
                               {m.candidates.map((c) => (
                                 <option key={c.external_id} value={c.external_id}>
@@ -280,6 +282,9 @@ export default function Import() {
                           </div>
                         ) : (
                           <span className="text-rose">nicht gefunden</span>
+                        )}
+                        {m.confidence === "low" && (
+                          <p className="text-amber-600 mt-1">⚠ unsicher – bitte prüfen</p>
                         )}
                       </td>
                       <td className="py-2 pr-2">

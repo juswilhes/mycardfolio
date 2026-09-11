@@ -145,12 +145,12 @@ router.post("/import/match", (req, res) => {
   const rows = Array.isArray(req.body?.rows) ? req.body.rows.slice(0, 500) : [];
   res.json(
     rows.map((row) => {
-      const { best, candidates } = matchCardForImport({
+      const { best, candidates, confidence } = matchCardForImport({
         name: row.name,
         number: row.number,
         set: row.set,
       });
-      return { input: row, best, candidates };
+      return { input: row, best, candidates, confidence };
     })
   );
 });
