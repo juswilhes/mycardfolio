@@ -228,6 +228,7 @@ export default function Import() {
                 <tr className="text-left text-subtle border-b border-line">
                   <th className="py-2 pr-2 font-normal"></th>
                   <th className="py-2 pr-2 font-normal min-w-[220px]">Karte</th>
+                  <th className="py-2 pr-2 font-normal min-w-[110px]">Status</th>
                   <th className="py-2 pr-2 font-normal">Menge</th>
                   <th className="py-2 pr-2 font-normal">Kaufpreis</th>
                   <th className="py-2 pr-2 font-normal">Versand</th>
@@ -283,8 +284,12 @@ export default function Import() {
                         ) : (
                           <span className="text-rose">nicht gefunden</span>
                         )}
+                      </td>
+                      <td className="py-2 pr-2 min-w-[110px]">
                         {m.confidence === "low" && (
-                          <p className="text-amber-600 mt-1">⚠ unsicher – bitte prüfen</p>
+                          <span className="inline-block bg-amber-100 text-amber-700 border border-amber-400 rounded-full px-2 py-0.5 whitespace-nowrap">
+                            ⚠ Prüfungsbedarf
+                          </span>
                         )}
                       </td>
                       <td className="py-2 pr-2">
