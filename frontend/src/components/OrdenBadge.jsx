@@ -4,12 +4,19 @@ import { shapeToPathD } from "../lib/ordenShapes.js";
 // Ein Orden als kleines Schmuckstück: ein Metallrahmen (Gold, erhalten /
 // Silber, offen) liegt als etwas größere Kopie der Silhouette dahinter,
 // darüber der "Edelstein" mit radialem Glanzverlauf, dünner Kontur und
-// einem Glanzlicht - 16 komplett eigenständige Formen (siehe ordenShapes.js).
+// einem Glanzlicht - 16 komplett eigenständige Motive (siehe ordenShapes.js).
+// "extra" (z.B. Lupengriff, Stern neben der Mondsichel) wird als zweiter,
+// immer normal gefüllter Pfad obendrauf gezeichnet, damit er eine
+// Aussparungs-Form (fillRule evenodd) frei überlappen kann, ohne aus
+// Versehen neue Löcher hineinzuschneiden.
 export default function OrdenBadge({ id, earned, size = 64 }) {
   const style = ORDEN_STYLES[id] ?? ORDEN_STYLES.erster_fang;
-  const pathD = shapeToPathD(style);
+  const { d: pathD, extra } = shapeToPathD(style);
   const fillRule = style.fillRule ?? "nonzero";
   const uid = `orden-${id}`;
+  const ringFill = `url(#${uid}-ring)`;
+  const gemFill = `url(#${uid}-gem)`;
+  const gemStroke = earned ? style.dark : "#868c93";
 
   return (
     <svg width={size} height={size} viewBox="0 0 100 100">
@@ -46,23 +53,24 @@ export default function OrdenBadge({ id, earned, size = 64 }) {
       </defs>
 
       {/* Metallrahmen - dieselbe Form, etwas größer, schimmert am Rand hervor */}
-      <path
-        d={pathD}
-        fillRule={fillRule}
-        fill={`url(#${uid}-ring)`}
-        transform="translate(50 50) scale(1.16) translate(-50 -50)"
-      />
+      <g transform="translate(50 50) scale(1.16) translate(-50 -50)">
+        <path d={pathD} fillRule={fillRule} fill={ringFill} />
+        {extra && <path d={extra} fill={ringFill} />}
+      </g>
 
       {/* Edelstein */}
       <path
         d={pathD}
         fillRule={fillRule}
-        fill={`url(#${uid}-gem)`}
-        stroke={earned ? style.dark : "#868c93"}
+        fill={gemFill}
+        stroke={gemStroke}
         strokeWidth="2.2"
         strokeLinejoin="round"
         opacity={earned ? 1 : 0.9}
       />
+      {extra && (
+        <path d={extra} fill={gemFill} stroke={gemStroke} strokeWidth="2.2" strokeLinejoin="round" opacity={earned ? 1 : 0.9} />
+      )}
 
       {/* Glanzlicht */}
       {earned && (

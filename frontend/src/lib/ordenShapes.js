@@ -79,134 +79,160 @@ function diamondPoints(cx, cy, s) {
 }
 
 // Liefert für jeden Orden einen zusammengesetzten SVG-Pfad (0..100) - jeder
-// mit einem eigenen kleinen Motiv statt einer schlichten Einzelform.
+// mit einem eigenen kleinen Motiv statt einer schlichten Einzelform. Alle
+// Teile überlappen sich bewusst, damit nichts als lose Einzelteile wirkt.
+// { d, extra }: "d" folgt style.fillRule (nötig für Formen mit Aussparungen
+// wie Pokéball/Lupe/Mondsichel/Zielscheibe); "extra" ist ein optionaler
+// zweiter, IMMER nonzero gefüllter Teil - so kann z.B. der Lupengriff oder
+// der kleine Stern frei über eine Aussparungs-Form greifen, ohne versehentlich
+// neue Löcher hineinzuschneiden.
 export function shapeToPathD(style) {
   switch (style.shape) {
     // Erster Fang: ein Pokéball-Umriss (Kreis, Trennlinie, Knopf mit Loch).
     case "pokeball":
-      return [
-        circlePathD(50, 50, 42),
-        "M4,45 L96,45 L96,55 L4,55 Z",
-        circlePathD(50, 50, 8),
-        circlePathD(50, 50, 3.5),
-      ].join(" ");
+      return {
+        d: [
+          circlePathD(50, 50, 42),
+          "M4,45 L96,45 L96,55 L4,55 Z",
+          circlePathD(50, 50, 8),
+          circlePathD(50, 50, 3.5),
+        ].join(" "),
+      };
 
     // Erster Handel: drei gestapelte Münzen.
     case "coinstack":
-      return [
-        ellipsePathD(48, 68, 24, 14),
-        ellipsePathD(52, 50, 24, 14),
-        ellipsePathD(48, 32, 24, 14),
-      ].join(" ");
+      return {
+        d: [
+          ellipsePathD(48, 68, 24, 14),
+          ellipsePathD(52, 50, 24, 14),
+          ellipsePathD(48, 32, 24, 14),
+        ].join(" "),
+      };
 
-    // Weltenbummler: verstreute Wegpunkte/Fußspuren unterschiedlicher Größe.
+    // Weltenbummler: eine Spur aus Wegpunkten, jeder mit dem nächsten
+    // verbunden - wie eine Fußspur auf der Reise.
     case "scatter":
-      return [
-        circlePathD(30, 32, 15),
-        circlePathD(70, 30, 12),
-        circlePathD(66, 70, 14),
-        circlePathD(26, 68, 11),
-        circlePathD(50, 50, 7),
-      ].join(" ");
+      return {
+        d: [
+          circlePathD(24, 62, 17),
+          circlePathD(38, 45, 15),
+          circlePathD(55, 37, 13),
+          circlePathD(71, 32, 11),
+          circlePathD(84, 25, 8),
+        ].join(" "),
+      };
 
     // Halber Weg: zwei Kreise, die sich in der Mitte treffen.
     case "venn":
-      return [circlePathD(38, 50, 29), circlePathD(62, 50, 29)].join(" ");
+      return { d: [circlePathD(38, 50, 29), circlePathD(62, 50, 29)].join(" ") };
 
     // Meistersammler: eine Krone mit drei Zacken und Edelstein-Spitzen.
     case "crown":
-      return [
-        "M20,72 L20,56 L30,40 L38,56 L50,32 L62,56 L70,40 L80,56 L80,72 Z",
-        circlePathD(30, 38, 5),
-        circlePathD(50, 30, 6),
-        circlePathD(70, 38, 5),
-      ].join(" ");
+      return {
+        d: [
+          "M20,72 L20,56 L30,40 L38,56 L50,32 L62,56 L70,40 L80,56 L80,72 Z",
+          circlePathD(30, 38, 5),
+          circlePathD(50, 30, 6),
+          circlePathD(70, 38, 5),
+        ].join(" "),
+      };
 
     // Kunstkenner: die Blüte aus überlappenden Kreisen (Original-Motiv).
     case "flower":
-      return (
-        flowerPetals(6, 21, 17).map((p) => circlePathD(p.cx, p.cy, p.r)).join(" ") +
-        " " +
-        circlePathD(50, 50, 15)
-      );
+      return {
+        d:
+          flowerPetals(6, 21, 17).map((p) => circlePathD(p.cx, p.cy, p.r)).join(" ") +
+          " " +
+          circlePathD(50, 50, 15),
+      };
 
     // Fanclub: ein kleiner Strauß aus drei Herzen.
     case "heartcluster":
-      return [heartPathD(35, 66, 0.42), heartPathD(65, 63, 0.46), heartPathD(50, 36, 0.58)].join(" ");
+      return { d: [heartPathD(35, 66, 0.42), heartPathD(65, 63, 0.46), heartPathD(50, 36, 0.58)].join(" ") };
 
-    // Pokédex-Forscher: eine Lupe (Ring + Griff).
+    // Pokédex-Forscher: eine Lupe (Ring + Griff, der Griff überlappt den
+    // Ring bewusst, statt nur daneben zu schweben).
     case "magnifier":
-      return [
-        circlePathD(42, 42, 26),
-        circlePathD(42, 42, 18),
-        "M58.3,65.3 L65.3,58.3 L93.5,86.5 L86.5,93.5 Z",
-      ].join(" ");
+      return {
+        d: [circlePathD(42, 42, 26), circlePathD(42, 42, 18)].join(" "),
+        extra: "M56.53,61.48 L61.48,56.53 L94.48,89.53 L89.53,94.48 Z",
+      };
 
-    // Elementmeister: vier Elementar-Zacken um einen Kern.
+    // Elementmeister: vier Elementar-Zacken um einen gemeinsamen Kern.
     case "elements":
-      return [
-        pointsToPathD(diamondPoints(50, 22, 16)),
-        pointsToPathD(diamondPoints(78, 50, 16)),
-        pointsToPathD(diamondPoints(50, 78, 16)),
-        pointsToPathD(diamondPoints(22, 50, 16)),
-        circlePathD(50, 50, 13),
-      ].join(" ");
+      return {
+        d: [
+          pointsToPathD(diamondPoints(50, 22, 17)),
+          pointsToPathD(diamondPoints(78, 50, 17)),
+          pointsToPathD(diamondPoints(50, 78, 17)),
+          pointsToPathD(diamondPoints(22, 50, 17)),
+          circlePathD(50, 50, 16),
+        ].join(" "),
+      };
 
-    // Wertvoller Fund: ein Edelstein mit zwei kleinen Funkeln.
+    // Wertvoller Fund: ein Edelstein mit zwei kleinen Funkeln an den Ecken.
     case "gemsparkle":
-      return [
-        pointsToPathD("50,8 76,28 76,72 50,92 24,72 24,28"),
-        pointsToPathD(starPoints(4, 9, 3, 20, 18)),
-        pointsToPathD(starPoints(4, 7, 2.5, 80, 24)),
-      ].join(" ");
+      return {
+        d: [
+          pointsToPathD("50,8 76,28 76,72 50,92 24,72 24,28"),
+          pointsToPathD(starPoints(4, 11, 4, 22, 22)),
+          pointsToPathD(starPoints(4, 9, 3, 79, 27)),
+        ].join(" "),
+      };
 
-    // Kostbarkeit: eine Mondsichel mit einem kleinen Stern.
+    // Kostbarkeit: eine Mondsichel, an der ein kleiner Stern anliegt.
     case "moonstar":
-      return [
-        circlePathD(40, 52, 32),
-        circlePathD(58, 52, 28),
-        pointsToPathD(starPoints(5, 9, 3.5, 82, 24)),
-      ].join(" ");
+      return {
+        d: [circlePathD(40, 52, 32), circlePathD(58, 52, 28)].join(" "),
+        extra: pointsToPathD(starPoints(5, 11, 4.5, 13, 29)),
+      };
 
     // Volltreffer: eine Zielscheibe (konzentrische Ringe).
     case "target":
-      return [circlePathD(50, 50, 42), circlePathD(50, 50, 28), circlePathD(50, 50, 14)].join(" ");
+      return { d: [circlePathD(50, 50, 42), circlePathD(50, 50, 28), circlePathD(50, 50, 14)].join(" ") };
 
-    // Gewinnstratege: ein Balkendiagramm mit Pfeilspitze nach oben.
+    // Gewinnstratege: ein Balkendiagramm auf gemeinsamer Grundlinie mit
+    // Pfeilspitze nach oben.
     case "growthchart":
-      return [
-        "M16,84 L16,56 L32,56 L32,84 Z",
-        "M42,84 L42,36 L58,36 L58,84 Z",
-        "M68,84 L68,14 L84,14 L84,84 Z",
-        "M68,20 L84,20 L76,4 Z",
-      ].join(" ");
+      return {
+        d: [
+          "M16,84 L16,56 L32,56 L32,84 Z",
+          "M42,84 L42,36 L58,36 L58,84 Z",
+          "M68,84 L68,14 L84,14 L84,84 Z",
+          "M68,20 L84,20 L76,4 Z",
+          "M12,80 L88,80 L88,88 L12,88 Z",
+        ].join(" "),
+      };
 
     // Meistergrad: eine Medaille mit zwei Bandenden.
     case "medal":
-      return [
-        "M38,50 L46,50 L34,94 Z",
-        "M54,50 L62,50 L66,94 Z",
-        circlePathD(50, 38, 26),
-        circlePathD(50, 38, 17),
-      ].join(" ");
+      return {
+        d: [
+          "M38,50 L46,50 L34,94 Z",
+          "M54,50 L62,50 L66,94 Z",
+          circlePathD(50, 38, 26),
+          circlePathD(50, 38, 17),
+        ].join(" "),
+      };
 
     // Sprachtalent: zwei überlappende Rauten.
     case "diamondpair":
-      return [pointsToPathD(diamondPoints(38, 50, 27)), pointsToPathD(diamondPoints(62, 50, 27))].join(" ");
+      return { d: [pointsToPathD(diamondPoints(38, 50, 27)), pointsToPathD(diamondPoints(62, 50, 27))].join(" ") };
 
-    // Treuer Trainer: ein Lorbeerkranz aus kleinen Blättern.
+    // Treuer Trainer: ein Lorbeerkranz aus kleinen, sich überlappenden
+    // Blättern, unten durch eine gemeinsame Schleife verbunden.
     case "wreath": {
       const leaves = [];
       const left = [
-        [28, 26, -55], [19, 42, -78], [18, 60, -102], [24, 76, -128], [34, 88, -150],
+        [30, 24, -55], [21, 38, -80], [19, 54, -105], [23, 70, -130], [36, 86, -155],
       ];
       const right = left.map(([x, y, r]) => [100 - x, y, -r]);
-      for (const [x, y, r] of [...left, ...right]) leaves.push(ellipsePathD(x, y, 11, 5.5, r));
-      leaves.push(circlePathD(50, 92, 5));
-      return leaves.join(" ");
+      for (const [x, y, r] of [...left, ...right]) leaves.push(ellipsePathD(x, y, 14, 7, r));
+      leaves.push(circlePathD(50, 90, 8));
+      return { d: leaves.join(" ") };
     }
 
     default:
-      return circlePathD(50, 50, 42);
+      return { d: circlePathD(50, 50, 42) };
   }
 }
