@@ -265,6 +265,35 @@ const parseNumber = (v) => {
   return m ? m[1].toUpperCase() : clean(v).replace(/^#/, "") || null;
 };
 
+const pad2 = (n) => String(n).padStart(2, "0");
+
+// Datum aus einer Import-Zelle robust nach ISO (YYYY-MM-DD) wandeln. Bei
+// mehrdeutigem "1.2.2026"-Format wird IMMER Tag-zuerst angenommen (deutsche
+// Konvention) statt es JavaScripts Date-Parser zu überlassen, der genau das
+// mit US-Konvention (Monat zuerst) verwechselt - z.B. würde "11.09.2026"
+// (11. September) sonst als 9. November interpretiert.
+function parseDateToISO(v) {
+  const s = clean(v);
+  if (!s) return null;
+
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); // schon ISO
+  if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+
+  m = s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/); // TT.MM.JJJJ (Tag zuerst)
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      return `${m[3]}-${pad2(month)}-${pad2(day)}`;
+    }
+  }
+
+  m = s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/); // JJJJ.MM.TT
+  if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+
+  return null; // nicht sicher erkennbar - lieber leer lassen als raten
+}
+
 // "Charizard ex (Obsidian Flames)" -> { name, set }
 function stripParenthetical(name) {
   const m = name.match(/^(.*?)[\s]*[([{]([^)\]}]+)[)\]}]\s*$/);
@@ -296,7 +325,7 @@ function buildRow(cells, assign) {
     condition: normCondition(at("condition")),
     language: normLanguage(at("language")),
     variant,
-    date: at("date") || null,
+    date: parseDateToISO(at("date")),
     notes: at("notes") || null,
     raw: cells.filter(Boolean).join(" · "),
   };

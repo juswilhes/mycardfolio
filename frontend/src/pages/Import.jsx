@@ -9,6 +9,16 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+// Eindeutige Lang-Anzeige ("11. September 2026") direkt neben dem
+// Datumsfeld - falls der Browser beim Tippen (statt Kalender-Klick) das
+// Datum nach eigenem Sprachgefühl anders interpretiert als gemeint, fällt
+// das hier sofort auf, statt erst später in der Sammlung.
+function formatLongDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
+}
+
 const FIELD_LABELS = {
   name: "Name",
   number: "Nummer",
@@ -193,6 +203,11 @@ export default function Import() {
                 className={selCls}
                 title="Kaufdatum (Vorgabe)"
               />
+              {defDate && (
+                <span className="text-xs text-subtle" title="So wird das Datum verstanden - bei Tippfehlern hier prüfen">
+                  → {formatLongDate(defDate)}
+                </span>
+              )}
             </span>
           </div>
 
@@ -247,6 +262,14 @@ export default function Import() {
                   className="w-16 border border-line rounded-lg px-1.5 py-1 text-xs bg-canvas text-ink text-center"
                   title="Kaufpreis"
                 />
+                {(m.input.date || defDate) && (
+                  <span
+                    className="text-[11px] text-subtle w-24 shrink-0 truncate"
+                    title="Erkanntes Kaufdatum dieser Zeile - bei Tippfehlern in der Ursprungsliste prüfen"
+                  >
+                    {formatLongDate(m.input.date || defDate)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
