@@ -51,6 +51,12 @@ export const LEAF_VEIN = "M50 18 C50 40 50 68 50 90";
 export const SHIELD_PATH =
   "M50 3 L89 17 L89 45 C89 72 71 89 50 97 C29 89 11 72 11 45 L11 17 Z";
 
+export const BOWTIE_PATH = "M12 10 L88 10 L12 90 L88 90 Z";
+
+export const BANNER_PATH = "M8 6 L92 6 L92 78 L50 58 L8 78 Z";
+
+export const GEM_PATH = "M50 4 L79 26 L79 74 L50 96 L21 74 L21 26 Z";
+
 function pointsToPathD(pointsStr) {
   const pts = pointsStr.trim().split(" ");
   return `M${pts[0]} ` + pts.slice(1).map((p) => `L${p}`).join(" ") + " Z";
@@ -87,6 +93,16 @@ export function shapeToPathD(style) {
       return LEAF_PATH;
     case "shield":
       return SHIELD_PATH;
+    case "bowtie":
+      return BOWTIE_PATH;
+    case "banner":
+      return BANNER_PATH;
+    case "gem":
+      return GEM_PATH;
+    // Mond: großer Kreis minus versetzter Kreis - braucht "evenodd" beim
+    // Rastern (siehe pixelBadge.js), sonst verschwindet die Sichel nicht.
+    case "crescent":
+      return circlePathD(44, 50, 38) + " " + circlePathD(66, 50, 34);
     default:
       return circlePathD(50, 50, 42);
   }

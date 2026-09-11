@@ -25,12 +25,13 @@ export function pixelMask(geometryKey, style, grid = 16) {
   const ctx = getCtx();
   if (!ctx) return [];
   const path = new Path2D(shapeToPathD(style));
+  const fillRule = style.shape === "crescent" ? "evenodd" : "nonzero";
   const cell = 100 / grid;
   const inside = [];
   for (let row = 0; row < grid; row++) {
     const line = [];
     for (let col = 0; col < grid; col++) {
-      line.push(ctx.isPointInPath(path, (col + 0.5) * cell, (row + 0.5) * cell));
+      line.push(ctx.isPointInPath(path, (col + 0.5) * cell, (row + 0.5) * cell, fillRule));
     }
     inside.push(line);
   }

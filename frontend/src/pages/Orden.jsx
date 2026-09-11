@@ -11,22 +11,22 @@ function Badge({ a }) {
   return (
     <div
       className={`rounded-2xl p-4 flex flex-col items-center text-center gap-1.5 border transition ${
-        a.earned ? "bg-white/50 border-[#c9a24a] shadow-sm" : "bg-white/20 border-[#c9b285] border-dashed"
+        a.earned ? "bg-white/10 border-[#c9a24a]" : "bg-black/20 border-white/10 border-dashed"
       }`}
     >
       <div className="mb-1">
         <OrdenBadge id={a.id} earned={a.earned} size={64} />
       </div>
-      <p className={`text-sm font-medium ${a.earned ? "text-[#3b2611]" : "text-[#8a6f4d]"}`}>{a.title}</p>
-      <p className="text-[11px] text-[#6b563a] leading-snug">{a.desc}</p>
+      <p className={`text-sm font-medium ${a.earned ? "text-[#f5ead2]" : "text-white/50"}`}>{a.title}</p>
+      <p className="text-[11px] text-white/45 leading-snug">{a.desc}</p>
       {a.earned ? (
-        <p className="text-[10px] text-[#8a7355] mt-0.5">Erhalten am {fmtDate(a.earned_at)}</p>
+        <p className="text-[10px] text-[#c9a24a] mt-0.5">Erhalten am {fmtDate(a.earned_at)}</p>
       ) : (
         <div className="w-full mt-1">
-          <div className="h-1.5 rounded-full bg-[#e2cfa4] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-black/30 overflow-hidden">
             <div className="h-full bg-[#c9a24a]" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-[10px] text-[#8a7355]">
+          <span className="text-[10px] text-white/40">
             {Math.min(a.current, a.target)} / {a.target}
           </span>
         </div>
@@ -36,8 +36,9 @@ function Badge({ a }) {
 }
 
 // Route: /orden – der "Ordenkoffer". 16 Orden für Meilensteine in der
-// Sammlung, als Pixel-Sprites gestaltet und in einem echten kleinen
-// Reisekoffer präsentiert: erhaltene bunt, offene grau mit Fortschrittsbalken.
+// Sammlung, als Pixel-Sprites gestaltet und in einem Etui präsentiert, wie
+// die Arenaorden-Box aus den Spielen: erhaltene bunt, offene als dunkle
+// Aussparung mit Fortschrittsbalken.
 export default function Orden() {
   const [achievements, setAchievements] = useState(null);
 
@@ -58,10 +59,10 @@ export default function Orden() {
       </p>
 
       <Ordenkoffer>
-        <p className="text-sm font-medium mb-1 text-[#3b2611]">
+        <p className="text-sm font-medium mb-1 text-[#f5ead2]">
           {earnedCount} von {total} Orden gesammelt
         </p>
-        <div className="h-2.5 rounded-full bg-[#e2cfa4] overflow-hidden mb-5">
+        <div className="h-2.5 rounded-full bg-black/30 overflow-hidden mb-5">
           <div
             className="h-full bg-[#c9a24a] transition-all"
             style={{ width: `${(earnedCount / total) * 100}%` }}
