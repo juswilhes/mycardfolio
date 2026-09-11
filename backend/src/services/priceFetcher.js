@@ -24,7 +24,9 @@ export async function refreshAllPrices() {
   let ok = 0;
   for (const card of cards) {
     try {
-      const { prices, meta } = await getCardmarketPrices(card.external_id);
+      // force: true - der Job soll wirklich frisch bei TCGdex nachfragen,
+      // nicht den 6h-Zwischenspeicher für einzelne Kartenaufrufe treffen.
+      const { prices, meta } = await getCardmarketPrices(card.external_id, { force: true });
       if (prices.length) {
         recordPrices(card.id, prices, meta);
         ok++;
@@ -38,10 +40,12 @@ export async function refreshAllPrices() {
   console.log(`[priceFetcher] Fertig - ${ok}/${cards.length} mit Preis.`);
 }
 
-// Läuft täglich um 06:00 Uhr.
+// Läuft alle 4 Stunden (statt nur einmal täglich), damit Preise über den Tag
+// verteilt aktuell bleiben - wichtig, weil Cardmarkets eigene API gerade
+// keine neuen Zugänge vergibt und TCGdex unsere einzige Quelle bleibt.
 export function schedulePriceFetching() {
-  cron.schedule("0 6 * * *", () => {
+  cron.schedule("0 */4 * * *", () => {
     refreshAllPrices().catch((e) => console.error("[priceFetcher] Job fehlgeschlagen:", e));
   });
-  console.log("[priceFetcher] Täglicher Job um 06:00 Uhr eingeplant.");
+  console.log("[priceFetcher] Job alle 4 Stunden eingeplant.");
 }

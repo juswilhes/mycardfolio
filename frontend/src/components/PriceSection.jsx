@@ -7,7 +7,10 @@ const LABELS = { trend: "Trend", low: "Tiefstpreis", avg30: "Ø 30 Tage" };
 
 // Einheitliche Preis-Anzeige für Sammlungs- und Datenbank-Detailseite.
 // Alles in EUR. Bevorzugte Quelle: Cardmarket (englische Karte).
-export default function PriceSection({ card, history }) {
+// onRefresh (optional): Callback für den "Jetzt aktualisieren"-Button -
+// stößt eine frische Abfrage bei TCGdex an, statt auf den nächsten
+// automatischen Lauf (alle 4 Stunden) zu warten.
+export default function PriceSection({ card, history, onRefresh, refreshing }) {
   const breakdown = card.price_breakdown ?? [];
   const pick = (variant) =>
     Object.fromEntries(
@@ -19,13 +22,19 @@ export default function PriceSection({ card, history }) {
   const basis = card.latest_price?.source ?? (breakdown.length ? "cardmarket" : null);
 
   const updated = card.cardmarket_updated
-    ? new Date(card.cardmarket_updated).toLocaleDateString("de-DE")
+    ? new Date(card.cardmarket_updated).toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : null;
 
   const sourceLabel =
     basis === "tcgplayer"
       ? "Quelle: TCGplayer (aus USD umgerechnet – Cardmarket hat für diese Karte keinen Preis)"
-      : `Quelle: Cardmarket${updated ? ` · Stand ${updated}` : ""}`;
+      : `Quelle: Cardmarket${updated ? ` · Stand ${updated} Uhr` : ""}`;
 
   return (
     <section>
@@ -80,6 +89,18 @@ export default function PriceSection({ card, history }) {
             >
               auf Cardmarket ansehen
             </a>
+          </>
+        )}
+        {onRefresh && (
+          <>
+            {" · "}
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="underline hover:text-ink disabled:opacity-50 disabled:no-underline"
+            >
+              {refreshing ? "aktualisiere …" : "🔄 Preis jetzt aktualisieren"}
+            </button>
           </>
         )}
       </p>

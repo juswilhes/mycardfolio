@@ -51,6 +51,8 @@ export const getCardPriceHistory = (externalId) => request(`/cards/external/${ex
 export const getPriceHistory = (cardId) => request(`/cards/${cardId}/prices`);
 export const updateCardArtist = (externalId, artist) =>
   request(`/cards/external/${externalId}/artist`, { method: "PATCH", body: { artist } });
+export const refreshCardPrice = (externalId) =>
+  request(`/cards/external/${externalId}/refresh`, { method: "POST" });
 
 // --- Sammlung -----------------------------------------------------
 export const getCollection = () => request("/collection");

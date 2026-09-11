@@ -147,12 +147,14 @@ async function tcgdexCardId(setName, number, cardName, ourSetId) {
 }
 
 // -> { prices: [{source,price_type,currency,price}], meta: {productId, updated} }
-export async function getCardmarketPrices(externalId) {
+// force=true umgeht den 6h-Cache - für den Preis-Job und den manuellen
+// "Jetzt aktualisieren"-Button, wo eine wirklich frische Abfrage gewünscht ist.
+export async function getCardmarketPrices(externalId, { force = false } = {}) {
   const row = cardRow.get(externalId);
   if (!row) return { prices: [], meta: null };
 
   const cached = cache.cards[externalId];
-  if (cached && Date.now() - cached.ts < CARD_TTL_MS) return cached.value;
+  if (!force && cached && Date.now() - cached.ts < CARD_TTL_MS) return cached.value;
 
   let value = { prices: [], meta: null };
   try {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection, getWatchlistIds } from "../api.js";
+import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection, getWatchlistIds, refreshCardPrice } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
@@ -21,7 +21,22 @@ export default function CardInfo() {
   const [celebrate, setCelebrate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [watched, setWatched] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refreshCardPrice(externalId);
+      const [c, h] = await Promise.all([getCardInfo(externalId), getCardPriceHistory(externalId)]);
+      setCard(c);
+      setHistory(h ?? []);
+    } catch {
+      /* z.B. Cooldown - still ignorieren, Preis bleibt wie gehabt */
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
     if (!user) return setWatched(false);
@@ -124,7 +139,12 @@ export default function CardInfo() {
         ))}
       </div>
 
-      <PriceSection card={card} history={history} />
+      <PriceSection
+        card={card}
+        history={history}
+        onRefresh={user ? handleRefresh : undefined}
+        refreshing={refreshing}
+      />
 
       {dialogOpen && (
         <CollectionItemDialog

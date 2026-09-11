@@ -68,6 +68,41 @@ router.get("/external/:externalId/prices", (req, res) => {
   res.json(priceHistoryByExternalId.all(req.params.externalId));
 });
 
+// Mindestabstand zwischen erzwungenen Aktualisierungen derselben Karte,
+// damit der Button nicht zum Spam gegen TCGdex einlädt.
+const FORCE_REFRESH_COOLDOWN_MS = 60 * 1000;
+const lastForceRefresh = new Map();
+
+// POST /api/cards/external/:externalId/refresh -> erzwingt eine frische
+// Abfrage bei TCGdex (umgeht den 6h-Cache), angemeldet wegen der externen
+// Anfrage, die das auslöst.
+router.post("/external/:externalId/refresh", authRequired, async (req, res) => {
+  const { externalId } = req.params;
+  const local = getCardByExternalIdLocal(externalId);
+  if (!local) return res.status(404).json({ error: "Karte nicht gefunden" });
+
+  const last = lastForceRefresh.get(externalId) ?? 0;
+  if (Date.now() - last < FORCE_REFRESH_COOLDOWN_MS) {
+    return res.status(429).json({ error: "Bitte kurz warten, bevor du erneut aktualisierst." });
+  }
+  lastForceRefresh.set(externalId, Date.now());
+
+  try {
+    const { prices, meta } = await getCardmarketPrices(externalId, { force: true });
+    if (prices.length) {
+      const cardId = cardMetaByExternalId.get(externalId)?.id ?? upsertCardRow("pokemon", local);
+      recordPrices(cardId, prices, meta);
+    }
+    res.json({
+      ok: true,
+      updated: meta?.updated ?? null,
+      latest_price: latestPriceByExternalId.get(externalId) ?? null,
+    });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // PATCH /api/cards/external/:externalId/artist  { artist }
 // Angemeldet, damit nicht anonym Kartendaten verändert werden können
 // (die Suche selbst bleibt öffentlich).
