@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { getCollection } from "../api.js";
+import MarketMovers from "../components/MarketMovers.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const eur0 = (n) =>
@@ -54,7 +55,41 @@ function BarList({ rows, total }) {
   );
 }
 
+// Route: /statistik – zwei Auswahlen: "Markt" (marktweite Bewegungen, alle
+// jemals angesehenen Karten) und "Meine Sammlung" (die bisherige,
+// personenbezogene Auswertung). Markt ist die erste/voreingestellte Ansicht.
 export default function Stats() {
+  const [tab, setTab] = useState("markt");
+
+  return (
+    <div>
+      <h1 className="text-xl font-semibold mb-4">Statistik</h1>
+
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setTab("markt")}
+          className={`text-sm px-4 py-2 rounded-full border ${
+            tab === "markt" ? "border-ink text-ink font-medium" : "border-line text-subtle hover:border-ink"
+          }`}
+        >
+          Markt
+        </button>
+        <button
+          onClick={() => setTab("sammlung")}
+          className={`text-sm px-4 py-2 rounded-full border ${
+            tab === "sammlung" ? "border-ink text-ink font-medium" : "border-line text-subtle hover:border-ink"
+          }`}
+        >
+          Meine Sammlung
+        </button>
+      </div>
+
+      {tab === "markt" ? <MarketMovers /> : <CollectionStats />}
+    </div>
+  );
+}
+
+function CollectionStats() {
   const [items, setItems] = useState(null);
 
   useEffect(() => {
@@ -90,8 +125,6 @@ export default function Stats() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-5">Statistik</h1>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <Stat label="Gesamtwert" value={eur(totalValue)} />
         <Stat label="Karten" value={items.reduce((s, i) => s + (i.quantity ?? 1), 0)} />

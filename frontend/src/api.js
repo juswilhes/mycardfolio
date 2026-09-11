@@ -93,3 +93,6 @@ export const addToWatchlist = (externalId) =>
   request("/watchlist", { method: "POST", body: { externalId } });
 export const removeFromWatchlist = (externalId) =>
   request(`/watchlist/${externalId}`, { method: "DELETE" });
+
+// --- Markt-Statistik -------------------------------------------------
+export const getMarketMovers = (days = 7) => request(`/stats/market-movers?days=${days}`);
