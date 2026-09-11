@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -37,16 +36,10 @@ const STEPS = [
 ];
 
 // Öffentliche Startseite für nicht angemeldete Besucher (und Suchmaschinen).
+// Die Suche selbst lebt auf "Alle Karten" (oben in der Kopfzeile) – hier
+// nur der Pitch + Link dorthin, damit es nicht zwei Suchfelder gibt.
 export default function Landing() {
   const { registrationOpen } = useAuth();
-  const navigate = useNavigate();
-  const [q, setQ] = useState("");
-
-  function submitSearch(e) {
-    e.preventDefault();
-    const term = q.trim();
-    navigate(term ? `/sets?q=${encodeURIComponent(term)}` : "/sets");
-  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -61,20 +54,14 @@ export default function Landing() {
           entwickelt.
         </p>
 
-        <form onSubmit={submitSearch} className="flex gap-2 max-w-lg mx-auto mt-7">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Karte suchen – z. B. Charizard, Glurak oder 151"
-            className="flex-1 rounded-full px-4 py-2.5 text-sm border border-line bg-white text-[#241c15] placeholder:text-[#8a7a63] caret-[#241c15] focus:outline-none focus:border-ink"
-          />
-          <button
-            type="submit"
-            className="bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full text-sm shrink-0"
+        <div className="flex items-center justify-center gap-3 mt-7">
+          <Link
+            to="/sets"
+            className="bg-yellow text-yellowInk font-medium px-6 py-3 rounded-full text-sm"
           >
-            Suchen
-          </button>
-        </form>
+            Karten durchsuchen
+          </Link>
+        </div>
         <p className="text-xs text-subtle mt-2">Kostenlos, sofort, ganz ohne Konto.</p>
 
         <div className="flex items-center justify-center gap-3 mt-6">
