@@ -13,7 +13,7 @@ import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
 import OrdenBadge from "../components/OrdenBadge.jsx";
 import OrdenUnlockAnimation from "../components/OrdenUnlockAnimation.jsx";
-import { SortIcon, FilterIcon } from "../components/icons.jsx";
+import { SortIcon, FilterIcon, SearchIcon } from "../components/icons.jsx";
 
 const ORDEN_SEEN_KEY = "mcf-orden-seen";
 
@@ -54,6 +54,10 @@ function detectNewlyEarned(list) {
 }
 
 const eur = (n) => `${n.toFixed(2)} €`;
+
+// Apostroph/Groß-Klein ignorieren, damit "Ns Zekrom" auch "N's Zekrom" in
+// der eigenen Sammlung findet - gleiche Logik wie in der Kartendatenbank.
+const normQ = (s) => (s ?? "").toLowerCase().replace(/['’‘]/g, "");
 
 const SORTS = {
   recent: "Zuletzt hinzugefügt",
@@ -131,13 +135,14 @@ export default function Collection() {
   const [fLang, setFLang] = useState(() => loadPref("lang", "all"));
   const [fSet, setFSet] = useState(() => loadPref("set", "all"));
   const [fArtist, setFArtist] = useState(() => loadPref("artist", "all"));
+  const [query, setQuery] = useState("");
 
   useEffect(() => savePref("sort", sort), [sort]);
   useEffect(() => savePref("lang", fLang), [fLang]);
   useEffect(() => savePref("set", fSet), [fSet]);
   useEffect(() => savePref("artist", fArtist), [fArtist]);
 
-  const anyFilter = fLang !== "all" || fSet !== "all" || fArtist !== "all";
+  const anyFilter = fLang !== "all" || fSet !== "all" || fArtist !== "all" || query.trim() !== "";
 
   const load = useCallback(() => {
     getCollection()
@@ -208,15 +213,17 @@ export default function Collection() {
   );
 
   // Aktive Filterung – auch Kennzahlen oben und der Graph richten sich danach.
+  const nq = normQ(query);
   const filtered = useMemo(
     () =>
       (items ?? []).filter(
         (i) =>
           (fLang === "all" || i.language === fLang) &&
           (fSet === "all" || i.set_name === fSet) &&
-          (fArtist === "all" || i.artist === fArtist)
+          (fArtist === "all" || i.artist === fArtist) &&
+          (!nq || normQ(i.name).includes(nq))
       ),
-    [items, fLang, fSet, fArtist]
+    [items, fLang, fSet, fArtist, nq]
   );
 
   // Karten mit mehreren Käufen zusammenfassen: nach card_id gruppieren,
@@ -455,8 +462,30 @@ export default function Collection() {
 
       <Movers data={movers} />
 
-      {/* Sortieren & Filtern */}
+      {/* Suchen, Sortieren & Filtern */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+        <div className="flex items-center gap-1.5">
+          <SearchIcon className="w-4 h-4 text-subtle shrink-0" />
+          <span className="sr-only">Suchen</span>
+          <div className="relative">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Karte in meiner Sammlung suchen …"
+              className="border border-line rounded-full pl-3 pr-7 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink w-56"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label="Suche zurücksetzen"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-subtle hover:text-ink"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center gap-1.5">
           <SortIcon className="w-4 h-4 text-subtle shrink-0" />
           <span className="sr-only">Sortieren</span>
@@ -496,7 +525,7 @@ export default function Collection() {
               onClick={() => { setFLang("all"); setFSet("all"); setFArtist("all"); }}
               className="text-xs text-subtle underline px-2"
             >
-              zurücksetzen
+              Filter zurücksetzen
             </button>
           )}
         </div>
