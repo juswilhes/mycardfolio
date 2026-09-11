@@ -145,12 +145,18 @@ function splitNumber(query) {
   return { text, number };
 }
 
+// Apostrophe raus - Karten wie "N's Zekrom" oder "Farfetch'd" tippen die
+// meisten ohne Apostroph ("Ns Zekrom", "Farfetchd"). Ohne Normalisierung
+// verhindert das ' im Namen jeden LIKE-Treffer.
+const stripApos = (s) => String(s ?? "").replace(/['’‘]/g, "");
+const NAME_COL = "REPLACE(REPLACE(c.name, '''', ''), '’', '')";
+
 // EIN fest vorbereitetes Statement mit fixer Parameterzahl (statt bei jeder
 // Suche ein neues zu prepare()n - das hat better-sqlite3 unter der schnellen
 // Tipp-Suche zum Absturz gebracht). Ungenutzte Slots bekommen NULL.
 const MAX_TERMS = 8;
-const likeSlots = Array.from({ length: MAX_TERMS }, (_, i) => `c.name LIKE @like${i} COLLATE NOCASE`).join(" OR ");
-const preSlots = Array.from({ length: MAX_TERMS }, (_, i) => `c.name LIKE @pre${i} COLLATE NOCASE`).join(" OR ");
+const likeSlots = Array.from({ length: MAX_TERMS }, (_, i) => `${NAME_COL} LIKE @like${i} COLLATE NOCASE`).join(" OR ");
+const preSlots = Array.from({ length: MAX_TERMS }, (_, i) => `${NAME_COL} LIKE @pre${i} COLLATE NOCASE`).join(" OR ");
 
 const searchStmt = db.prepare(`
   SELECT c.* FROM cards c
@@ -168,8 +174,9 @@ function runSearch({ game, terms, number, limit }) {
   const t = terms.slice(0, MAX_TERMS);
   const params = { game, num: number || null, limit, hasName: t.length ? 1 : 0 };
   for (let i = 0; i < MAX_TERMS; i++) {
-    params[`like${i}`] = i < t.length ? `%${t[i]}%` : null;
-    params[`pre${i}`] = i < t.length ? `${t[i]}%` : null;
+    const term = i < t.length ? stripApos(t[i]) : null;
+    params[`like${i}`] = term != null ? `%${term}%` : null;
+    params[`pre${i}`] = term != null ? `${term}%` : null;
   }
   return searchStmt.all(params).map(rowToCard);
 }
