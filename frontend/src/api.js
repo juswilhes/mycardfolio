@@ -99,3 +99,5 @@ export const getMarketMovers = (days = 7, set = null) =>
   request(`/stats/market-movers?days=${days}${set ? `&set=${encodeURIComponent(set)}` : ""}`);
 export const getTrackedSets = () => request("/stats/tracked-sets");
 export const getWatchlistMovers = (days = 7) => request(`/stats/watchlist-movers?days=${days}`);
+export const getSetMomentum = (days = 30) => request(`/stats/set-momentum?days=${days}`);
+export const getThawing = () => request("/stats/thawing");

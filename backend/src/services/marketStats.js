@@ -84,3 +84,55 @@ export function getWatchlistMovers(userId, { days = 7 } = {}) {
   movers.sort((a, b) => b.delta_pct - a.delta_pct);
   return movers;
 }
+
+// Durchschnittliche Bewegung je Set ("welche Sets sind gerade heiß/kalt") -
+// nur Sets mit mindestens minCards beobachteten Karten, damit ein einzelner
+// Ausreißer nicht ein ganzes Set aussehen lässt, als würde es sich bewegen.
+export function getSetMomentum({ days = 30, minCards = 3, limit = 8 } = {}) {
+  const bySet = new Map();
+  for (const c of trackedCardsStmt.all()) {
+    if (!c.set_name) continue;
+    const m = moverFor(c, days);
+    if (!m || m.singlePoint || !m.previous) continue;
+    if (!bySet.has(c.set_name)) bySet.set(c.set_name, []);
+    bySet.get(c.set_name).push(m.delta_pct);
+  }
+
+  const sets = [...bySet.entries()]
+    .filter(([, pcts]) => pcts.length >= minCards)
+    .map(([set_name, pcts]) => ({
+      set_name,
+      avg_pct: pcts.reduce((s, p) => s + p, 0) / pcts.length,
+      cardCount: pcts.length,
+    }));
+
+  const rising = [...sets].sort((a, b) => b.avg_pct - a.avg_pct).slice(0, limit);
+  const falling = [...sets].sort((a, b) => a.avg_pct - b.avg_pct).slice(0, limit);
+  return { rising, falling };
+}
+
+// "Thawing": Karten, die über einen langen Zeitraum deutlich gefallen sind,
+// sich zuletzt (7 Tage) aber wieder nach oben drehen - frühes Signal für
+// eine mögliche Trendwende.
+export function getThawing({ longDays = 120, shortDays = 7, limit = 15 } = {}) {
+  const result = [];
+  for (const c of trackedCardsStmt.all()) {
+    const long = moverFor(c, longDays);
+    const short = moverFor(c, shortDays);
+    if (!long || !short || long.singlePoint || short.singlePoint || !long.previous) continue;
+    if (long.delta_pct <= -10 && short.delta_pct > 0) {
+      result.push({
+        card_id: c.id,
+        external_id: c.external_id,
+        name: c.name,
+        set_name: c.set_name,
+        image_small: c.image_small,
+        current: short.current,
+        longTermPct: long.delta_pct,
+        recentPct: short.delta_pct,
+      });
+    }
+  }
+  result.sort((a, b) => b.recentPct - a.recentPct);
+  return result.slice(0, limit);
+}

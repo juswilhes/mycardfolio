@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMarketMovers, getTrackedSets, getWatchlistMovers } from "../api.js";
+import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing } from "../api.js";
+import GradingCalculator from "./GradingCalculator.jsx";
 
 const eur = (n) => `${Math.abs(Number(n)).toFixed(2)} €`;
 
@@ -67,9 +68,12 @@ export default function MarketMovers() {
   const [sets, setSets] = useState([]);
   const [data, setData] = useState(null);
   const [watch, setWatch] = useState(null);
+  const [momentum, setMomentum] = useState(null);
+  const [thawing, setThawing] = useState(null);
 
   useEffect(() => {
     getTrackedSets().then(setSets).catch(() => setSets([]));
+    getThawing().then(setThawing).catch(() => setThawing([]));
   }, []);
 
   useEffect(() => {
@@ -81,6 +85,7 @@ export default function MarketMovers() {
 
   useEffect(() => {
     getWatchlistMovers(days).then(setWatch).catch(() => setWatch([]));
+    getSetMomentum(days === 7 ? 30 : days).then(setMomentum).catch(() => setMomentum(null));
   }, [days]);
 
   return (
@@ -103,7 +108,7 @@ export default function MarketMovers() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex gap-2">
-          {[7, 30].map((d) => (
+          {[7, 30, 120].map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
@@ -162,6 +167,83 @@ export default function MarketMovers() {
         Basis: Cardmarket-Trendpreise der Karten, die auf mycardfolio schon einmal angesehen wurden
         (aktuell {data?.trackedCount ?? "…"}). Kein Marktüberblick über alle je erschienenen Karten.
       </p>
+
+      {momentum && (momentum.rising.length > 0 || momentum.falling.length > 0) && (
+        <div className="mt-8">
+          <h2 className="text-sm font-medium mb-3">
+            🔥 Set-Bewegung ({days === 7 ? 30 : days} Tage) – welche Sets sind gerade heiß?
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
+            <div>
+              <p className="text-xs text-subtle mb-1">Steigende Sets</p>
+              {momentum.rising.length ? (
+                momentum.rising.map((s) => (
+                  <div key={s.set_name} className="flex justify-between text-sm py-1 border-b border-line">
+                    <span className="truncate pr-2">{s.set_name}</span>
+                    <span className="font-mono text-mint shrink-0">+{s.avg_pct.toFixed(1)} %</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-subtle text-sm py-1">–</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-subtle mb-1">Fallende Sets</p>
+              {momentum.falling.length ? (
+                momentum.falling.map((s) => (
+                  <div key={s.set_name} className="flex justify-between text-sm py-1 border-b border-line">
+                    <span className="truncate pr-2">{s.set_name}</span>
+                    <span className="font-mono text-rose shrink-0">{s.avg_pct.toFixed(1)} %</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-subtle text-sm py-1">–</p>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-subtle mt-2">
+            Durchschnittliche Preisänderung über alle beobachteten Karten je Set (mind. 3 Karten je Set).
+          </p>
+        </div>
+      )}
+
+      {thawing && thawing.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-sm font-medium mb-3">🌤️ Auftauend – lange gefallen, zuletzt wieder im Aufwind</h2>
+          <div>
+            {thawing.map((m) => (
+              <Link
+                key={m.card_id}
+                to={`/database/${m.external_id}`}
+                className="flex items-center gap-3 py-2.5 border-b border-line text-sm hover:bg-surface/60"
+              >
+                <img src={m.image_small} alt="" className="w-8 rounded shrink-0" />
+                <span className="flex-1 min-w-0">
+                  <span className="font-medium truncate block">{m.name}</span>
+                  <span className="text-subtle text-xs truncate block">{m.set_name}</span>
+                </span>
+                <span className="text-right shrink-0 text-xs">
+                  <span className="block text-rose">{m.longTermPct.toFixed(1)} % (120 T.)</span>
+                  <span className="block text-mint">+{m.recentPct.toFixed(1)} % (7 T.)</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+          <p className="text-xs text-subtle mt-2">
+            Über 120 Tage mindestens 10 % gefallen, in den letzten 7 Tagen aber wieder positiv - ein
+            frühes Signal für eine mögliche Trendwende, kein Kaufversprechen.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-10">
+        <h2 className="text-sm font-medium mb-1">🧮 Grading-ROI-Rechner</h2>
+        <p className="text-xs text-subtle mb-3">
+          Uns fehlen echte PSA-Populationsdaten, deshalb trägst du die Werte selbst ein - dafür rechnet
+          das Tool die Grading-Wirtschaftlichkeit realistisch durch (Gebühren, Versand, Ausbeute).
+        </p>
+        <GradingCalculator />
+      </div>
     </div>
   );
 }
