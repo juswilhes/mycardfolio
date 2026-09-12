@@ -56,6 +56,7 @@ export function rowToCard(row) {
     year: row.set_release_date ? String(row.set_release_date).slice(0, 4) : null,
     set_logo: row.set_logo ?? null,
     view_count: row.view_count ?? 0,
+    name_de: row.name_de ?? null,
   };
 }
 
@@ -166,13 +167,23 @@ function splitNumber(query) {
 // verhindert das ' im Namen jeden LIKE-Treffer.
 const stripApos = (s) => String(s ?? "").replace(/['’‘]/g, "");
 const NAME_COL = "REPLACE(REPLACE(c.name, '''', ''), '’', '')";
+// Deutscher Kartenname (von TCGdex, build-german-card-names) - deckt auch
+// Trainer-/Item-/Supporter-Karten ab, nicht nur Pokémon-Namen wie die
+// separate DE_EN-Liste. NULL bei noch nicht nachgeladenen Karten.
+const NAME_DE_COL = "REPLACE(REPLACE(COALESCE(c.name_de, ''), '''', ''), '’', '')";
 
 // EIN fest vorbereitetes Statement mit fixer Parameterzahl (statt bei jeder
 // Suche ein neues zu prepare()n - das hat better-sqlite3 unter der schnellen
 // Tipp-Suche zum Absturz gebracht). Ungenutzte Slots bekommen NULL.
 const MAX_TERMS = 8;
-const likeSlots = Array.from({ length: MAX_TERMS }, (_, i) => `${NAME_COL} LIKE @like${i} COLLATE NOCASE`).join(" OR ");
-const preSlots = Array.from({ length: MAX_TERMS }, (_, i) => `${NAME_COL} LIKE @pre${i} COLLATE NOCASE`).join(" OR ");
+const likeSlots = Array.from(
+  { length: MAX_TERMS },
+  (_, i) => `(${NAME_COL} LIKE @like${i} COLLATE NOCASE OR ${NAME_DE_COL} LIKE @like${i} COLLATE NOCASE)`
+).join(" OR ");
+const preSlots = Array.from(
+  { length: MAX_TERMS },
+  (_, i) => `(${NAME_COL} LIKE @pre${i} COLLATE NOCASE OR ${NAME_DE_COL} LIKE @pre${i} COLLATE NOCASE)`
+).join(" OR ");
 
 const searchStmt = db.prepare(`
   SELECT c.* FROM cards c
@@ -357,21 +368,25 @@ function translateGermanName(name) {
 const MARKER_RE = /[δ★◇αβγ]/g;
 const markers = (s) => (s.match(MARKER_RE) || []).sort().join("");
 
-// Bester Namens-Treffer über ggf. mehrere Zielformen (Original + Übersetzung).
-// targets: [{ loose, raw }]
-function bestNameMatch(rRaw, rn, targets) {
-  const rMarkers = markers(rRaw);
-  let best = { score: 0, target: targets[0]?.loose ?? "" };
-  for (const t of targets) {
-    let score = 0;
-    if (rn === t.loose) {
-      // Nur ein wirklich exakter Treffer, wenn auch die Sonderzeichen passen -
-      // sonst (z.B. "Charizard" vs. "Charizard δ") nur ein Teiltreffer, klar
-      // unter dem echten exakten Treffer, aber über einem reinen Präfix-Treffer.
-      score = rMarkers === markers(t.raw) ? 30 : 14;
-    } else if (rn.startsWith(t.loose) || t.loose.startsWith(rn)) score = 12;
-    else if (rn.includes(t.loose)) score = 4;
-    if (score > best.score) best = { score, target: t.loose };
+// Bester Namens-Treffer über ggf. mehrere Kandidaten-Namensformen (Englisch +
+// der eigene deutsche Name der Karte, falls schon nachgeladen) gegen ggf.
+// mehrere Zielformen (Original-Eingabe + Pokémon-Namens-Übersetzung).
+// forms: [{ rn, raw }], targets: [{ loose, raw }]
+function bestNameMatch(forms, targets) {
+  let best = { score: 0, target: targets[0]?.loose ?? "", formRn: forms[0]?.rn ?? "" };
+  for (const f of forms) {
+    const rMarkers = markers(f.raw);
+    for (const t of targets) {
+      let score = 0;
+      if (f.rn === t.loose) {
+        // Nur ein wirklich exakter Treffer, wenn auch die Sonderzeichen passen -
+        // sonst (z.B. "Charizard" vs. "Charizard δ") nur ein Teiltreffer, klar
+        // unter dem echten exakten Treffer, aber über einem reinen Präfix-Treffer.
+        score = rMarkers === markers(t.raw) ? 30 : 14;
+      } else if (f.rn.startsWith(t.loose) || t.loose.startsWith(f.rn)) score = 12;
+      else if (f.rn.includes(t.loose)) score = 4;
+      if (score > best.score) best = { score, target: t.loose, formRn: f.rn };
+    }
   }
   return best;
 }
@@ -422,9 +437,11 @@ export function matchCardForImport({ name, number, set }) {
       else score -= 10;
     }
     const rn = normLoose(r.name);
-    const { score: nameScore, target } = bestNameMatch(r.name, rn, nameTargets);
+    const forms = [{ rn, raw: r.name }];
+    if (r.name_de) forms.push({ rn: normLoose(r.name_de), raw: r.name_de });
+    const { score: nameScore, target, formRn } = bestNameMatch(forms, nameTargets);
     score += nameScore;
-    score -= Math.min(10, Math.abs(rn.length - target.length) / 3); // kürzere Namen bevorzugen
+    score -= Math.min(10, Math.abs(formRn.length - target.length) / 3); // kürzere Namen bevorzugen
     return { r, score, rn, nameScore };
   });
   scored.sort((a, b) => b.score - a.score);

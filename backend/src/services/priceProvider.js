@@ -116,7 +116,7 @@ function candidateSetIds(ourId) {
   return [...ids];
 }
 
-async function tcgdexSetId(setName, ourSetId) {
+export async function tcgdexSetId(setName, ourSetId) {
   if (!cache.sets) {
     cache.sets = await fetchJson(`${API}/sets`);
     persistCache();

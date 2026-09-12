@@ -11,6 +11,7 @@
     "sync-promo-set": "node src/scripts/syncPromoSetFromTcgdex.js",
     "backfill-artists": "node src/scripts/backfillArtists.js",
     "build-de-names": "node src/scripts/buildGermanNames.js",
+    "build-german-card-names": "node src/scripts/buildGermanCardNames.js",
     "seed-set-prices": "node src/scripts/seedSetPrices.js"
   },
   "dependencies": {
