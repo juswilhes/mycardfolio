@@ -365,21 +365,35 @@ function bestNameMatch(rRaw, rn, targets) {
 export function matchCardForImport({ name, number, set }) {
   if (!name || !name.trim()) return { best: null, candidates: [] };
 
-  let rows = searchCardsLocal(number ? `${name} ${number}` : name, { limit: 60 });
-  if (!rows.length) rows = searchCardsLocal(name, { limit: 60 });
+  // Steckt die Nummer noch im Namen ("Glutexo 28/108" statt einer eigenen
+  // Spalte - z.B. bei Cardmarket-Exporten sehr üblich), rausziehen: sonst
+  // greift unten der +100-Nummern-Bonus nie, und JEDE Zeile bekommt
+  // "Prüfungsbedarf", weil der Namens-Score allein nie hoch genug ist.
+  let effName = name;
+  let effNumber = number;
+  if (!effNumber) {
+    const split = splitNumber(name);
+    if (split.number && split.text) {
+      effName = split.text;
+      effNumber = split.number;
+    }
+  }
+
+  let rows = searchCardsLocal(effNumber ? `${effName} ${effNumber}` : effName, { limit: 60 });
+  if (!rows.length) rows = searchCardsLocal(effName, { limit: 60 });
   if (!rows.length) return { best: null, candidates: [] };
 
-  const nn = number ? normNum(number) : null;
-  const nName = normLoose(name);
-  const translated = translateGermanName(name);
+  const nn = effNumber ? normNum(effNumber) : null;
+  const nName = normLoose(effName);
+  const translated = translateGermanName(effName);
   const nNameEn = normLoose(translated ?? "");
   const nameTargets =
     nNameEn && nNameEn !== nName
       ? [
-          { loose: nName, raw: name },
+          { loose: nName, raw: effName },
           { loose: nNameEn, raw: translated },
         ]
-      : [{ loose: nName, raw: name }];
+      : [{ loose: nName, raw: effName }];
 
   // jede Karte bewerten: Nummer > Set > exakter Name > Namensanfang
   const scored = rows.map((r) => {

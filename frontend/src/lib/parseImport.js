@@ -44,7 +44,7 @@ const HEADER_ALIASES = {
   quantity: ["menge", "anzahl", "quantity", "qty", "qnt", "count", "amount", "stück", "stueck", "stk", "have", "besitz"],
   price: ["kaufpreis", "preis", "price", "purchaseprice", "paid", "pricepaid", "ek", "einkaufspreis", "cost", "value", "wert", "buyprice", "einstand"],
   shipping: ["versand", "shipping", "porto", "versandkosten", "shippingcost"],
-  condition: ["zustand", "condition", "cond", "conditon", "grading", "grade", "erhaltung", "quali", "quality"],
+  condition: ["zustand", "condition", "cond", "conditon", "grading", "grade", "graded", "erhaltung", "quali", "quality"],
   language: ["sprache", "language", "lang", "sprachen"],
   variant: ["variante", "variant", "foil", "foilq", "isfoil", "printing", "druck", "finish", "holofoil", "parallel"],
   date: ["kaufdatum", "datum", "date", "purchasedate", "boughton", "gekauftam", "acquired"],
@@ -54,6 +54,21 @@ const HEADER_ALIASES = {
 const ALIAS_TO_FIELD = {};
 for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
   for (const a of aliases) ALIAS_TO_FIELD[a] = field;
+}
+
+// Zusammengesetzte Kopfzeilen wie "Set/Serie" oder "Name/Bezeichnung" (aus
+// Cardmarket-Exporten üblich) landen nach norm() als EIN verklebtes Wort
+// ("setserie") und treffen dann keinen Alias mehr - deshalb zusätzlich
+// jedes einzelne Wort der Kopfzeile prüfen.
+function headerField(header) {
+  if (!header) return null;
+  const whole = ALIAS_TO_FIELD[norm(header)];
+  if (whole) return whole;
+  for (const tok of header.split(/[^a-zA-ZäöüÄÖÜß0-9]+/).filter(Boolean)) {
+    const f = ALIAS_TO_FIELD[norm(tok)];
+    if (f) return f;
+  }
+  return null;
 }
 
 // --- Grid-Erkennung --------------------------------------------------
@@ -207,7 +222,7 @@ function inferColumns(header, dataRows) {
         for (const k of Object.keys(s)) s[k] = 0;
         return s;
       }
-      const f = ALIAS_TO_FIELD[hn];
+      const f = headerField(header[i] ?? "");
       if (f && s[f] != null) s[f] += 0.6; // Kopfzeile ist ein starker Hinweis
       if (f === "notes") s.notes = 0.9;
       if (f === "shipping") s.shipping = 0.9;
