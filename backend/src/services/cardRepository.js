@@ -334,15 +334,28 @@ function translateGermanName(name) {
   return best ? DE_EN[best] + q.slice(best.length) : null;
 }
 
+// Sonderzeichen, die in diesem Datensatz eine ECHTE andere Karte markieren
+// (δ = Delta Species, ★/◇ = Shining/Crystal, α/β/γ = weitere Sonderformen) -
+// normLoose entfernt sie wie jedes Satzzeichen, würde "Charizard" und
+// "Charizard δ" damit fälschlich als exakt gleich werten.
+const MARKER_RE = /[δ★◇αβγ]/g;
+const markers = (s) => (s.match(MARKER_RE) || []).sort().join("");
+
 // Bester Namens-Treffer über ggf. mehrere Zielformen (Original + Übersetzung).
-function bestNameMatch(rn, targets) {
-  let best = { score: 0, target: targets[0] };
-  for (const target of targets) {
+// targets: [{ loose, raw }]
+function bestNameMatch(rRaw, rn, targets) {
+  const rMarkers = markers(rRaw);
+  let best = { score: 0, target: targets[0]?.loose ?? "" };
+  for (const t of targets) {
     let score = 0;
-    if (rn === target) score = 30;
-    else if (rn.startsWith(target) || target.startsWith(rn)) score = 12;
-    else if (rn.includes(target)) score = 4;
-    if (score > best.score) best = { score, target };
+    if (rn === t.loose) {
+      // Nur ein wirklich exakter Treffer, wenn auch die Sonderzeichen passen -
+      // sonst (z.B. "Charizard" vs. "Charizard δ") nur ein Teiltreffer, klar
+      // unter dem echten exakten Treffer, aber über einem reinen Präfix-Treffer.
+      score = rMarkers === markers(t.raw) ? 30 : 14;
+    } else if (rn.startsWith(t.loose) || t.loose.startsWith(rn)) score = 12;
+    else if (rn.includes(t.loose)) score = 4;
+    if (score > best.score) best = { score, target: t.loose };
   }
   return best;
 }
@@ -358,8 +371,15 @@ export function matchCardForImport({ name, number, set }) {
 
   const nn = number ? normNum(number) : null;
   const nName = normLoose(name);
-  const nNameEn = normLoose(translateGermanName(name) ?? "");
-  const nameTargets = nNameEn && nNameEn !== nName ? [nName, nNameEn] : [nName];
+  const translated = translateGermanName(name);
+  const nNameEn = normLoose(translated ?? "");
+  const nameTargets =
+    nNameEn && nNameEn !== nName
+      ? [
+          { loose: nName, raw: name },
+          { loose: nNameEn, raw: translated },
+        ]
+      : [{ loose: nName, raw: name }];
 
   // jede Karte bewerten: Nummer > Set > exakter Name > Namensanfang
   const scored = rows.map((r) => {
@@ -372,19 +392,39 @@ export function matchCardForImport({ name, number, set }) {
       else score -= 10;
     }
     const rn = normLoose(r.name);
-    const { score: nameScore, target } = bestNameMatch(rn, nameTargets);
+    const { score: nameScore, target } = bestNameMatch(r.name, rn, nameTargets);
     score += nameScore;
     score -= Math.min(10, Math.abs(rn.length - target.length) / 3); // kürzere Namen bevorzugen
-    return { r, score };
+    return { r, score, rn };
   });
   scored.sort((a, b) => b.score - a.score);
 
   const best = scored[0]?.r ?? null;
-  // Niedrige Konfidenz = bester und zweitbester Treffer fast gleichauf, oder
-  // insgesamt schwacher Treffer -> im Import-Screen extra markieren statt
-  // blind zu übernehmen.
-  const gap = scored.length > 1 ? scored[0].score - scored[1].score : Infinity;
-  const confidence = !best ? null : scored[0].score >= 30 && gap >= 20 ? "high" : "low";
+  // Niedrige Konfidenz = bester Treffer und der nächste ANDERS BENANNTE
+  // Treffer liegen fast gleichauf, oder der Treffer insgesamt ist schwach.
+  // Bewusst nur gegen den EXAKTEN Kartennamen vergleichen (nicht normalisiert):
+  // dieselbe Karte in mehreren Sets/Auflagen (z.B. "Charizard" 15x
+  // nachgedruckt) ist keine echte Verwechslungsgefahr - sonst stünde bei
+  // praktisch jeder verbreiteten Karte "Prüfungsbedarf". Sonderzeichen wie
+  // "δ"/"★" markieren dagegen eine ECHTE andere Karte (z.B. Delta-Species-
+  // Variante) und müssen als unterschiedlich zählen - normLoose(rn) würde
+  // sie fälschlich gleichsetzen, deshalb hier r.name statt rn.
+  const nextDifferent = scored.find((s) => s.r.name !== best?.name);
+  const gap = nextDifferent ? scored[0].score - nextDifferent.score : Infinity;
+  // Extra-Fall, den der Score-Abstand allein nicht sauber abbildet: eine
+  // andersbenannte Karte mit exakt derselben Nummer, ohne dass eine
+  // Set-Angabe das auflösen konnte (z.B. "Starmie" #30 gibt es sowohl in
+  // BREAKthrough als auch als "Starmie δ" in Delta Species) - dann ist der
+  // Nummern-Bonus bei beiden gleich groß, das kaschiert die eigentliche
+  // Verwechslungsgefahr im Gesamt-Score.
+  const numberCollision =
+    !set && !!nn && scored.some((s) => s.r.name !== best?.name && normNum(s.r.number) === nn);
+  // 15 statt 20: ein exakter Namenstreffer (+30) liegt zu einer bloß per
+  // Präfix anschlagenden Sonder-Variante ("Charizard" -> "Charizard ex",
+  // +12 minus Längen-Strafe) fast immer bei ~19 Punkten Abstand - das ist
+  // schon eindeutig genug, keine echte Verwechslungsgefahr.
+  const confidence =
+    !best ? null : !numberCollision && scored[0].score >= 30 && gap >= 15 ? "high" : "low";
 
   return {
     best,

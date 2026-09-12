@@ -165,6 +165,10 @@ export default function Import() {
     setMatched((m) => m.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
+  function removeRow(i) {
+    setMatched((m) => m.filter((_, idx) => idx !== i));
+  }
+
   async function doImport() {
     const items = matched
       .filter((m) => m.include && m.chosen)
@@ -307,16 +311,15 @@ export default function Import() {
                 <tr className="text-left text-subtle border-b border-line">
                   <th className="py-2 pr-2 font-normal"></th>
                   <th className="py-2 pr-2 font-normal min-w-[220px]">Karte</th>
-                  <th className="py-2 pr-2 font-normal min-w-[110px]">Status</th>
                   <th className="py-2 pr-2 font-normal">Menge</th>
                   <th className="py-2 pr-2 font-normal">Kaufpreis</th>
                   <th className="py-2 pr-2 font-normal">Versand</th>
-                  <th className="py-2 pr-2 font-normal">Einstand</th>
                   <th className="py-2 pr-2 font-normal">Zustand</th>
                   <th className="py-2 pr-2 font-normal">Sprache</th>
                   <th className="py-2 pr-2 font-normal">Variante</th>
                   <th className="py-2 pr-2 font-normal min-w-[130px]">Kaufdatum</th>
                   <th className="py-2 pr-2 font-normal min-w-[120px]">Notiz</th>
+                  <th className="py-2 pr-2 font-normal"></th>
                 </tr>
               </thead>
               <tbody>
@@ -370,10 +373,8 @@ export default function Import() {
                             />
                           </div>
                         )}
-                      </td>
-                      <td className="py-2 pr-2 min-w-[110px]">
                         {m.confidence === "low" && (
-                          <span className="inline-block bg-amber-100 text-amber-700 border border-amber-400 rounded-full px-2 py-0.5 whitespace-nowrap">
+                          <span className="inline-block mt-1 bg-amber-100 text-amber-700 border border-amber-400 rounded-full px-2 py-0.5 whitespace-nowrap">
                             ⚠ Prüfungsbedarf
                           </span>
                         )}
@@ -392,6 +393,11 @@ export default function Import() {
                           placeholder="€"
                           className={`${inputCls} w-16 text-center`}
                         />
+                        {einstand > 0 && (
+                          <p className="text-subtle mt-0.5 whitespace-nowrap" title="Einstand gesamt">
+                            = {eur(einstandTotal)}
+                          </p>
+                        )}
                       </td>
                       <td className="py-2 pr-2">
                         <input
@@ -400,9 +406,6 @@ export default function Import() {
                           placeholder="€"
                           className={`${inputCls} w-16 text-center`}
                         />
-                      </td>
-                      <td className="py-2 pr-2 font-mono whitespace-nowrap">
-                        {einstand > 0 ? eur(einstandTotal) : "—"}
                       </td>
                       <td className="py-2 pr-2">
                         <select
@@ -456,6 +459,16 @@ export default function Import() {
                           placeholder="optional"
                           className={inputCls}
                         />
+                      </td>
+                      <td className="py-2 pl-1 pr-2">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(i)}
+                          title="Zeile entfernen"
+                          className="text-subtle hover:text-rose"
+                        >
+                          🗑
+                        </button>
                       </td>
                     </tr>
                   );
