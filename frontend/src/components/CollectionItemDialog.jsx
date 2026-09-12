@@ -72,6 +72,7 @@ export const gradeLabel = (company, grade) => {
 const today = () => new Date().toISOString().slice(0, 10);
 
 const emptyLot = (date) => ({ quantity: "1", purchasePrice: "", shippingCost: "", purchaseDate: date });
+const round2 = (n) => Math.round(n * 100) / 100;
 
 // Dialog zum Erfassen ODER Bearbeiten eines Sammlungs-Eintrags.
 // Beim NEU-Hinzufügen (kein initial) können mehrere "Käufe" derselben
@@ -104,8 +105,16 @@ export default function CollectionItemDialog({
     editing
       ? {
           quantity: String(initial?.quantity ?? 1),
-          purchasePrice: initial?.purchase_price != null ? String(initial.purchase_price) : "",
-          shippingCost: initial?.shipping_cost != null ? String(initial.shipping_cost) : "",
+          // Gespeichert wird pro Karte, eingegeben/angezeigt wird der
+          // Gesamtpreis dieses Kaufs (siehe submit()/lotTotal() unten).
+          purchasePrice:
+            initial?.purchase_price != null
+              ? String(round2(initial.purchase_price * (initial?.quantity ?? 1)))
+              : "",
+          shippingCost:
+            initial?.shipping_cost != null
+              ? String(round2(initial.shipping_cost * (initial?.quantity ?? 1)))
+              : "",
           purchaseDate: initial?.purchase_date ? initial.purchase_date.slice(0, 10) : today(),
         }
       : emptyLot(today()),
@@ -123,13 +132,22 @@ export default function CollectionItemDialog({
   const addLot = () => setLots((ls) => [...ls, emptyLot(ls[ls.length - 1]?.purchaseDate || today())]);
   const removeLot = (i) => setLots((ls) => ls.filter((_, idx) => idx !== i));
 
-  const lotTotal = (l) => {
-    const p = parseFloat(l.purchasePrice) || 0;
-    const s = parseFloat(l.shippingCost) || 0;
-    const q = parseInt(l.quantity, 10) || 1;
-    return (p + s) * q;
-  };
+  // Menge/Kaufpreis/Versand werden pro Kauf als GESAMTSUMME eingegeben (z.B.
+  // "3 Stück für 15 €" statt selbst durch 3 teilen zu müssen) - gespeichert
+  // wird trotzdem pro Karte, weil die Sammlung überall (Summen, Gewinn/
+  // Verlust) mit Preis-pro-Stück × Menge rechnet.
+  const lotTotal = (l) => (parseFloat(l.purchasePrice) || 0) + (parseFloat(l.shippingCost) || 0);
   const total = lots.reduce((sum, l) => sum + lotTotal(l), 0);
+
+  function lotToPayload(l) {
+    const quantity = parseInt(l.quantity, 10) || 1;
+    return {
+      quantity,
+      purchasePrice: l.purchasePrice === "" ? null : round2((parseFloat(l.purchasePrice) || 0) / quantity),
+      shippingCost: l.shippingCost === "" ? null : round2((parseFloat(l.shippingCost) || 0) / quantity),
+      purchaseDate: l.purchaseDate || null,
+    };
+  }
 
   function submit(e) {
     e.preventDefault();
@@ -143,24 +161,9 @@ export default function CollectionItemDialog({
       grade: form.gradingCompany ? form.grade.trim() || null : null,
     };
     if (editing) {
-      const l = lots[0];
-      onConfirm({
-        ...shared,
-        quantity: parseInt(l.quantity, 10) || 1,
-        purchasePrice: l.purchasePrice === "" ? null : parseFloat(l.purchasePrice) || 0,
-        shippingCost: l.shippingCost === "" ? null : parseFloat(l.shippingCost) || 0,
-        purchaseDate: l.purchaseDate || null,
-      });
+      onConfirm({ ...shared, ...lotToPayload(lots[0]) });
     } else {
-      onConfirm({
-        ...shared,
-        lots: lots.map((l) => ({
-          quantity: parseInt(l.quantity, 10) || 1,
-          purchasePrice: l.purchasePrice === "" ? null : parseFloat(l.purchasePrice) || 0,
-          shippingCost: l.shippingCost === "" ? null : parseFloat(l.shippingCost) || 0,
-          purchaseDate: l.purchaseDate || null,
-        })),
-      });
+      onConfirm({ ...shared, lots: lots.map(lotToPayload) });
     }
   }
 
@@ -173,7 +176,7 @@ export default function CollectionItemDialog({
     >
       <form
         onSubmit={submit}
-        className="w-full max-w-md bg-surface border border-line rounded-3xl p-6 shadow-xl"
+        className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-surface border border-line rounded-3xl p-6 shadow-xl"
       >
         <div className="flex gap-4 mb-5">
           <img
@@ -282,15 +285,20 @@ export default function CollectionItemDialog({
                     />
                   </label>
                   <label className="text-xs text-subtle">
-                    Kaufpreis (€) pro Stück
+                    Kaufpreis (€) gesamt
                     <input
                       type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00"
                       value={lot.purchasePrice} onChange={setLot(i, "purchasePrice")}
                       className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
                     />
+                    {(parseInt(lot.quantity, 10) || 1) > 1 && lot.purchasePrice !== "" && (
+                      <span className="block mt-0.5 text-[11px] text-subtle">
+                        = {round2((parseFloat(lot.purchasePrice) || 0) / (parseInt(lot.quantity, 10) || 1)).toFixed(2)} € / Stück
+                      </span>
+                    )}
                   </label>
                   <label className="text-xs text-subtle">
-                    Versand (€)
+                    Versand (€) gesamt
                     <input
                       type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00"
                       value={lot.shippingCost} onChange={setLot(i, "shippingCost")}
