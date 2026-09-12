@@ -76,16 +76,6 @@ function ManualCardPicker({ onPick }) {
   );
 }
 
-// Eindeutige Lang-Anzeige ("11. September 2026") direkt neben dem
-// Datumsfeld - falls der Browser beim Tippen (statt Kalender-Klick) das
-// Datum nach eigenem Sprachgefühl anders interpretiert als gemeint, fällt
-// das hier sofort auf, statt erst später in der Sammlung.
-function formatLongDate(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
-}
-
 const FIELD_LABELS = {
   name: "Name",
   number: "Nummer",
@@ -297,11 +287,6 @@ export default function Import() {
                 className={selCls}
                 title="Kaufdatum (Vorgabe)"
               />
-              {defDate && (
-                <span className="text-xs text-subtle" title="So wird das Datum verstanden - bei Tippfehlern hier prüfen">
-                  → {formatLongDate(defDate)}
-                </span>
-              )}
             </span>
           </div>
 
@@ -446,11 +431,6 @@ export default function Import() {
                           onChange={(e) => setRow(i, { date: e.target.value })}
                           className={inputCls}
                         />
-                        {effDate && (
-                          <p className="text-subtle mt-0.5 whitespace-nowrap" title="So wird das Datum verstanden">
-                            {formatLongDate(effDate)}
-                          </p>
-                        )}
                       </td>
                       <td className="py-2 pr-2 min-w-[120px]">
                         <input

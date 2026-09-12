@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
 
-// Eindeutige Lang-Anzeige ("11. September 2026") direkt neben dem
-// Datumsfeld, damit ein versehentlich vom Browser vertauschtes Tag/Monat
-// beim Tippen sofort auffällt statt erst später in der Sammlung.
-function formatLongDate(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
-}
-
 export const CONDITIONS = [
   ["sealed", "Sealed"],
   ["mint", "Mint"],
@@ -314,11 +305,6 @@ export default function CollectionItemDialog({
                     />
                   </label>
                 </div>
-                {lot.purchaseDate && (
-                  <span className="block mt-1 text-[11px] text-subtle" title="So wird das Datum verstanden - bei Tippfehlern hier prüfen">
-                    → {formatLongDate(lot.purchaseDate)}
-                  </span>
-                )}
               </div>
             ))}
             {!editing && (
