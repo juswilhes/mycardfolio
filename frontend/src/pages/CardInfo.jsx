@@ -63,15 +63,23 @@ export default function CardInfo() {
       });
   }, [externalId]);
 
-  async function confirmAdd(values) {
+  async function confirmAdd({ lots, ...shared }) {
     setBusy(true);
     setAddError(null);
+    let done = 0;
     try {
-      await addToCollection({ ...values, externalId });
+      for (const lot of lots) {
+        await addToCollection({ ...shared, ...lot, externalId });
+        done++;
+      }
       setDialogOpen(false);
       setCelebrate(true);
     } catch (err) {
-      setAddError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
+      setAddError(
+        `${err.message || "Speichern fehlgeschlagen"}${
+          lots.length > 1 ? ` (${done}/${lots.length} Käufe bereits gespeichert)` : ""
+        }`
+      );
     } finally {
       setBusy(false);
     }

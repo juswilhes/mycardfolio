@@ -80,9 +80,16 @@ export const gradeLabel = (company, grade) => {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const emptyLot = (date) => ({ quantity: "1", purchasePrice: "", shippingCost: "", purchaseDate: date });
+
 // Dialog zum Erfassen ODER Bearbeiten eines Sammlungs-Eintrags.
-// onConfirm bekommt die reinen Formularwerte; der aufrufende Screen
-// hängt ggf. externalId an und kümmert sich um API-Call + Animation.
+// Beim NEU-Hinzufügen (kein initial) können mehrere "Käufe" derselben
+// Karte auf einmal erfasst werden (z.B. 3 Stück von Verkäufer A zu 5 €,
+// 2 Stück von Verkäufer B zu 7 €) - beim Bearbeiten eines bestehenden
+// Eintrags (initial gesetzt) bleibt es bei einem einzelnen Kauf.
+// onConfirm bekommt beim Bearbeiten weiter die reinen Formularwerte,
+// beim Hinzufügen zusätzlich ein "lots"-Array; der aufrufende Screen
+// hängt ggf. externalId an und kümmert sich um API-Call(s) + Animation.
 export default function CollectionItemDialog({
   card,
   initial,
@@ -93,18 +100,25 @@ export default function CollectionItemDialog({
   onConfirm,
   onClose,
 }) {
+  const editing = !!initial;
   const [form, setForm] = useState({
-    quantity: initial?.quantity ?? 1,
     condition: initial?.condition ?? "near_mint",
     variant: initial?.variant ?? "normal",
     language: initial?.language ?? "de",
-    purchasePrice: initial?.purchase_price != null ? String(initial.purchase_price) : "",
-    shippingCost: initial?.shipping_cost != null ? String(initial.shipping_cost) : "",
-    purchaseDate: initial?.purchase_date ? initial.purchase_date.slice(0, 10) : today(),
     notes: initial?.notes ?? "",
     gradingCompany: initial?.grading_company ?? "",
     grade: initial?.grade ?? "",
   });
+  const [lots, setLots] = useState([
+    editing
+      ? {
+          quantity: String(initial?.quantity ?? 1),
+          purchasePrice: initial?.purchase_price != null ? String(initial.purchase_price) : "",
+          shippingCost: initial?.shipping_cost != null ? String(initial.shipping_cost) : "",
+          purchaseDate: initial?.purchase_date ? initial.purchase_date.slice(0, 10) : today(),
+        }
+      : emptyLot(today()),
+  ]);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -113,27 +127,50 @@ export default function CollectionItemDialog({
   }, [onClose]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setLot = (i, k) => (e) =>
+    setLots((ls) => ls.map((l, idx) => (idx === i ? { ...l, [k]: e.target.value } : l)));
+  const addLot = () => setLots((ls) => [...ls, emptyLot(ls[ls.length - 1]?.purchaseDate || today())]);
+  const removeLot = (i) => setLots((ls) => ls.filter((_, idx) => idx !== i));
 
-  const price = parseFloat(form.purchasePrice) || 0;
-  const shipping = parseFloat(form.shippingCost) || 0;
-  const qty = parseInt(form.quantity, 10) || 1;
-  const total = (price + shipping) * qty;
+  const lotTotal = (l) => {
+    const p = parseFloat(l.purchasePrice) || 0;
+    const s = parseFloat(l.shippingCost) || 0;
+    const q = parseInt(l.quantity, 10) || 1;
+    return (p + s) * q;
+  };
+  const total = lots.reduce((sum, l) => sum + lotTotal(l), 0);
 
   function submit(e) {
     e.preventDefault();
     if (busy) return;
-    onConfirm({
-      quantity: qty,
+    const shared = {
       condition: form.condition,
       variant: form.variant,
       language: form.language,
-      purchasePrice: form.purchasePrice === "" ? null : price,
-      shippingCost: form.shippingCost === "" ? null : shipping,
-      purchaseDate: form.purchaseDate || null,
       notes: form.notes.trim() || null,
       gradingCompany: form.gradingCompany || null,
       grade: form.gradingCompany ? form.grade.trim() || null : null,
-    });
+    };
+    if (editing) {
+      const l = lots[0];
+      onConfirm({
+        ...shared,
+        quantity: parseInt(l.quantity, 10) || 1,
+        purchasePrice: l.purchasePrice === "" ? null : parseFloat(l.purchasePrice) || 0,
+        shippingCost: l.shippingCost === "" ? null : parseFloat(l.shippingCost) || 0,
+        purchaseDate: l.purchaseDate || null,
+      });
+    } else {
+      onConfirm({
+        ...shared,
+        lots: lots.map((l) => ({
+          quantity: parseInt(l.quantity, 10) || 1,
+          purchasePrice: l.purchasePrice === "" ? null : parseFloat(l.purchasePrice) || 0,
+          shippingCost: l.shippingCost === "" ? null : parseFloat(l.shippingCost) || 0,
+          purchaseDate: l.purchaseDate || null,
+        })),
+      });
+    }
   }
 
   const showGrading = form.condition === "mint" || !!form.gradingCompany;
@@ -164,14 +201,7 @@ export default function CollectionItemDialog({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-xs text-subtle">
-            Menge
-            <input
-              type="number" min="1" value={form.quantity} onChange={set("quantity")}
-              className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
-            />
-          </label>
-          <label className="text-xs text-subtle">
+          <label className="text-xs text-subtle col-span-2">
             Zustand
             <select
               value={form.condition} onChange={set("condition")}
@@ -237,34 +267,70 @@ export default function CollectionItemDialog({
               <option value="en">Englisch</option>
             </select>
           </label>
-          <label className="text-xs text-subtle">
-            Kaufpreis (€)
-            <input
-              type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00"
-              value={form.purchasePrice} onChange={set("purchasePrice")}
-              className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
-            />
-          </label>
-          <label className="text-xs text-subtle">
-            Versand (€)
-            <input
-              type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00"
-              value={form.shippingCost} onChange={set("shippingCost")}
-              className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
-            />
-          </label>
-          <label className="text-xs text-subtle col-span-2">
-            Kaufdatum
-            <input
-              type="date" value={form.purchaseDate} onChange={set("purchaseDate")}
-              className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
-            />
-            {form.purchaseDate && (
-              <span className="block mt-1 text-[11px]" title="So wird das Datum verstanden - bei Tippfehlern hier prüfen">
-                → {formatLongDate(form.purchaseDate)}
-              </span>
+          <div className="col-span-2 space-y-3">
+            {lots.map((lot, i) => (
+              <div key={i} className="rounded-xl border border-line p-3">
+                {lots.length > 1 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-subtle">Kauf {i + 1}</p>
+                    <button
+                      type="button"
+                      onClick={() => removeLot(i)}
+                      className="text-xs text-subtle hover:text-rose"
+                    >
+                      entfernen
+                    </button>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-xs text-subtle">
+                    Menge
+                    <input
+                      type="number" min="1" value={lot.quantity} onChange={setLot(i, "quantity")}
+                      className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+                    />
+                  </label>
+                  <label className="text-xs text-subtle">
+                    Kaufpreis (€) pro Stück
+                    <input
+                      type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00"
+                      value={lot.purchasePrice} onChange={setLot(i, "purchasePrice")}
+                      className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+                    />
+                  </label>
+                  <label className="text-xs text-subtle">
+                    Versand (€)
+                    <input
+                      type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00"
+                      value={lot.shippingCost} onChange={setLot(i, "shippingCost")}
+                      className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+                    />
+                  </label>
+                  <label className="text-xs text-subtle">
+                    Kaufdatum
+                    <input
+                      type="date" value={lot.purchaseDate} onChange={setLot(i, "purchaseDate")}
+                      className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink"
+                    />
+                  </label>
+                </div>
+                {lot.purchaseDate && (
+                  <span className="block mt-1 text-[11px] text-subtle" title="So wird das Datum verstanden - bei Tippfehlern hier prüfen">
+                    → {formatLongDate(lot.purchaseDate)}
+                  </span>
+                )}
+              </div>
+            ))}
+            {!editing && (
+              <button
+                type="button"
+                onClick={addLot}
+                className="text-xs text-ink underline"
+              >
+                + Weiterer Kauf (z. B. anderer Verkäufer/Preis)
+              </button>
             )}
-          </label>
+          </div>
           <label className="text-xs text-subtle col-span-2">
             Notiz (optional)
             <input

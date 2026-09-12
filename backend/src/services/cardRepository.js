@@ -55,8 +55,24 @@ export function rowToCard(row) {
     set_release_date: row.set_release_date ?? null,
     year: row.set_release_date ? String(row.set_release_date).slice(0, 4) : null,
     set_logo: row.set_logo ?? null,
+    view_count: row.view_count ?? 0,
   };
 }
+
+// Zählt einen Aufruf der Karten-Detailseite - Basis für "Beliebtheit" in
+// der Set-Übersicht. Bewusst hier (im HTTP-Handler-Pfad) und nicht in
+// tieferen Preis-Funktionen, damit interne Cron-Abrufe (priceFetcher)
+// nicht mitzählen, nur echte Seitenaufrufe.
+const bumpViewStmt = db.prepare(
+  `UPDATE cards SET view_count = COALESCE(view_count, 0) + 1 WHERE external_id = ?`
+);
+export const bumpCardView = (externalId) => {
+  try {
+    bumpViewStmt.run(externalId);
+  } catch {
+    /* Zählung darf nie einen Request stören */
+  }
+};
 
 // Query um deutsche Namenstreffer erweitern:
 //  - "Glurak"  -> auch "Charizard"

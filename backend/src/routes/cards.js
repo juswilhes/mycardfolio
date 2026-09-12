@@ -10,7 +10,7 @@ import {
   upsertCardRow,
   recordPrices,
 } from "../services/cardService.js";
-import { searchCardsLocal, getCardByExternalIdLocal } from "../services/cardRepository.js";
+import { searchCardsLocal, getCardByExternalIdLocal, bumpCardView } from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
 import { authRequired } from "../middleware/auth.js";
 
@@ -30,6 +30,7 @@ router.get("/search", (req, res) => {
 router.get("/external/:externalId", async (req, res) => {
   const { externalId } = req.params;
   const local = getCardByExternalIdLocal(externalId);
+  bumpCardView(externalId); // "Beliebtheit" in der Set-Übersicht
 
   if (local) {
     let meta = null;

@@ -4,6 +4,15 @@ import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds } from "../api.j
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 
+const eur = (n) => `${Number(n).toFixed(2)} €`;
+
+const SORTS = {
+  number: "Nummer",
+  popularity: "Beliebtheit",
+  price_desc: "Preis (hoch → niedrig)",
+  price_asc: "Preis (niedrig → hoch)",
+};
+
 // Route: /sets/:setId  – frei zugänglich. Angemeldet sind Karten, die du
 // besitzt, hervorgehoben; ein Filter zeigt wahlweise nur besessene oder
 // nur fehlende. Ohne Konto einfach die Kartenübersicht des Sets.
@@ -15,6 +24,7 @@ export default function SetDetail() {
   const [owned, setOwned] = useState(new Set());
   const [watchedIds, setWatchedIds] = useState(new Set());
   const [filter, setFilter] = useState("all"); // all | have | missing
+  const [sort, setSort] = useState("number");
 
   useEffect(() => {
     getSet(setId).then(setSet);
@@ -30,10 +40,23 @@ export default function SetDetail() {
 
   const shown = useMemo(() => {
     if (!cards) return [];
-    if (filter === "have") return cards.filter((c) => owned.has(c.external_id));
-    if (filter === "missing") return cards.filter((c) => !owned.has(c.external_id));
-    return cards;
-  }, [cards, owned, filter]);
+    let list = cards;
+    if (filter === "have") list = list.filter((c) => owned.has(c.external_id));
+    else if (filter === "missing") list = list.filter((c) => !owned.has(c.external_id));
+
+    const cmp = {
+      number: (a, b) => (a.number ?? "").localeCompare(b.number ?? "", undefined, { numeric: true }),
+      popularity: (a, b) => (b.view_count ?? 0) - (a.view_count ?? 0),
+      price_desc: (a, b) => (b.price ?? -1) - (a.price ?? -1),
+      price_asc: (a, b) => {
+        // Karten ohne Preis ans Ende, nicht künstlich als "billigste" vorne
+        if (a.price == null) return 1;
+        if (b.price == null) return -1;
+        return a.price - b.price;
+      },
+    }[sort];
+    return [...list].sort(cmp);
+  }, [cards, owned, filter, sort]);
 
   const total = cards?.length ?? 0;
   const have = cards ? cards.filter((c) => owned.has(c.external_id)).length : 0;
@@ -97,6 +120,21 @@ export default function SetDetail() {
         </p>
       )}
 
+      {cards && (
+        <div className="flex items-center gap-1.5 mb-4">
+          <span className="text-xs text-subtle">Sortieren:</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+          >
+            {Object.entries(SORTS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {cards === null ? (
         <p className="text-subtle text-sm">Lade Karten …</p>
       ) : shown.length === 0 ? (
@@ -140,7 +178,10 @@ export default function SetDetail() {
                   )}
                 </div>
                 <p className="text-xs font-medium truncate">{card.name}</p>
-                <p className="text-[11px] text-subtle">#{card.number}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-subtle">#{card.number}</p>
+                  <p className="text-[11px] font-mono">{card.price != null ? eur(card.price) : "—"}</p>
+                </div>
               </Link>
             );
           })}

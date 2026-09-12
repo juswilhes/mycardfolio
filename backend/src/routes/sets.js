@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { listSetsLocal, getSetLocal, getCardsBySetLocal } from "../services/cardRepository.js";
-import { setProgress, ownedInSet } from "../services/cardService.js";
+import { setProgress, ownedInSet, pricesForSet } from "../services/cardService.js";
 import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
@@ -24,9 +24,12 @@ router.get("/:setId", (req, res) => {
   res.json(set);
 });
 
-// GET /api/sets/:setId/cards -> alle Karten in diesem Set (öffentlich)
+// GET /api/sets/:setId/cards -> alle Karten in diesem Set inkl. aktuellem
+// Preis (öffentlich) - für Sortierung/Anzeige nach Preis in der Übersicht.
 router.get("/:setId/cards", (req, res) => {
-  res.json(getCardsBySetLocal(req.params.setId));
+  const cards = getCardsBySetLocal(req.params.setId);
+  const prices = pricesForSet(req.params.setId);
+  res.json(cards.map((c) => ({ ...c, price: prices.get(c.external_id) ?? null })));
 });
 
 // GET /api/sets/:setId/owned -> external_ids der Karten aus dem Set, die der Nutzer besitzt

@@ -211,6 +211,7 @@ addColumn("artist_source", "TEXT");    // woher der Illustrator kommt: "dataset"
 addColumn("artist_manual", "INTEGER"); // 1 = vom Nutzer gesetzt, darf beim Re-Import nicht überschrieben werden
 addColumn("cardmarket_product_id", "INTEGER"); // für den Direktlink zu Cardmarket
 addColumn("cardmarket_updated", "TEXT");       // Zeitstempel des letzten Cardmarket-Werts
+addColumn("view_count", "INTEGER DEFAULT 0");  // wie oft die Detailseite aufgerufen wurde ("Beliebtheit")
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id)`);
 

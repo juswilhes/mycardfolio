@@ -70,16 +70,24 @@ export default function AllCards() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
-  async function confirmAdd(values) {
+  async function confirmAdd({ lots, ...shared }) {
     setBusy(true);
     setAddError(null);
+    let done = 0;
     try {
-      await addToCollection({ ...values, externalId: dialogCard.external_id });
+      for (const lot of lots) {
+        await addToCollection({ ...shared, ...lot, externalId: dialogCard.external_id });
+        done++;
+      }
       const card = dialogCard;
       setDialogCard(null);
       setCelebrateCard(card);
     } catch (err) {
-      setAddError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
+      setAddError(
+        `${err.message || "Speichern fehlgeschlagen"}${
+          lots.length > 1 ? ` (${done}/${lots.length} Käufe bereits gespeichert)` : ""
+        }`
+      );
     } finally {
       setBusy(false);
     }

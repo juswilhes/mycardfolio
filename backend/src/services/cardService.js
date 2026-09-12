@@ -164,6 +164,26 @@ export function latestTrendByExternal(externalId, variant = "normal") {
 }
 export const latestPriceByExternalId = { get: (externalId) => latestTrendByExternal(externalId, "normal") };
 
+// Aktueller Preis (Trend, normal, bevorzugt Cardmarket) für ALLE Karten
+// eines Sets auf einmal - für die Set-Übersicht (Sortierung/Anzeige nach
+// Preis), statt pro Karte einzeln nachzufragen.
+const pricesForSetStmt = db.prepare(`
+  SELECT c.external_id, ps.price
+  FROM cards c
+  LEFT JOIN price_snapshots ps ON ps.id = (
+    SELECT ps2.id FROM price_snapshots ps2
+    WHERE ps2.card_id = c.id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
+    ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC
+    LIMIT 1
+  )
+  WHERE c.set_id = ?
+`);
+export function pricesForSet(setId) {
+  const map = new Map();
+  for (const r of pricesForSetStmt.all(setId)) map.set(r.external_id, r.price ?? null);
+  return map;
+}
+
 // Fortschritt je Set: wie viele verschiedene Karten aus dem Set besitzt der Nutzer?
 const setProgressStmt = db.prepare(`
   SELECT c.set_id, COUNT(DISTINCT c.id) AS owned
