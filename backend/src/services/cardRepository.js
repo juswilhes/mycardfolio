@@ -395,7 +395,7 @@ export function matchCardForImport({ name, number, set }) {
     const { score: nameScore, target } = bestNameMatch(r.name, rn, nameTargets);
     score += nameScore;
     score -= Math.min(10, Math.abs(rn.length - target.length) / 3); // kürzere Namen bevorzugen
-    return { r, score, rn };
+    return { r, score, rn, nameScore };
   });
   scored.sort((a, b) => b.score - a.score);
 
@@ -416,9 +416,15 @@ export function matchCardForImport({ name, number, set }) {
   // Set-Angabe das auflösen konnte (z.B. "Starmie" #30 gibt es sowohl in
   // BREAKthrough als auch als "Starmie δ" in Delta Species) - dann ist der
   // Nummern-Bonus bei beiden gleich groß, das kaschiert die eigentliche
-  // Verwechslungsgefahr im Gesamt-Score.
+  // Verwechslungsgefahr im Gesamt-Score. Nur relevant, wenn die andere Karte
+  // selbst auch namentlich nah dran ist (nameScore >= 12, also mindestens ein
+  // Präfix-Treffer) - sonst zählt jede zufällige Nummerngleichheit mit einer
+  // völlig unbeteiligten Karte (z.B. "Radiant Gardevoir" #69 zu "Gardevoir"
+  // #69) fälschlich als Kollision, obwohl niemand das verwechseln würde.
   const numberCollision =
-    !set && !!nn && scored.some((s) => s.r.name !== best?.name && normNum(s.r.number) === nn);
+    !set &&
+    !!nn &&
+    scored.some((s) => s.r.name !== best?.name && normNum(s.r.number) === nn && s.nameScore >= 12);
   // 15 statt 20: ein exakter Namenstreffer (+30) liegt zu einer bloß per
   // Präfix anschlagenden Sonder-Variante ("Charizard" -> "Charizard ex",
   // +12 minus Längen-Strafe) fast immer bei ~19 Punkten Abstand - das ist
