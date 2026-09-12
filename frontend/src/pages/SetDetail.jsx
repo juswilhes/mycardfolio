@@ -28,7 +28,6 @@ export default function SetDetail() {
 
   useEffect(() => {
     getSet(setId).then(setSet);
-    getCardsForSet(setId).then(setCards);
     if (user) {
       getOwnedInSet(setId).then((ids) => setOwned(new Set(ids))).catch(() => setOwned(new Set()));
       getWatchlistIds().then((ids) => setWatchedIds(new Set(ids))).catch(() => {});
@@ -36,6 +35,22 @@ export default function SetDetail() {
       setOwned(new Set());
       setWatchedIds(new Set());
     }
+
+    // Fehlende Preise werden serverseitig im Hintergrund nachgeladen (siehe
+    // backfillSetPrices) - ein paar Mal automatisch neu laden, damit sie
+    // ohne manuelles Neuladen der Seite nach und nach auftauchen.
+    let cancelled = false;
+    const delays = [0, 4000, 12000, 25000];
+    const timers = delays.map((ms) =>
+      setTimeout(() => {
+        if (cancelled) return;
+        getCardsForSet(setId).then((data) => !cancelled && setCards(data));
+      }, ms)
+    );
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
   }, [setId, user]);
 
   const shown = useMemo(() => {

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { listSetsLocal, getSetLocal, getCardsBySetLocal } from "../services/cardRepository.js";
 import { setProgress, ownedInSet, pricesForSet } from "../services/cardService.js";
+import { backfillSetPrices } from "../services/setPriceBackfill.js";
 import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
@@ -30,6 +31,9 @@ router.get("/:setId/cards", (req, res) => {
   const cards = getCardsBySetLocal(req.params.setId);
   const prices = pricesForSet(req.params.setId);
   res.json(cards.map((c) => ({ ...c, price: prices.get(c.external_id) ?? null })));
+  // Fehlende Preise im Hintergrund nachladen (blockiert die Antwort nicht) -
+  // ab dem nächsten Aufruf/Reload sind dann mehr Karten bepreist.
+  backfillSetPrices(req.params.setId);
 });
 
 // GET /api/sets/:setId/owned -> external_ids der Karten aus dem Set, die der Nutzer besitzt
