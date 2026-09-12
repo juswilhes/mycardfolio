@@ -89,6 +89,7 @@ export default function CollectionItemDialog({
   title = "Zum Portfolio hinzufügen",
   submitLabel = "Zum Portfolio",
   busy,
+  error,
   onConfirm,
   onClose,
 }) {
@@ -278,6 +279,12 @@ export default function CollectionItemDialog({
           <span className="text-subtle">Einstandswert gesamt</span>
           <span className="font-mono font-medium">{total.toFixed(2)} €</span>
         </div>
+
+        {error && (
+          <p className="text-rose text-sm mb-4 bg-rose/10 border border-rose/30 rounded-xl px-3 py-2">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-2">
           <button

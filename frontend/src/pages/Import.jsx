@@ -116,6 +116,7 @@ export default function Import() {
   const [matched, setMatched] = useState([]); // [{ input, best, candidates, chosen, include, quantity, price, shipping, condition, language, variant, date, notes }]
   const [detected, setDetected] = useState(null); // { assignment, header }
   const [result, setResult] = useState(null);
+  const [importError, setImportError] = useState(null);
 
   // Globale Vorgaben, wenn eine Zeile nichts Eigenes einträgt - Zeilen
   // können das unten jederzeit einzeln überschreiben.
@@ -129,6 +130,7 @@ export default function Import() {
     if (!rows.length) return;
     setDetected({ assignment, header });
     setBusy(true);
+    setImportError(null);
     try {
       const res = await matchImportRows(rows);
       setMatched(
@@ -147,6 +149,8 @@ export default function Import() {
         }))
       );
       setStep("preview");
+    } catch (err) {
+      setImportError(err.message || "Vorschau fehlgeschlagen. Bitte nochmal versuchen.");
     } finally {
       setBusy(false);
     }
@@ -177,10 +181,13 @@ export default function Import() {
       }));
     if (!items.length) return;
     setBusy(true);
+    setImportError(null);
     try {
       const r = await commitImport(items);
       setResult(r);
       setStep("done");
+    } catch (err) {
+      setImportError(err.message || "Import fehlgeschlagen. Bitte nochmal versuchen.");
     } finally {
       setBusy(false);
     }
@@ -207,6 +214,12 @@ export default function Import() {
         <h1 className="text-xl font-semibold">Massen-Import</h1>
         <Link to="/sets" className="text-sm text-subtle hover:text-ink">← Einzeln hinzufügen</Link>
       </div>
+
+      {importError && (
+        <p className="text-rose text-sm mt-3 bg-rose/10 border border-rose/30 rounded-xl px-3 py-2">
+          {importError}
+        </p>
+      )}
 
       {step === "input" && (
         <>

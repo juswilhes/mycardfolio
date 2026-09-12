@@ -24,6 +24,7 @@ export default function AllCards() {
   const [dialogCard, setDialogCard] = useState(null);
   const [celebrateCard, setCelebrateCard] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [addError, setAddError] = useState(null);
 
   const navigate = useNavigate();
   const reqId = useRef(0);
@@ -71,11 +72,14 @@ export default function AllCards() {
 
   async function confirmAdd(values) {
     setBusy(true);
+    setAddError(null);
     try {
       await addToCollection({ ...values, externalId: dialogCard.external_id });
       const card = dialogCard;
       setDialogCard(null);
       setCelebrateCard(card);
+    } catch (err) {
+      setAddError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
     } finally {
       setBusy(false);
     }
@@ -227,8 +231,9 @@ export default function AllCards() {
         <CollectionItemDialog
           card={dialogCard}
           busy={busy}
+          error={addError}
           onConfirm={confirmAdd}
-          onClose={() => !busy && setDialogCard(null)}
+          onClose={() => !busy && (setDialogCard(null), setAddError(null))}
         />
       )}
       {celebrateCard && (
