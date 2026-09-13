@@ -32,6 +32,8 @@ export default function SealedProductDialog({
   const [currentValue, setCurrentValue] = useState(
     initial?.current_value != null ? String(initial.current_value) : ""
   );
+  const [imageUrl, setImageUrl] = useState(initial?.image_url ?? "");
+  const [cardmarketUrl, setCardmarketUrl] = useState(initial?.cardmarket_url ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
   useEffect(() => {
@@ -53,6 +55,8 @@ export default function SealedProductDialog({
       shippingCost: shippingCost === "" ? null : round2((parseFloat(shippingCost) || 0) / qty),
       purchaseDate: purchaseDate || null,
       currentValue: currentValue === "" ? null : parseFloat(currentValue) || 0,
+      imageUrl: imageUrl.trim() || null,
+      cardmarketUrl: cardmarketUrl.trim() || null,
       notes: notes.trim() || null,
     });
   }
@@ -128,6 +132,25 @@ export default function SealedProductDialog({
             />
             <span className="block mt-0.5 text-[11px] text-subtle">
               Gibt es dafür keine automatische Preisquelle - trag deine eigene Einschätzung ein, jederzeit änderbar.
+            </span>
+          </label>
+          <label className="text-xs text-subtle col-span-2">
+            Bild-URL (optional)
+            <input
+              type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://…"
+              className={inputCls}
+            />
+          </label>
+          <label className="text-xs text-subtle col-span-2">
+            Cardmarket-Link (optional)
+            <input
+              type="url" value={cardmarketUrl} onChange={(e) => setCardmarketUrl(e.target.value)}
+              placeholder="https://www.cardmarket.com/…"
+              className={inputCls}
+            />
+            <span className="block mt-0.5 text-[11px] text-subtle">
+              Link zur Produktseite bei Cardmarket - dort siehst du den aktuellen Marktpreis.
             </span>
           </label>
           <label className="text-xs text-subtle col-span-2">

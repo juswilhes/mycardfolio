@@ -3,10 +3,10 @@ import db from "../db/index.js";
 const insertStmt = db.prepare(`
   INSERT INTO sealed_products (
     user_id, set_id, set_name, name, image_url, quantity,
-    purchase_price, shipping_cost, purchase_date, current_value, notes
+    purchase_price, shipping_cost, purchase_date, current_value, cardmarket_url, notes
   ) VALUES (
     @user_id, @set_id, @set_name, @name, @image_url, @quantity,
-    @purchase_price, @shipping_cost, @purchase_date, @current_value, @notes
+    @purchase_price, @shipping_cost, @purchase_date, @current_value, @cardmarket_url, @notes
   )
 `);
 
@@ -22,6 +22,7 @@ export function createSealedProduct(userId, values) {
     shipping_cost: values.shippingCost ?? null,
     purchase_date: values.purchaseDate || null,
     current_value: values.currentValue ?? null,
+    cardmarket_url: values.cardmarketUrl || null,
     notes: values.notes || null,
   });
   return info.lastInsertRowid;
@@ -39,6 +40,7 @@ const updateStmt = db.prepare(`
     shipping_cost = @shipping_cost,
     purchase_date = @purchase_date,
     current_value = @current_value,
+    cardmarket_url = @cardmarket_url,
     notes = @notes,
     image_url = @image_url
   WHERE id = @id AND user_id = @user_id
@@ -54,6 +56,7 @@ export function updateSealedProduct(userId, id, values) {
     shipping_cost: values.shippingCost ?? null,
     purchase_date: values.purchaseDate || null,
     current_value: values.currentValue ?? null,
+    cardmarket_url: values.cardmarketUrl || null,
     notes: values.notes || null,
     image_url: values.imageUrl || null,
   });

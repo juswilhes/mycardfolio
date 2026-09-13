@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS sealed_products (
   shipping_cost  REAL,
   purchase_date  TEXT,
   current_value  REAL,                          -- manuell gepflegter Wert pro Stück
+  cardmarket_url TEXT,                          -- manuell hinterlegter Link (keine automatische Zuordnung möglich)
   notes          TEXT,
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -252,6 +253,11 @@ addCiColumn("language", "TEXT DEFAULT 'en'"); // Sprache der Druckvariante: 'de'
 addCiColumn("variant", "TEXT DEFAULT 'normal'"); // 'normal' | 'holo' | 'reverse' | 'first_edition'
 addCiColumn("grading_company", "TEXT"); // z.B. 'PSA', 'BGS', 'CGC' - NULL = ungegradet
 addCiColumn("grade", "TEXT");           // Note als Text: '10', '9.5', 'Black Label' ...
+
+const spColumns = new Set(db.prepare(`PRAGMA table_info(sealed_products)`).all().map((c) => c.name));
+if (!spColumns.has("cardmarket_url")) {
+  db.exec(`ALTER TABLE sealed_products ADD COLUMN cardmarket_url TEXT`);
+}
 
 const psColumns = new Set(db.prepare(`PRAGMA table_info(price_snapshots)`).all().map((c) => c.name));
 if (!psColumns.has("variant")) {

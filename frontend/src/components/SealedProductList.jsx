@@ -79,6 +79,17 @@ export default function SealedProductList() {
             const gain = c != null && v != null ? v - c : null;
             return (
               <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                {p.image_url ? (
+                  <img
+                    src={p.image_url}
+                    alt=""
+                    className="w-12 h-12 object-contain rounded-lg border border-line shrink-0 bg-canvas"
+                  />
+                ) : (
+                  <span className="w-12 h-12 flex items-center justify-center text-xl rounded-lg border border-line shrink-0 bg-canvas">
+                    📦
+                  </span>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
                     {p.name}
@@ -90,6 +101,16 @@ export default function SealedProductList() {
                     {p.set_name ?? "Kein Set"}
                     {p.purchase_date ? ` · ${new Date(p.purchase_date).toLocaleDateString("de-DE")}` : ""}
                   </p>
+                  {p.cardmarket_url && (
+                    <a
+                      href={p.cardmarket_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs underline text-subtle hover:text-ink"
+                    >
+                      Auf Cardmarket ansehen
+                    </a>
+                  )}
                 </div>
                 <div className="text-right shrink-0 tabular-nums text-sm">
                   {v != null ? (
