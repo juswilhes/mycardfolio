@@ -61,13 +61,10 @@ export default function App() {
         </Link>
         <div className="flex items-center gap-6">
           <nav className="flex gap-6 text-sm">
-            {user && (
-              <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
-            )}
             <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
             {user && (
               <>
-                <NavLink to="/verkauft" className={navCls}>Verkauft</NavLink>
+                <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
                 <NavLink to="/statistik" className={navCls}>Statistik</NavLink>
                 <NavLink to="/watchlist" className={navCls}>❤️ Watchlist</NavLink>
                 <NavLink to="/orden" id="nav-orden" className={navCls}>🏅 Orden</NavLink>
@@ -88,13 +85,17 @@ export default function App() {
             {!loading && user && (
               <AccountMenu email={user.email} onLogout={() => setConfirmLogout(true)} />
             )}
-            <button
-              onClick={toggleTheme}
-              aria-label="Hell-/Dunkelmodus wechseln"
-              className="w-8 h-8 flex items-center justify-center rounded-full border border-line text-sm"
-            >
-              {isDark ? "☀︎" : "☾"}
-            </button>
+            {/* Angemeldet: Hell-/Dunkelmodus lebt unter "Konto". Ohne Konto
+                gibt es diese Seite nicht, deshalb hier der einzige Schalter. */}
+            {!loading && !user && (
+              <button
+                onClick={toggleTheme}
+                aria-label="Hell-/Dunkelmodus wechseln"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-line text-sm"
+              >
+                {isDark ? "☀︎" : "☾"}
+              </button>
+            )}
           </div>
         </div>
       </header>

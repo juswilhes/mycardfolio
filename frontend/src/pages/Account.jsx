@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme } from "../hooks/useTheme.js";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import {
   resendVerification,
@@ -11,6 +12,7 @@ import {
 
 export default function Account() {
   const { user, setUser, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [name, setName] = useState(user?.display_name || "");
   const [savedName, setSavedName] = useState(false);
@@ -66,6 +68,26 @@ export default function Account() {
             )}
           </div>
         )}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold mb-2">Darstellung</h2>
+        <div className="flex items-center justify-between max-w-xs">
+          <p className="text-sm text-subtle">{isDark ? "Dunkelmodus" : "Hellmodus"}</p>
+          <button
+            onClick={toggleTheme}
+            role="switch"
+            aria-checked={isDark}
+            aria-label="Hell-/Dunkelmodus wechseln"
+            className={`relative w-11 h-6 rounded-full transition-colors ${isDark ? "bg-ink" : "bg-line"}`}
+          >
+            <span
+              className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface shadow transition-transform ${
+                isDark ? "translate-x-[22px]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
       </section>
 
       <form onSubmit={saveName} className="mb-8">
