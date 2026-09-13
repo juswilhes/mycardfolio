@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds } from "../api.js";
+import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
+import SealedProductDialog from "../components/SealedProductDialog.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -25,6 +26,10 @@ export default function SetDetail() {
   const [watchedIds, setWatchedIds] = useState(new Set());
   const [filter, setFilter] = useState("all"); // all | have | missing
   const [sort, setSort] = useState("number");
+  const [sealedOpen, setSealedOpen] = useState(false);
+  const [sealedBusy, setSealedBusy] = useState(false);
+  const [sealedError, setSealedError] = useState(null);
+  const [sealedAdded, setSealedAdded] = useState(false);
 
   useEffect(() => {
     getSet(setId).then(setSet);
@@ -76,6 +81,21 @@ export default function SetDetail() {
   const total = cards?.length ?? 0;
   const have = cards ? cards.filter((c) => owned.has(c.external_id)).length : 0;
 
+  async function confirmSealed(values) {
+    setSealedBusy(true);
+    setSealedError(null);
+    try {
+      await addSealedProduct({ ...values, setId, setName: set?.name });
+      setSealedOpen(false);
+      setSealedAdded(true);
+      setTimeout(() => setSealedAdded(false), 3000);
+    } catch (err) {
+      setSealedError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
+    } finally {
+      setSealedBusy(false);
+    }
+  }
+
   const btn = (v, label) => (
     <button
       onClick={() => setFilter(v)}
@@ -94,14 +114,28 @@ export default function SetDetail() {
       {set && (
         <div className="flex items-center gap-4 mt-4 mb-4">
           {set.logo && <img src={set.logo} alt={set.name} className="h-10 object-contain" />}
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold">{set.name}</h1>
             <p className="text-subtle text-xs">
               {set.series} · {set.total} Karten
               {set.release_date ? ` · veröffentlicht ${set.release_date}` : ""}
             </p>
           </div>
+          {user && (
+            <button
+              onClick={() => setSealedOpen(true)}
+              className="shrink-0 text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink"
+            >
+              📦 Sealed-Produkt hinzufügen
+            </button>
+          )}
         </div>
+      )}
+      {sealedAdded && (
+        <p className="text-mint text-xs mb-4">
+          Hinzugefügt – in deiner{" "}
+          <Link to="/" className="underline">Sammlung</Link> sichtbar.
+        </p>
       )}
 
       {cards && user && (
@@ -201,6 +235,16 @@ export default function SetDetail() {
             );
           })}
         </div>
+      )}
+
+      {sealedOpen && (
+        <SealedProductDialog
+          setName={set?.name}
+          busy={sealedBusy}
+          error={sealedError}
+          onConfirm={confirmSealed}
+          onClose={() => !sealedBusy && (setSealedOpen(false), setSealedError(null))}
+        />
       )}
     </div>
   );

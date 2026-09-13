@@ -104,6 +104,26 @@ CREATE TABLE IF NOT EXISTS sales (
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Versiegelte Produkte (Booster-Displays, Elite Trainer Boxen, Bundles, ...).
+-- Anders als Karten gibt es dafür keine kostenlose Preisquelle - current_value
+-- wird vom Nutzer selbst gepflegt, nicht automatisch nachgezogen.
+CREATE TABLE IF NOT EXISTS sealed_products (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id        INTEGER NOT NULL REFERENCES users(id),
+  set_id         TEXT REFERENCES card_sets(id), -- optional: Zuordnung zu einem Set
+  set_name       TEXT,                          -- Snapshot, falls das Set später wegfällt
+  name           TEXT NOT NULL,                 -- z.B. "Elite Trainer Box", "36er Display"
+  image_url      TEXT,
+  quantity       INTEGER NOT NULL DEFAULT 1,
+  purchase_price REAL,
+  shipping_cost  REAL,
+  purchase_date  TEXT,
+  current_value  REAL,                          -- manuell gepflegter Wert pro Stück
+  notes          TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sealed_user ON sealed_products(user_id);
+
 -- Nutzerkonten (ab "Model B": jede Person hat ihr eigenes Portfolio).
 CREATE TABLE IF NOT EXISTS users (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,

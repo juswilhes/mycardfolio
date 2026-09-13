@@ -9,6 +9,7 @@ import {
   getAchievements,
 } from "../api.js";
 import CollectionGroup from "../components/CollectionGroup.jsx";
+import SealedProductList from "../components/SealedProductList.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
 import OrdenBadge from "../components/OrdenBadge.jsx";
@@ -310,12 +311,15 @@ export default function Collection() {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-24">
-        <p className="text-lg font-medium mb-1">Noch keine Karten</p>
-        <p className="text-subtle mb-6">Füge deine erste Karte hinzu, um den Wert zu verfolgen.</p>
-        <Link to="/sets" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
-          Karte hinzufügen
-        </Link>
+      <div>
+        <div className="text-center py-24">
+          <p className="text-lg font-medium mb-1">Noch keine Karten</p>
+          <p className="text-subtle mb-6">Füge deine erste Karte hinzu, um den Wert zu verfolgen.</p>
+          <Link to="/sets" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
+            Karte hinzufügen
+          </Link>
+        </div>
+        <SealedProductList />
       </div>
     );
   }
@@ -461,6 +465,8 @@ export default function Collection() {
       </div>
 
       <Movers data={movers} />
+
+      <SealedProductList />
 
       {/* Suchen, Sortieren & Filtern */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">

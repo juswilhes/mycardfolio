@@ -96,6 +96,13 @@ export const addToWatchlist = (externalId) =>
 export const removeFromWatchlist = (externalId) =>
   request(`/watchlist/${externalId}`, { method: "DELETE" });
 
+// --- Sealed Produkte -------------------------------------------------
+export const getSealedProducts = () => request("/sealed-products");
+export const addSealedProduct = (payload) => request("/sealed-products", { method: "POST", body: payload });
+export const updateSealedProduct = (id, payload) =>
+  request(`/sealed-products/${id}`, { method: "PATCH", body: payload });
+export const deleteSealedProduct = (id) => request(`/sealed-products/${id}`, { method: "DELETE" });
+
 // --- Markt-Statistik -------------------------------------------------
 export const getMarketMovers = (days = 7, set = null) =>
   request(`/stats/market-movers?days=${days}${set ? `&set=${encodeURIComponent(set)}` : ""}`);
