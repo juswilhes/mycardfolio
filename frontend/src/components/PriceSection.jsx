@@ -5,12 +5,40 @@ const eur = (n) =>
 
 const LABELS = { trend: "Trend", low: "Tiefstpreis", avg30: "Ø 30 Tage" };
 
+// Momentum-Signal: reine Beobachtung ("Preis hat sich seit dem ersten
+// getrackten Tag so verändert"), keine Vorhersage. Bewusst simpel und
+// transparent - zeigt immer auch dazu, auf wie viel Historie das beruht,
+// weil bei frisch getrackten Karten (die meisten - Preis-Tracking läuft
+// erst seit kurzem) 2-3 Tage Datenbasis keine verlässliche Aussage sind.
+function computeMomentum(history) {
+  if (!history?.length) return null;
+  const byDay = new Map();
+  for (const h of history) {
+    if (h.price == null) continue;
+    byDay.set(h.fetched_at.slice(0, 10), h.price);
+  }
+  const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  if (days.length < 2) return { days: days.length };
+  const [firstDay, firstPrice] = days[0];
+  const [lastDay, lastPrice] = days[days.length - 1];
+  if (!firstPrice) return { days: days.length };
+  return {
+    days: days.length,
+    firstDay,
+    lastDay,
+    firstPrice,
+    lastPrice,
+    pct: ((lastPrice - firstPrice) / firstPrice) * 100,
+  };
+}
+
 // Einheitliche Preis-Anzeige für Sammlungs- und Datenbank-Detailseite.
 // Alles in EUR. Bevorzugte Quelle: Cardmarket (englische Karte).
 // onRefresh (optional): Callback für den "Jetzt aktualisieren"-Button -
 // stößt eine frische Abfrage bei TCGdex an, statt auf den nächsten
 // automatischen Lauf (alle 4 Stunden) zu warten.
 export default function PriceSection({ card, history, onRefresh, refreshing }) {
+  const momentum = computeMomentum(history);
   const breakdown = card.price_breakdown ?? [];
   const pick = (variant) =>
     Object.fromEntries(
@@ -54,6 +82,27 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
           ) : null
         )}
       </div>
+
+      {momentum && (
+        <p className="mt-2 text-sm">
+          {momentum.pct != null ? (
+            <>
+              <span className={momentum.pct > 1 ? "text-mint" : momentum.pct < -1 ? "text-rose" : "text-subtle"}>
+                {momentum.pct > 1 ? "📈" : momentum.pct < -1 ? "📉" : "➡️"}{" "}
+                {momentum.pct >= 0 ? "+" : ""}
+                {momentum.pct.toFixed(1)} %
+              </span>{" "}
+              <span className="text-subtle text-xs">
+                seit {momentum.days} Tagen ({eur(momentum.firstPrice)} → {eur(momentum.lastPrice)})
+              </span>
+            </>
+          ) : (
+            <span className="text-subtle text-xs">
+              Momentum: noch nicht genug Daten (erst {momentum.days} Tag{momentum.days === 1 ? "" : "e"} getrackt)
+            </span>
+          )}
+        </p>
+      )}
 
       {holo.trend != null && (
         <div className="flex items-baseline gap-4 flex-wrap mt-2 text-sm">
@@ -132,6 +181,12 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
           <p>
             eBay-Verkaufspreise sind hier (noch) nicht dabei: dafür gibt es
             keinen kostenlosen Zugang.
+          </p>
+          <p>
+            <b>Momentum</b> vergleicht nur den ersten mit dem letzten
+            getrackten Preis – eine reine Beobachtung, keine Vorhersage. Die
+            Preis-Historie läuft noch nicht lange, deshalb steht immer dabei,
+            auf wie viele Tage sich das stützt.
           </p>
         </div>
       </details>
