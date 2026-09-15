@@ -23,6 +23,7 @@ import Orden from "./pages/Orden.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import Footer from "./components/Footer.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -42,6 +43,7 @@ export default function App() {
   const { user, loading, logout, registrationOpen } = useAuth();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const location = useLocation();
 
   async function doLogout() {
     setLoggingOut(true);
@@ -101,38 +103,44 @@ export default function App() {
       </header>
 
       <main className="px-6 py-8 max-w-5xl mx-auto w-full flex-1">
-        <Routes>
-          {/* Öffentlich */}
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
-          <Route path="/passwort-vergessen" element={<ForgotPassword />} />
-          <Route path="/passwort-zuruecksetzen" element={<ResetPassword />} />
-          <Route path="/verify" element={<VerifyEmail />} />
-          <Route path="/impressum" element={<Impressum />} />
-          <Route path="/datenschutz" element={<Datenschutz />} />
+        {/* key=Pfad: fängt ein ein Render-Fehler einer Seite ab, statt dass
+            die ganze App hängen bleibt und nur ein manuelles Neuladen hilft -
+            bei jedem Seitenwechsel wird frisch gemountet, also eine neue
+            Chance statt dauerhaft im Fehlerzustand stecken zu bleiben. */}
+        <ErrorBoundary key={location.pathname}>
+          <Routes>
+            {/* Öffentlich */}
+            <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+            <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
+            <Route path="/passwort-vergessen" element={<ForgotPassword />} />
+            <Route path="/passwort-zuruecksetzen" element={<ResetPassword />} />
+            <Route path="/verify" element={<VerifyEmail />} />
+            <Route path="/impressum" element={<Impressum />} />
+            <Route path="/datenschutz" element={<Datenschutz />} />
 
-          {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
-          <Route path="/sets" element={<AllCards />} />
-          <Route path="/sets/:setId" element={<SetDetail />} />
-          <Route path="/database/:externalId" element={<CardInfo />} />
-          {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
-          <Route path="/add" element={<Navigate to="/sets" replace />} />
+            {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
+            <Route path="/sets" element={<AllCards />} />
+            <Route path="/sets/:setId" element={<SetDetail />} />
+            <Route path="/database/:externalId" element={<CardInfo />} />
+            {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
+            <Route path="/add" element={<Navigate to="/sets" replace />} />
 
-          {/* Startseite: öffentliche Landingpage, angemeldet die Sammlung */}
-          <Route
-            path="/"
-            element={loading ? null : user ? <Collection /> : <Landing />}
-          />
+            {/* Startseite: öffentliche Landingpage, angemeldet die Sammlung */}
+            <Route
+              path="/"
+              element={loading ? null : user ? <Collection /> : <Landing />}
+            />
 
-          {/* Nur mit Login */}
-          <Route path="/card/:cardId" element={<RequireAuth><CardDetail /></RequireAuth>} />
-          <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
-          <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
-          <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />
-          <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
-          <Route path="/orden" element={<RequireAuth><Orden /></RequireAuth>} />
-          <Route path="/watchlist" element={<RequireAuth><Watchlist /></RequireAuth>} />
-        </Routes>
+            {/* Nur mit Login */}
+            <Route path="/card/:cardId" element={<RequireAuth><CardDetail /></RequireAuth>} />
+            <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
+            <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
+            <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />
+            <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
+            <Route path="/orden" element={<RequireAuth><Orden /></RequireAuth>} />
+            <Route path="/watchlist" element={<RequireAuth><Watchlist /></RequireAuth>} />
+          </Routes>
+        </ErrorBoundary>
       </main>
 
       <Footer />
