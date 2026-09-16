@@ -22,7 +22,13 @@ export default function SealedProductList() {
   const [error, setError] = useState(null);
 
   const load = () => getSealedProducts().then(setItems).catch(() => setItems([]));
-  useEffect(load, []);
+  // useEffect(load, []) wäre hier ein Bug: load() gibt das Promise von
+  // .catch() zurück, React hält DAS dann für die Cleanup-Funktion und
+  // versucht beim Verlassen der Seite, das Promise wie eine Funktion
+  // aufzurufen ("X is not a function", crasht die ganze Navigation).
+  useEffect(() => {
+    load();
+  }, []);
 
   async function saveEdit(values) {
     setBusy(true);
