@@ -167,6 +167,19 @@ CREATE TABLE IF NOT EXISTS watchlist_items (
   PRIMARY KEY (user_id, card_id)
 );
 
+-- Client-seitige JS-Fehler (unbehandelte Exceptions/Promise-Rejections im
+-- Browser) - damit ein Fehler, den nur eine Nutzerin sieht, nicht nur über
+-- eine mündliche Beschreibung diagnostizierbar ist.
+CREATE TABLE IF NOT EXISTS client_errors (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  message     TEXT,
+  stack       TEXT,
+  url         TEXT,
+  user_email  TEXT,
+  user_agent  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Kennzahlen für den Tagesbericht an den Betreiber.
 -- daily_hits: Seitenaufrufe je Pfad (keine IPs).
 CREATE TABLE IF NOT EXISTS daily_hits (

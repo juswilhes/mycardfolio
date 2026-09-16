@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { reportError } from "../lib/reportError.js";
 
 // Fängt Render-Fehler EINER Seite ab, statt dass die ganze App weiß bleibt
 // und nur noch ein manuelles Neuladen hilft. App.jsx setzt hier den aktuellen
@@ -17,6 +18,7 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     console.error("Unerwarteter Fehler beim Rendern:", error, info);
+    reportError(error, { componentStack: info?.componentStack?.slice(0, 2000) });
   }
 
   render() {

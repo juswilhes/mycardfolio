@@ -16,6 +16,7 @@ import salesRouter from "./routes/sales.js";
 import achievementsRouter from "./routes/achievements.js";
 import watchlistRouter from "./routes/watchlist.js";
 import sealedProductsRouter from "./routes/sealedProducts.js";
+import clientErrorsRouter from "./routes/clientErrors.js";
 import statsRouter from "./routes/stats.js";
 import { authRequired } from "./middleware/auth.js";
 import { countPageView } from "./middleware/hits.js";
@@ -90,6 +91,7 @@ app.use(
 app.use("/api/auth", authRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/sets", setsRouter);
+app.use("/api/client-error", clientErrorsRouter);
 
 // Nur mit Login: alles Nutzerbezogene.
 app.use("/api/collection", authRequired, collectionRouter);
