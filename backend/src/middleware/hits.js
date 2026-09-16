@@ -35,6 +35,20 @@ const normalize = (path) =>
     .replace(/\/database\/[^/]+/, "/database/:id")
     .slice(0, 120);
 
+// Nur echte Routen der App zählen - der Rest (WordPress-/.git-Scans,
+// zufällige Firmen-/Domain-Namen, sonstiges Bot-Rauschen) sind keine
+// Besucher, sondern automatisierte Scanner, die JEDE öffentliche Website
+// abklappern. Bewusst als Allowlist statt Blockliste, weil neues
+// Scanner-Rauschen sonst laufend nachgepflegt werden müsste.
+const STATIC_PATHS = new Set([
+  "/", "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen",
+  "/verify", "/impressum", "/datenschutz", "/sets", "/add", "/import",
+  "/verkauft", "/statistik", "/konto", "/orden", "/watchlist",
+]);
+const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/"];
+const isKnownRoute = (path) =>
+  STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
+
 // Besucher-Hash: nicht umkehrbar, wechselt täglich, nur zum Zählen.
 const visitorHash = (ip, day) =>
   crypto.createHash("sha256").update(`${ip}|${day}|${SALT}`).digest("hex").slice(0, 20);
@@ -65,7 +79,8 @@ export function countPageView(req, res, next) {
     if (
       req.method === "GET" &&
       !req.path.startsWith("/api") &&
-      !isOperator(req) // eigene Zugriffe des Betreibers nicht mitzählen
+      !isOperator(req) && // eigene Zugriffe des Betreibers nicht mitzählen
+      isKnownRoute(req.path) // Bot-/Scanner-Rauschen (WordPress, .git, ...) nicht mitzählen
     ) {
       const last = req.path.split("/").pop() || "";
       if (!last.includes(".")) {
