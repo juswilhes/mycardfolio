@@ -30,19 +30,42 @@ export default function CardDetail() {
   const [celebration, setCelebration] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(
     () =>
-      getCollection().then((items) =>
-        setEntries(items.filter((i) => String(i.card_id) === cardId))
-      ),
+      getCollection()
+        .then((items) => {
+          setEntries(items.filter((i) => String(i.card_id) === cardId));
+          setLoadError(false);
+        })
+        .catch(() => setLoadError(true)),
     [cardId]
   );
 
   useEffect(() => {
+    setEntries(null);
+    setHistory(null);
+    setLoadError(false);
     load();
-    getPriceHistory(cardId).then(setHistory);
+    getPriceHistory(cardId)
+      .then(setHistory)
+      .catch(() => setHistory([]));
   }, [cardId, load]);
+
+  if (loadError) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-subtle text-sm mb-4">Kartendetails konnten nicht geladen werden.</p>
+        <button
+          onClick={load}
+          className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full text-sm"
+        >
+          Nochmal versuchen
+        </button>
+      </div>
+    );
+  }
 
   if (entries === null) return <p className="text-subtle text-sm">Lade Kartendetails …</p>;
 
