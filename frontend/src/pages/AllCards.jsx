@@ -208,8 +208,8 @@ export default function AllCards() {
                     to={`/sets/${set.id}`}
                     className="border border-line rounded-2xl p-4 flex flex-col items-start gap-2 hover:border-ink shadow-sm"
                   >
-                    {set.logo ? (
-                      <img src={set.logo} alt={set.name} className="h-8 object-contain" />
+                    {set.logo || set.symbol ? (
+                      <img src={set.logo ?? set.symbol} alt={set.name} className="h-8 object-contain" />
                     ) : (
                       <span className="font-medium text-sm">{set.name}</span>
                     )}

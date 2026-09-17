@@ -74,6 +74,35 @@ const upsertCard = db.prepare(`
 const cardIdByExt = db.prepare(
   `SELECT id FROM cards WHERE external_id = ? AND game_id = ${gameId}`
 );
+const existingSetRow = db.prepare(`SELECT logo, symbol FROM card_sets WHERE id = ?`);
+
+async function urlExists(url) {
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// TCGdex verlinkt bei druckfrischen Sets (wie einem gerade erst erschienenen
+// Jubiläums-Set) oft noch kein logo/symbol-Feld, obwohl die Grafik längst auf
+// dem CDN liegt - nur eben (noch) nicht als .webp, sondern als .png. Deshalb
+// vor dem Aufgeben beide Endungen und zusätzlich images.pokemontcg.io
+// probieren (deckt ältere Sets ab, die TCGdex nie bebildert hat, z.B. svp).
+async function resolveSetAsset(kind, apiValue, serieId, setId, existing) {
+  if (apiValue) return `${apiValue}.webp`;
+  const candidates = [];
+  if (serieId) {
+    candidates.push(`https://assets.tcgdex.net/en/${serieId}/${setId}/${kind}.webp`);
+    candidates.push(`https://assets.tcgdex.net/en/${serieId}/${setId}/${kind}.png`);
+  }
+  candidates.push(`https://images.pokemontcg.io/${setId}/${kind}.png`);
+  for (const url of candidates) {
+    if (await urlExists(url)) return url;
+  }
+  return existing ?? null; // eigenes Fixup nicht durch einen erneuten Import verlieren
+}
 
 const STAGE = { basic: "Basic", stage1: "Stage 1", stage2: "Stage 2" };
 const SUPERTYPE = { pokemon: "Pokémon", trainer: "Trainer", energy: "Energy" };
@@ -168,6 +197,8 @@ for (const sid of setIds) {
     console.log(`  ${sid}: nicht gefunden - übersprungen`);
     continue;
   }
+  const serieId = set.serie?.id ?? null;
+  const existing = existingSetRow.get(set.id);
   upsertSet.run({
     id: set.id,
     game_id: gameId,
@@ -176,11 +207,10 @@ for (const sid of setIds) {
     printed_total: set.cardCount?.official ?? null,
     total: set.cardCount?.total ?? set.cards?.length ?? null,
     release_date: set.releaseDate ? set.releaseDate.replace(/-/g, "/") : null,
-    logo: set.logo ? `${set.logo}.webp` : null,
-    symbol: set.symbol ? `${set.symbol}.webp` : null,
+    logo: await resolveSetAsset("logo", set.logo, serieId, set.id, existing?.logo),
+    symbol: await resolveSetAsset("symbol", set.symbol, serieId, set.id, existing?.symbol),
   });
 
-  const serieId = set.serie?.id ?? null;
   const brief = set.cards ?? [];
   console.log(`  ${set.name} (${sid}): ${brief.length} Karten ...`);
   let n = 0;

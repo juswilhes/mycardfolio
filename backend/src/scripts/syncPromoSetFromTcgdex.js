@@ -81,6 +81,33 @@ const upsertCard = db.prepare(`
 
 const cardIdByExt = db.prepare(`SELECT id FROM cards WHERE external_id = ? AND game_id = ${gameId}`);
 
+async function urlExists(url) {
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// TCGdex hat für ältere Black-Star-Promos (z.B. svp) teils nie ein
+// logo/symbol-Feld bekommen, obwohl images.pokemontcg.io (die ursprüngliche
+// pokemon-tcg-data-Quelle) die Grafik längst hat. Vor dem Aufgeben beide
+// Endungen bei TCGdex und zusätzlich pokemontcg.io probieren.
+async function resolveSetAsset(kind, apiValue, serieId, setId, existing) {
+  if (apiValue) return `${apiValue}.webp`;
+  const candidates = [];
+  if (serieId) {
+    candidates.push(`https://assets.tcgdex.net/en/${serieId}/${setId}/${kind}.webp`);
+    candidates.push(`https://assets.tcgdex.net/en/${serieId}/${setId}/${kind}.png`);
+  }
+  candidates.push(`https://images.pokemontcg.io/${setId}/${kind}.png`);
+  for (const url of candidates) {
+    if (await urlExists(url)) return url;
+  }
+  return existing ?? null; // eigenes Fixup nicht durch einen erneuten Sync verlieren
+}
+
 const STAGE = { basic: "Basic", stage1: "Stage 1", stage2: "Stage 2" };
 const SUPERTYPE = { pokemon: "Pokémon", trainer: "Trainer", energy: "Energy" };
 const img = (base, q) => (base ? `${base}/${q}.webp` : null);
@@ -184,8 +211,9 @@ if (!set) {
 // falls es ihn schon gibt - TCGdex benennt Promo-Sets teils anders
 // ("SVP Black Star Promos" statt "Scarlet & Violet Black Star Promos")
 // und das soll sich für Bestandskarten nicht unbemerkt ändern.
-const existingSet = db.prepare(`SELECT name FROM card_sets WHERE id = ?`).get(setId);
+const existingSet = db.prepare(`SELECT name, logo, symbol FROM card_sets WHERE id = ?`).get(setId);
 const setName = existingSet?.name ?? set.name;
+const serieId = set.serie?.id ?? null;
 
 upsertSet.run({
   id: set.id,
@@ -195,11 +223,10 @@ upsertSet.run({
   printed_total: set.cardCount?.official ?? null,
   total: set.cardCount?.total ?? set.cards?.length ?? null,
   release_date: set.releaseDate ? set.releaseDate.replace(/-/g, "/") : null,
-  logo: set.logo ? `${set.logo}.webp` : null,
-  symbol: set.symbol ? `${set.symbol}.webp` : null,
+  logo: await resolveSetAsset("logo", set.logo, serieId, set.id, existingSet?.logo),
+  symbol: await resolveSetAsset("symbol", set.symbol, serieId, set.id, existingSet?.symbol),
 });
 
-const serieId = set.serie?.id ?? null;
 const brief = set.cards ?? [];
 console.log(`${setName} (${setId}): ${brief.length} Karten bei TCGdex, gleiche ab ...`);
 

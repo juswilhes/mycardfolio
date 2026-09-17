@@ -113,7 +113,9 @@ export default function SetDetail() {
 
       {set && (
         <div className="flex items-center gap-4 mt-4 mb-4">
-          {set.logo && <img src={set.logo} alt={set.name} className="h-10 object-contain" />}
+          {(set.logo || set.symbol) && (
+            <img src={set.logo ?? set.symbol} alt={set.name} className="h-10 object-contain" />
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold">{set.name}</h1>
             <p className="text-subtle text-xs">
