@@ -127,6 +127,13 @@ try {
     addSetToken(s.id, s.id);
     const parts = String(s.name ?? "").trim().split(/\s+/);
     if (parts.length === 1) addSetToken(parts[0], s.id); // einwortige Set-Namen ("151", "Evolutions")
+    // "Promo"/"Promos" als Sammel-Token über alle Promo-Sets hinweg ("SWSH
+    // Black Star Promos", "MEP Black Star Promos", ...) - so findet
+    // "Magneton Promo" alle Magneton-Promokarten, egal aus welcher Serie.
+    if (/promo/i.test(s.name)) {
+      addSetToken("promo", s.id);
+      addSetToken("promos", s.id);
+    }
   }
 } catch {
   /* card_sets evtl. noch leer - Suche läuft dann ohne Set-Token */
