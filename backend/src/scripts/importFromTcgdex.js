@@ -85,12 +85,20 @@ async function urlExists(url) {
   }
 }
 
+// Alle "XY/SM/SWSH/... Black Star Promos"-Sets bei pokemontcg.io tragen
+// bit-identisch dasselbe generische "PROMO"-Stern-Logo (kein Set-eigenes
+// Artwork) - das ist offenbar der offizielle Platzhalter für die ganze
+// Produktlinie, jede Ära neu erfunden. Für ein zu neues Promo-Set, das dort
+// noch gar nicht gelistet ist (z.B. mep), ist dasselbe generische Logo also
+// die richtige Wahl statt gar keins.
+const GENERIC_PROMO_LOGO = "https://images.pokemontcg.io/basep/logo.png";
+
 // TCGdex verlinkt bei druckfrischen Sets (wie einem gerade erst erschienenen
 // Jubiläums-Set) oft noch kein logo/symbol-Feld, obwohl die Grafik längst auf
 // dem CDN liegt - nur eben (noch) nicht als .webp, sondern als .png. Deshalb
 // vor dem Aufgeben beide Endungen und zusätzlich images.pokemontcg.io
 // probieren (deckt ältere Sets ab, die TCGdex nie bebildert hat, z.B. svp).
-async function resolveSetAsset(kind, apiValue, serieId, setId, existing) {
+async function resolveSetAsset(kind, apiValue, serieId, setId, existing, isPromo) {
   if (apiValue) return `${apiValue}.webp`;
   const candidates = [];
   if (serieId) {
@@ -101,6 +109,7 @@ async function resolveSetAsset(kind, apiValue, serieId, setId, existing) {
   for (const url of candidates) {
     if (await urlExists(url)) return url;
   }
+  if (kind === "logo" && isPromo) return GENERIC_PROMO_LOGO;
   return existing ?? null; // eigenes Fixup nicht durch einen erneuten Import verlieren
 }
 
@@ -199,6 +208,7 @@ for (const sid of setIds) {
   }
   const serieId = set.serie?.id ?? null;
   const existing = existingSetRow.get(set.id);
+  const isPromo = /promo/i.test(set.name);
   upsertSet.run({
     id: set.id,
     game_id: gameId,
@@ -207,8 +217,8 @@ for (const sid of setIds) {
     printed_total: set.cardCount?.official ?? null,
     total: set.cardCount?.total ?? set.cards?.length ?? null,
     release_date: set.releaseDate ? set.releaseDate.replace(/-/g, "/") : null,
-    logo: await resolveSetAsset("logo", set.logo, serieId, set.id, existing?.logo),
-    symbol: await resolveSetAsset("symbol", set.symbol, serieId, set.id, existing?.symbol),
+    logo: await resolveSetAsset("logo", set.logo, serieId, set.id, existing?.logo, isPromo),
+    symbol: await resolveSetAsset("symbol", set.symbol, serieId, set.id, existing?.symbol, isPromo),
   });
 
   const brief = set.cards ?? [];

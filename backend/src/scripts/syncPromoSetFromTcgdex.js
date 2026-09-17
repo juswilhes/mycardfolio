@@ -90,6 +90,14 @@ async function urlExists(url) {
   }
 }
 
+// Alle "XY/SM/SWSH/... Black Star Promos"-Sets bei pokemontcg.io tragen
+// bit-identisch dasselbe generische "PROMO"-Stern-Logo (kein Set-eigenes
+// Artwork) - offenbar der offizielle Platzhalter für die ganze Produktlinie.
+// Dieses Skript synct ausschließlich Promo-Sets, daher ist das immer die
+// richtige letzte Instanz, wenn weder TCGdex noch pokemontcg.io selbst
+// etwas für dieses eine Set haben.
+const GENERIC_PROMO_LOGO = "https://images.pokemontcg.io/basep/logo.png";
+
 // TCGdex hat für ältere Black-Star-Promos (z.B. svp) teils nie ein
 // logo/symbol-Feld bekommen, obwohl images.pokemontcg.io (die ursprüngliche
 // pokemon-tcg-data-Quelle) die Grafik längst hat. Vor dem Aufgeben beide
@@ -105,6 +113,7 @@ async function resolveSetAsset(kind, apiValue, serieId, setId, existing) {
   for (const url of candidates) {
     if (await urlExists(url)) return url;
   }
+  if (kind === "logo") return GENERIC_PROMO_LOGO;
   return existing ?? null; // eigenes Fixup nicht durch einen erneuten Sync verlieren
 }
 
