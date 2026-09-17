@@ -208,11 +208,16 @@ export default function AllCards() {
                     to={`/sets/${set.id}`}
                     className="border border-line rounded-2xl p-4 flex flex-col items-start gap-2 hover:border-ink shadow-sm"
                   >
-                    {set.logo || set.symbol ? (
-                      <img src={set.logo ?? set.symbol} alt={set.name} className="h-8 object-contain" />
-                    ) : (
-                      <span className="font-medium text-sm">{set.name}</span>
-                    )}
+                    <div className="flex items-center gap-2 min-w-0">
+                      {(set.logo || set.symbol) && (
+                        <img
+                          src={set.logo ?? set.symbol}
+                          alt=""
+                          className="h-8 w-8 object-contain shrink-0"
+                        />
+                      )}
+                      <span className="font-medium text-sm truncate">{set.name}</span>
+                    </div>
                     <div className="text-xs text-subtle">
                       {set.total} Karten
                       {set.release_date ? ` · ${set.release_date.slice(0, 4)}` : ""}
