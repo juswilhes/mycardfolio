@@ -21,6 +21,7 @@ import VerifyEmail from "./pages/VerifyEmail.jsx";
 import Account from "./pages/Account.jsx";
 import Orden from "./pages/Orden.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
+import NotFound from "./pages/NotFound.jsx";
 import Footer from "./components/Footer.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -139,6 +140,7 @@ export default function App() {
             <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
             <Route path="/orden" element={<RequireAuth><Orden /></RequireAuth>} />
             <Route path="/watchlist" element={<RequireAuth><Watchlist /></RequireAuth>} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </ErrorBoundary>
       </main>

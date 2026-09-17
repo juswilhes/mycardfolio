@@ -19,7 +19,7 @@ import sealedProductsRouter from "./routes/sealedProducts.js";
 import clientErrorsRouter from "./routes/clientErrors.js";
 import statsRouter from "./routes/stats.js";
 import { authRequired } from "./middleware/auth.js";
-import { countPageView } from "./middleware/hits.js";
+import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import db from "./db/index.js";
@@ -122,9 +122,13 @@ const frontendDist = process.env.FRONTEND_DIST
 
 if (fs.existsSync(path.join(frontendDist, "index.html"))) {
   app.use(express.static(frontendDist, { maxAge: "1h", index: false }));
-  // SPA-Fallback: alles, was keine Datei ist, liefert index.html.
-  app.get(/^(?!\/api).*/, (_req, res) => {
-    res.sendFile(path.join(frontendDist, "index.html"));
+  // SPA-Fallback: alles, was keine Datei ist, liefert index.html - aber nur
+  // mit Status 200, wenn es auch eine echte Route der App ist. Sonst (alte
+  // WordPress-URLs, Scanner-Pfade, Tippfehler) mit echtem 404-Status, damit
+  // Google & Co. das nicht als "Soft 404" crawlen und im Index behalten
+  // wollen, obwohl React Router dafür ohnehin nichts anzeigt.
+  app.get(/^(?!\/api).*/, (req, res) => {
+    res.status(isKnownRoute(req.path) ? 200 : 404).sendFile(path.join(frontendDist, "index.html"));
   });
   console.log(`[frontend] wird ausgeliefert aus ${frontendDist}`);
 }

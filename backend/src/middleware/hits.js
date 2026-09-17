@@ -46,7 +46,7 @@ const STATIC_PATHS = new Set([
   "/verkauft", "/statistik", "/konto", "/orden", "/watchlist",
 ]);
 const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/"];
-const isKnownRoute = (path) =>
+export const isKnownRoute = (path) =>
   STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
 
 // Besucher-Hash: nicht umkehrbar, wechselt täglich, nur zum Zählen.
