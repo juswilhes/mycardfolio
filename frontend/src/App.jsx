@@ -24,6 +24,7 @@ import Watchlist from "./pages/Watchlist.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import ArtistCards from "./pages/ArtistCards.jsx";
 import Marketplace from "./pages/Marketplace.jsx";
+import MarketplaceTerms from "./pages/MarketplaceTerms.jsx";
 import Footer from "./components/Footer.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -125,6 +126,7 @@ export default function App() {
             {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
             <Route path="/sets" element={<AllCards />} />
             <Route path="/marktplatz" element={<Marketplace />} />
+            <Route path="/marktplatz-agb" element={<MarketplaceTerms />} />
             <Route path="/sets/:setId" element={<SetDetail />} />
             <Route path="/database/:externalId" element={<CardInfo />} />
             <Route path="/illustrator/:name" element={<ArtistCards />} />

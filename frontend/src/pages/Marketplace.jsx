@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
   getMarketplaceConfig,
@@ -69,7 +69,12 @@ export default function Marketplace() {
       <p className="text-subtle text-sm mb-6">
         Karten &amp; Sealed-Produkte von anderen mycardfolio-Nutzern kaufen oder deine eigenen
         verkaufen.
-        {feePercent != null && ` mycardfolio behält ${feePercent}% Provision je Verkauf.`}
+        {feePercent != null && ` mycardfolio behält ${feePercent}% Provision je Verkauf.`} Mit
+        einem Kauf oder Angebot gelten die{" "}
+        <Link to="/marktplatz-agb" className="underline hover:text-ink">
+          Marktplatz-Nutzungsbedingungen
+        </Link>
+        .
       </p>
 
       {params.get("kauf") === "erfolgreich" && (

@@ -33,9 +33,12 @@ export const HOSTING = {
 export const SITE = {
   domain: "mycardfolio.de",
   altDomain: "mycardfolio.eu",
-  lastUpdated: "2026-09-08", // Datum der letzten Änderung dieser Texte
+  lastUpdated: "2026-09-18", // Datum der letzten Änderung dieser Texte
 };
 
 // Fertig ausgefüllt? Dann hier auf true setzen – blendet den Hinweisbanner
 // auf den Rechtstexten aus.
-export const LEGAL_REVIEWED = true;
+// Am 18.09.2026 zurück auf false gesetzt: die Datenschutzerklärung wurde um
+// den Marktplatz/Stripe-Abschnitt ergänzt und die neue Marktplatz-AGB
+// (MarketplaceTerms.jsx) kam hinzu - beides noch nicht fachlich geprüft.
+export const LEGAL_REVIEWED = false;

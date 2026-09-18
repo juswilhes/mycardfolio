@@ -10,6 +10,7 @@ export default function Footer() {
         <nav className="flex flex-wrap gap-x-5 gap-y-1">
           <Link to="/impressum" className="hover:text-ink">Impressum</Link>
           <Link to="/datenschutz" className="hover:text-ink">Datenschutz</Link>
+          <Link to="/marktplatz-agb" className="hover:text-ink">Marktplatz-AGB</Link>
         </nav>
       </div>
       <p className="max-w-5xl mx-auto mt-4 leading-relaxed">
