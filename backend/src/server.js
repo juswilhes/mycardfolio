@@ -24,6 +24,7 @@ import { authRequired } from "./middleware/auth.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
+import { uploadsRoot } from "./lib/uploads.js";
 import db from "./db/index.js";
 
 process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
@@ -103,6 +104,7 @@ app.use("/api/cards", cardsRouter);
 app.use("/api/sets", setsRouter);
 app.use("/api/client-error", clientErrorsRouter);
 app.use("/api/marketplace", marketplaceRouter);
+app.use("/uploads", express.static(uploadsRoot, { maxAge: "7d" }));
 
 // Nur mit Login: alles Nutzerbezogene.
 app.use("/api/collection", authRequired, collectionRouter);

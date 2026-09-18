@@ -228,7 +228,8 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   sealed_product_id   INTEGER REFERENCES sealed_products(id),
   external_id         TEXT,            -- Karten-external_id (Bild/Link), NULL bei Sealed
   title               TEXT NOT NULL,
-  image_url           TEXT,
+  image_url           TEXT,            -- Referenzbild (Kartenbild/Sealed-Foto aus der Sammlung)
+  photo_url           TEXT,            -- vom Verkäufer hochgeladenes Foto DES ECHTEN Exemplars (Vertrauen/Echtheit)
   price_cents         INTEGER NOT NULL,
   currency            TEXT NOT NULL DEFAULT 'EUR',
   quantity            INTEGER NOT NULL DEFAULT 1,
@@ -260,6 +261,33 @@ CREATE TABLE IF NOT EXISTS marketplace_orders (
 );
 CREATE INDEX IF NOT EXISTS idx_orders_buyer ON marketplace_orders(buyer_user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_seller ON marketplace_orders(seller_user_id);
+
+-- Bewertungen nach einem abgeschlossenen Kauf, in beide Richtungen (Käufer
+-- bewertet Verkäufer UND umgekehrt) - Vertrauen ist hier bewusst
+-- zweiseitig, nicht nur "Verkäufer-Bewertung" wie bei den meisten Börsen.
+CREATE TABLE IF NOT EXISTS marketplace_reviews (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id          INTEGER NOT NULL REFERENCES marketplace_orders(id),
+  reviewer_user_id  INTEGER NOT NULL REFERENCES users(id),
+  reviewee_user_id  INTEGER NOT NULL REFERENCES users(id),
+  role              TEXT NOT NULL, -- 'buyer_to_seller' | 'seller_to_buyer'
+  rating            INTEGER NOT NULL, -- 1..5
+  comment           TEXT,
+  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(order_id, role)
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_reviewee ON marketplace_reviews(reviewee_user_id);
+
+-- Fragen/Kommentare zu einem Angebot - Community-Austausch statt rein
+-- transaktionaler Kauf ohne jeden Kontakt vorher.
+CREATE TABLE IF NOT EXISTS marketplace_listing_comments (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id   INTEGER NOT NULL REFERENCES marketplace_listings(id),
+  user_id      INTEGER NOT NULL REFERENCES users(id),
+  body         TEXT NOT NULL,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_listing_comments_listing ON marketplace_listing_comments(listing_id);
 
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
@@ -415,6 +443,13 @@ if (portfolioSnapshotsRebuilt) {
     ).run(firstUser.id);
   }
   db.exec(`DROP TABLE portfolio_snapshots_old`);
+}
+
+// marketplace_listings: photo_url (echtes Foto des Exemplars) kam nach dem
+// ersten Deploy des Marktplatzes dazu.
+const mlColumns = new Set(db.prepare(`PRAGMA table_info(marketplace_listings)`).all().map((c) => c.name));
+if (!mlColumns.has("photo_url")) {
+  db.exec(`ALTER TABLE marketplace_listings ADD COLUMN photo_url TEXT`);
 }
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);

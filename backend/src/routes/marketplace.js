@@ -16,6 +16,8 @@ import {
   createListingFromCollectionItem,
   createListingFromSealedProduct,
   getListingById,
+  getListingWithSeller,
+  setListingPhoto,
   listActiveListings,
   listMyListings,
   cancelListing,
@@ -23,10 +25,22 @@ import {
   markOrderShipped,
   listOrdersAsBuyer,
   listOrdersAsSeller,
+  getOrderById,
+  createReview,
+  getSellerStats,
+  listReviewsForUser,
+  listActiveListingsForSeller,
+  addListingComment,
+  listCommentsForListing,
 } from "../services/marketplaceService.js";
+import { watchersForExternalId } from "../services/watchlistService.js";
+import { sendWishlistMatchMail, sendListingCommentMail } from "../services/mailer.js";
+import { uploadListingPhoto, listingPhotoUrl } from "../lib/uploads.js";
+import { findUserById } from "../services/authService.js";
 
 const router = Router();
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const eur = (cents) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 
 // Solange kein STRIPE_SECRET_KEY hinterlegt ist, ist der Marktplatz bewusst
 // inaktiv statt mit kaputten Aufrufen zu crashen - das Anlegen des echten
@@ -123,6 +137,75 @@ router.post("/listings", authRequired, (req, res) => {
 
   if (!id) return res.status(404).json({ error: "Karte/Produkt nicht gefunden" });
   res.status(201).json({ id });
+
+  // Community-Feature: alle, die genau diese Karte auf der Watchlist haben,
+  // bekommen eine Mail, statt selbst immer wieder nachschauen zu müssen.
+  const listing = getListingById(id);
+  if (listing?.external_id) {
+    for (const watcher of watchersForExternalId(listing.external_id)) {
+      if (watcher.user_id === req.user.id) continue;
+      sendWishlistMatchMail(watcher.email, {
+        cardName: listing.title,
+        price: eur(listing.price_cents),
+        listingUrl: `${FRONTEND_URL}/marktplatz/angebot/${listing.id}`,
+      }).catch(() => {});
+    }
+  }
+});
+
+// POST /api/marketplace/listings/:id/photo  (multipart, Feld "photo")
+// Echtes Foto des Exemplars statt nur des generischen Kartenbilds - für
+// Vertrauen/Echtheit besonders bei teureren Karten wichtig.
+router.post("/listings/:id/photo", authRequired, (req, res) => {
+  uploadListingPhoto(req, res, (err) => {
+    if (err) return res.status(400).json({ error: "Foto konnte nicht hochgeladen werden (max. 8 MB, JPG/PNG/WebP)." });
+    if (!req.file) return res.status(400).json({ error: "Keine Datei erhalten." });
+    const info = setListingPhoto(Number(req.params.id), req.user.id, listingPhotoUrl(req.file.filename));
+    if (!info.changes) return res.status(404).json({ error: "Angebot nicht gefunden" });
+    res.json({ photoUrl: listingPhotoUrl(req.file.filename) });
+  });
+});
+
+// GET /api/marketplace/listings/:id -> Detailseite (öffentlich): Angebot +
+// Verkäufer-Bewertungsschnitt + Fragen/Kommentare.
+router.get("/listings/:id", (req, res) => {
+  const listing = getListingWithSeller(Number(req.params.id));
+  if (!listing) return res.status(404).json({ error: "Angebot nicht gefunden" });
+  res.json({ ...listing, comments: listCommentsForListing(listing.id) });
+});
+
+// POST /api/marketplace/listings/:id/comments  { body } -> Frage/Kommentar
+router.post("/listings/:id/comments", authRequired, (req, res) => {
+  const body = (req.body?.body ?? "").trim().slice(0, 1000);
+  if (!body) return res.status(400).json({ error: "Text fehlt" });
+  const listing = getListingById(Number(req.params.id));
+  if (!listing) return res.status(404).json({ error: "Angebot nicht gefunden" });
+
+  addListingComment(listing.id, req.user.id, body);
+  res.status(201).json({ ok: true });
+
+  if (listing.seller_user_id !== req.user.id) {
+    const seller = findUserById(listing.seller_user_id);
+    if (seller) {
+      sendListingCommentMail(seller.email, {
+        listingTitle: listing.title,
+        listingUrl: `${FRONTEND_URL}/marktplatz/angebot/${listing.id}`,
+        authorName: req.user.display_name || req.user.email,
+      }).catch(() => {});
+    }
+  }
+});
+
+// GET /api/marketplace/sellers/:userId -> öffentliches Verkäuferprofil
+router.get("/sellers/:userId", (req, res) => {
+  const userId = Number(req.params.userId);
+  const stats = getSellerStats(userId);
+  if (!stats?.user_id) return res.status(404).json({ error: "Nutzer nicht gefunden" });
+  res.json({
+    ...stats,
+    reviews: listReviewsForUser(userId),
+    listings: listActiveListingsForSeller(userId),
+  });
 });
 
 // GET /api/marketplace/listings/mine -> eigene Angebote (alle Status)
@@ -188,6 +271,51 @@ router.post("/orders/:id/ship", authRequired, (req, res) => {
   const info = markOrderShipped(Number(req.params.id), req.user.id, req.body?.trackingCode || null);
   if (!info.changes) return res.status(404).json({ error: "Bestellung nicht gefunden" });
   res.json({ ok: true });
+});
+
+// POST /api/marketplace/orders/:id/review  { rating, comment } -> beidseitig:
+// Käufer bewertet Verkäufer ODER Verkäufer bewertet Käufer, je nachdem wer
+// aufruft. Erst ab "paid" möglich (Zahlung ist durch), pro Bestellung und
+// Richtung nur einmal (UNIQUE-Constraint in der DB).
+router.post("/orders/:id/review", authRequired, (req, res) => {
+  const order = getOrderById(Number(req.params.id));
+  if (!order) return res.status(404).json({ error: "Bestellung nicht gefunden" });
+  if (!["paid", "shipped", "completed"].includes(order.status)) {
+    return res.status(409).json({ error: "Diese Bestellung ist noch nicht bezahlt." });
+  }
+
+  let role, revieweeId;
+  if (order.buyer_user_id === req.user.id) {
+    role = "buyer_to_seller";
+    revieweeId = order.seller_user_id;
+  } else if (order.seller_user_id === req.user.id) {
+    role = "seller_to_buyer";
+    revieweeId = order.buyer_user_id;
+  } else {
+    return res.status(403).json({ error: "Das ist nicht deine Bestellung." });
+  }
+
+  const rating = Math.round(Number(req.body?.rating));
+  if (!(rating >= 1 && rating <= 5)) {
+    return res.status(400).json({ error: "Bewertung muss zwischen 1 und 5 liegen." });
+  }
+
+  try {
+    createReview({
+      order_id: order.id,
+      reviewer_user_id: req.user.id,
+      reviewee_user_id: revieweeId,
+      role,
+      rating,
+      comment: (req.body?.comment ?? "").trim().slice(0, 1000) || null,
+    });
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    if (String(err.message).includes("UNIQUE")) {
+      return res.status(409).json({ error: "Du hast diese Bestellung schon bewertet." });
+    }
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

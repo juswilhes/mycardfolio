@@ -159,6 +159,17 @@ export function deleteAccount(userId) {
     db.prepare(`DELETE FROM sales WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM portfolio_snapshots WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM sessions WHERE user_id = ?`).run(userId);
+    // Marktplatz: aktive Angebote zurückziehen (niemand kann mehr von einem
+    // gelöschten Konto kaufen), Verkäuferkonto-Verknüpfung entfernen.
+    // Bereits abgeschlossene Bestellungen/Bewertungen/Kommentare bleiben
+    // bestehen (Aufbewahrungspflicht bzw. Vertrauenshistorie für andere
+    // Nutzer, siehe Datenschutzerklärung) und zeigen danach "Gelöschter
+    // Nutzer" statt eines Namens.
+    db.prepare(
+      `UPDATE marketplace_listings SET status = 'cancelled', updated_at = datetime('now')
+       WHERE seller_user_id = ? AND status = 'active'`
+    ).run(userId);
+    db.prepare(`DELETE FROM seller_accounts WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
   });
   tx();

@@ -96,8 +96,16 @@ export function createListingFromSealedProduct(userId, sealedProductId, { priceC
 const listingByIdStmt = db.prepare(`SELECT * FROM marketplace_listings WHERE id = ?`);
 export const getListingById = (id) => listingByIdStmt.get(id);
 
+// Bewertungsschnitt + Anzahl je Verkäufer, als Unterabfrage an jedes Angebot
+// gehängt - Vertrauen soll schon in der Übersicht sichtbar sein, nicht erst
+// nach einem Klick.
+const SELLER_RATING_SUBQUERY = `
+  (SELECT ROUND(AVG(rating), 1) FROM marketplace_reviews WHERE reviewee_user_id = l.seller_user_id) AS seller_rating,
+  (SELECT COUNT(*) FROM marketplace_reviews WHERE reviewee_user_id = l.seller_user_id) AS seller_review_count
+`;
+
 const activeListingsStmt = db.prepare(`
-  SELECT l.*, u.display_name AS seller_name
+  SELECT l.*, u.display_name AS seller_name, ${SELLER_RATING_SUBQUERY}
   FROM marketplace_listings l
   JOIN users u ON u.id = l.seller_user_id
   WHERE l.status = 'active'
@@ -105,6 +113,21 @@ const activeListingsStmt = db.prepare(`
   LIMIT 200
 `);
 export const listActiveListings = () => activeListingsStmt.all();
+
+const listingWithSellerStmt = db.prepare(`
+  SELECT l.*, u.display_name AS seller_name, u.id AS seller_id, ${SELLER_RATING_SUBQUERY}
+  FROM marketplace_listings l
+  JOIN users u ON u.id = l.seller_user_id
+  WHERE l.id = ?
+`);
+export const getListingWithSeller = (id) => listingWithSellerStmt.get(id);
+
+const setListingPhotoStmt = db.prepare(`
+  UPDATE marketplace_listings SET photo_url = ?, updated_at = datetime('now')
+  WHERE id = ? AND seller_user_id = ?
+`);
+export const setListingPhoto = (id, sellerUserId, photoUrl) =>
+  setListingPhotoStmt.run(photoUrl, id, sellerUserId);
 
 const myListingsStmt = db.prepare(`
   SELECT * FROM marketplace_listings WHERE seller_user_id = ? ORDER BY created_at DESC
@@ -160,15 +183,76 @@ export const markOrderShipped = (id, sellerUserId, trackingCode) =>
   markOrderShippedStmt.run(trackingCode, id, sellerUserId);
 
 const ordersAsBuyerStmt = db.prepare(`
-  SELECT o.*, l.title, l.image_url FROM marketplace_orders o
+  SELECT o.*, l.title, l.image_url,
+    EXISTS(SELECT 1 FROM marketplace_reviews WHERE order_id = o.id AND role = 'buyer_to_seller') AS reviewed
+  FROM marketplace_orders o
   JOIN marketplace_listings l ON l.id = o.listing_id
   WHERE o.buyer_user_id = ? ORDER BY o.created_at DESC
 `);
 export const listOrdersAsBuyer = (userId) => ordersAsBuyerStmt.all(userId);
 
 const ordersAsSellerStmt = db.prepare(`
-  SELECT o.*, l.title, l.image_url FROM marketplace_orders o
+  SELECT o.*, l.title, l.image_url,
+    EXISTS(SELECT 1 FROM marketplace_reviews WHERE order_id = o.id AND role = 'seller_to_buyer') AS reviewed
+  FROM marketplace_orders o
   JOIN marketplace_listings l ON l.id = o.listing_id
   WHERE o.seller_user_id = ? ORDER BY o.created_at DESC
 `);
 export const listOrdersAsSeller = (userId) => ordersAsSellerStmt.all(userId);
+
+// --- Bewertungen -------------------------------------------------------
+
+const orderByIdStmt = db.prepare(`SELECT * FROM marketplace_orders WHERE id = ?`);
+export const getOrderById = (id) => orderByIdStmt.get(id);
+
+const insertReviewStmt = db.prepare(`
+  INSERT INTO marketplace_reviews (order_id, reviewer_user_id, reviewee_user_id, role, rating, comment)
+  VALUES (@order_id, @reviewer_user_id, @reviewee_user_id, @role, @rating, @comment)
+`);
+export const createReview = (values) => insertReviewStmt.run(values);
+
+const sellerStatsStmt = db.prepare(`
+  SELECT
+    (SELECT ROUND(AVG(rating), 1) FROM marketplace_reviews WHERE reviewee_user_id = ?) AS rating,
+    (SELECT COUNT(*) FROM marketplace_reviews WHERE reviewee_user_id = ?) AS review_count,
+    (SELECT COUNT(*) FROM marketplace_orders WHERE seller_user_id = ? AND status IN ('paid','shipped','completed')) AS sales_count,
+    u.display_name, u.id AS user_id
+  FROM users u WHERE u.id = ?
+`);
+export const getSellerStats = (userId) => sellerStatsStmt.get(userId, userId, userId, userId);
+
+// LEFT JOIN statt JOIN: Bewertungen überleben eine Kontolöschung des
+// Bewertenden (kein Cascade-Delete auf marketplace_reviews) und zeigen dann
+// "Gelöschter Nutzer" statt zu verschwinden - Vertrauenshistorie soll nicht
+// rückwirkend verfälscht werden.
+const reviewsForUserStmt = db.prepare(`
+  SELECT r.*, COALESCE(u.display_name, 'Gelöschter Nutzer') AS reviewer_name
+  FROM marketplace_reviews r
+  LEFT JOIN users u ON u.id = r.reviewer_user_id
+  WHERE r.reviewee_user_id = ?
+  ORDER BY r.created_at DESC
+  LIMIT 50
+`);
+export const listReviewsForUser = (userId) => reviewsForUserStmt.all(userId);
+
+const sellerActiveListingsStmt = db.prepare(`
+  SELECT * FROM marketplace_listings WHERE seller_user_id = ? AND status = 'active' ORDER BY created_at DESC
+`);
+export const listActiveListingsForSeller = (userId) => sellerActiveListingsStmt.all(userId);
+
+// --- Kommentare / Fragen zu einem Angebot -------------------------------
+
+const insertCommentStmt = db.prepare(`
+  INSERT INTO marketplace_listing_comments (listing_id, user_id, body) VALUES (?, ?, ?)
+`);
+export const addListingComment = (listingId, userId, body) =>
+  insertCommentStmt.run(listingId, userId, body);
+
+const commentsForListingStmt = db.prepare(`
+  SELECT c.*, COALESCE(u.display_name, 'Gelöschter Nutzer') AS author_name
+  FROM marketplace_listing_comments c
+  LEFT JOIN users u ON u.id = c.user_id
+  WHERE c.listing_id = ?
+  ORDER BY c.created_at ASC
+`);
+export const listCommentsForListing = (listingId) => commentsForListingStmt.all(listingId);

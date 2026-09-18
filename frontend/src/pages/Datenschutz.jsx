@@ -150,7 +150,20 @@ export default function Datenschutz() {
         (Proxy), die diese Übermittlung vermeidet, ist geplant.
       </p>
 
-      <h2>9. Marktplatz: Zahlungsabwicklung über Stripe</h2>
+      <h2>9. Marktplatz: Angebote, Bewertungen und Zahlungsabwicklung</h2>
+      <p>
+        Angebote im Marktplatz (Titel, Preis, Zustand, Beschreibung sowie ein
+        optional von dir hochgeladenes Foto des Exemplars) sind öffentlich
+        einsehbar. Ebenso öffentlich sichtbar sind Fragen/Kommentare zu einem
+        Angebot sowie Bewertungen (Sterne + optionaler Text), die sich Käufer
+        und Verkäufer nach einem Kauf gegenseitig geben können – jeweils mit
+        deinem Anzeigenamen. Ein hochgeladenes Foto bleibt gespeichert, bis du
+        das Angebot löschst bzw. dein Konto löschst; Bewertungen und
+        Kommentare bleiben darüber hinaus bestehen, damit die
+        Bewertungshistorie für andere Nutzer nachvollziehbar bleibt (wie bei
+        vergleichbaren Plattformen üblich), werden aber bei Löschung deines
+        Kontos anonymisiert.
+      </p>
       <p>
         Für Käufe und Verkäufe im Marktplatz-Bereich setzen wir den
         Zahlungsdienstleister Stripe ein (Stripe Payments Europe, Limited, 1

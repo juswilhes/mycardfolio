@@ -126,3 +126,28 @@ export const refreshSellerStatus = () => request("/marketplace/seller/refresh");
 export const getMyOrders = () => request("/marketplace/orders");
 export const shipOrder = (id, trackingCode) =>
   request(`/marketplace/orders/${id}/ship`, { method: "POST", body: { trackingCode } });
+export const submitOrderReview = (id, payload) =>
+  request(`/marketplace/orders/${id}/review`, { method: "POST", body: payload });
+export const getListing = (id) => request(`/marketplace/listings/${id}`);
+export const postListingComment = (id, body) =>
+  request(`/marketplace/listings/${id}/comments`, { method: "POST", body: { body } });
+export const getSellerProfile = (userId) => request(`/marketplace/sellers/${userId}`);
+
+// Datei-Upload braucht FormData statt JSON - eigener, schlanker Aufruf statt
+// über den zentralen request()-Helfer (der immer Content-Type: json setzt).
+export async function uploadListingPhoto(id, file) {
+  const form = new FormData();
+  form.append("photo", file);
+  const res = await fetch(`${BASE}/marketplace/listings/${id}/photo`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || `Fehler ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}

@@ -11,7 +11,10 @@ import {
   getSellerStatus,
   startSellerOnboarding,
   shipOrder,
+  submitOrderReview,
 } from "../api.js";
+import { conditionLabel } from "../components/CollectionItemDialog.jsx";
+import { StarRating, StarPicker } from "../components/StarRating.jsx";
 
 const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
 
@@ -66,16 +69,22 @@ export default function Marketplace() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1">🛒 Marktplatz</h1>
-      <p className="text-subtle text-sm mb-6">
+      <p className="text-subtle text-sm mb-3">
         Karten &amp; Sealed-Produkte von anderen mycardfolio-Nutzern kaufen oder deine eigenen
         verkaufen.
-        {feePercent != null && ` mycardfolio behält ${feePercent}% Provision je Verkauf.`} Mit
-        einem Kauf oder Angebot gelten die{" "}
+        {feePercent != null && ` mycardfolio behält nur ${feePercent}% Provision je Verkauf – keine Grundgebühr, kein Abo.`}{" "}
+        Mit einem Kauf oder Angebot gelten die{" "}
         <Link to="/marktplatz-agb" className="underline hover:text-ink">
           Marktplatz-Nutzungsbedingungen
         </Link>
         .
       </p>
+      <ul className="text-subtle text-xs mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <li className="border border-line rounded-xl px-3 py-2">⭐ Echte Käufer-/Verkäufer-Bewertungen</li>
+        <li className="border border-line rounded-xl px-3 py-2">📷 Fotos vom echten Exemplar statt Stockbild</li>
+        <li className="border border-line rounded-xl px-3 py-2">💬 Fragen direkt beim Angebot stellen</li>
+        <li className="border border-line rounded-xl px-3 py-2">🔔 Watchlist-Alarm bei neuen Angeboten</li>
+      </ul>
 
       {params.get("kauf") === "erfolgreich" && (
         <p className="bg-mint/15 text-mint border border-mint/30 rounded-2xl px-4 py-3 text-sm mb-6">
@@ -112,17 +121,27 @@ export default function Marketplace() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {listings.map((l) => (
                 <div key={l.id} className="border border-line rounded-2xl p-3 flex flex-col">
-                  {l.image_url ? (
-                    <img src={l.image_url} alt="" className="rounded-xl mb-2 object-contain h-40 bg-canvas" />
-                  ) : (
-                    <div className="rounded-xl mb-2 h-40 bg-canvas flex items-center justify-center text-3xl">
-                      📦
-                    </div>
-                  )}
-                  <p className="text-sm font-medium truncate">{l.title}</p>
-                  <p className="text-subtle text-xs truncate">
-                    {l.condition ? `${l.condition} · ` : ""}Verkäufer: {l.seller_name || "mycardfolio-Nutzer"}
-                  </p>
+                  <Link to={`/marktplatz/angebot/${l.id}`}>
+                    {(l.photo_url || l.image_url) ? (
+                      <img
+                        src={l.photo_url || l.image_url}
+                        alt=""
+                        className="rounded-xl mb-2 object-contain h-40 bg-canvas"
+                      />
+                    ) : (
+                      <div className="rounded-xl mb-2 h-40 bg-canvas flex items-center justify-center text-3xl">
+                        📦
+                      </div>
+                    )}
+                    <p className="text-sm font-medium truncate hover:underline">{l.title}</p>
+                  </Link>
+                  {l.condition && <p className="text-subtle text-xs truncate">{conditionLabel(l.condition)}</p>}
+                  <div className="flex items-center justify-between mt-1">
+                    <Link to={`/verkaeufer/${l.seller_user_id}`} className="text-subtle text-xs truncate hover:underline">
+                      {l.seller_name || "mycardfolio-Nutzer"}
+                    </Link>
+                    <StarRating rating={l.seller_rating} count={l.seller_review_count} />
+                  </div>
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <span className="font-mono font-medium">{eur(l.price_cents)}</span>
                     <button
@@ -213,12 +232,17 @@ function MyListings() {
         <div className="space-y-2">
           {listings.map((l) => (
             <div key={l.id} className="border border-line rounded-2xl p-3 flex items-center gap-3">
-              {l.image_url && <img src={l.image_url} alt="" className="w-12 h-12 object-contain rounded-lg bg-canvas" />}
+              {(l.photo_url || l.image_url) && (
+                <img src={l.photo_url || l.image_url} alt="" className="w-12 h-12 object-contain rounded-lg bg-canvas" />
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{l.title}</p>
+                <Link to={`/marktplatz/angebot/${l.id}`} className="text-sm font-medium truncate hover:underline block">
+                  {l.title}
+                </Link>
                 <p className="text-xs text-subtle">
                   {eur(l.price_cents)} ·{" "}
                   {l.status === "active" ? "aktiv" : l.status === "sold" ? "verkauft" : "zurückgezogen"}
+                  {!l.photo_url && l.status === "active" && " · kein eigenes Foto"}
                 </p>
               </div>
               {l.status === "active" && (
@@ -241,6 +265,7 @@ function MyOrders() {
   const [orders, setOrders] = useState(null);
   const [shippingId, setShippingId] = useState(null);
   const [tracking, setTracking] = useState("");
+  const [reviewingId, setReviewingId] = useState(null);
 
   const load = () => getMyOrders().then(setOrders).catch(() => setOrders({ purchases: [], sales: [] }));
   useEffect(load, []);
@@ -262,6 +287,7 @@ function MyOrders() {
     cancelled: "storniert",
     refunded: "erstattet",
   };
+  const canReview = (o) => ["paid", "shipped", "completed"].includes(o.status);
 
   return (
     <div className="space-y-8">
@@ -272,15 +298,29 @@ function MyOrders() {
         ) : (
           <div className="space-y-2">
             {orders.purchases.map((o) => (
-              <div key={o.id} className="border border-line rounded-2xl p-3 flex items-center gap-3">
-                {o.image_url && <img src={o.image_url} alt="" className="w-12 h-12 object-contain rounded-lg bg-canvas" />}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{o.title}</p>
-                  <p className="text-xs text-subtle">
-                    {eur(o.amount_cents)} · {STATUS_LABEL[o.status] ?? o.status}
-                    {o.tracking_code ? ` · Tracking: ${o.tracking_code}` : ""}
-                  </p>
+              <div key={o.id} className="border border-line rounded-2xl p-3">
+                <div className="flex items-center gap-3">
+                  {o.image_url && <img src={o.image_url} alt="" className="w-12 h-12 object-contain rounded-lg bg-canvas" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{o.title}</p>
+                    <p className="text-xs text-subtle">
+                      {eur(o.amount_cents)} · {STATUS_LABEL[o.status] ?? o.status}
+                      {o.tracking_code ? ` · Tracking: ${o.tracking_code}` : ""}
+                    </p>
+                  </div>
+                  {canReview(o) && !o.reviewed && reviewingId !== o.id && (
+                    <button
+                      onClick={() => setReviewingId(o.id)}
+                      className="text-xs border border-line px-3 py-1.5 rounded-full hover:border-ink shrink-0"
+                    >
+                      Verkäufer bewerten
+                    </button>
+                  )}
+                  {o.reviewed && <span className="text-xs text-subtle shrink-0">✓ bewertet</span>}
                 </div>
+                {reviewingId === o.id && (
+                  <ReviewBox onDone={() => { setReviewingId(null); load(); }} orderId={o.id} />
+                )}
               </div>
             ))}
           </div>
@@ -307,11 +347,20 @@ function MyOrders() {
                   {o.status === "paid" && shippingId !== o.id && (
                     <button
                       onClick={() => setShippingId(o.id)}
-                      className="text-xs border border-line px-3 py-1.5 rounded-full hover:border-ink"
+                      className="text-xs border border-line px-3 py-1.5 rounded-full hover:border-ink shrink-0"
                     >
                       Als versandt markieren
                     </button>
                   )}
+                  {canReview(o) && !o.reviewed && reviewingId !== o.id && shippingId !== o.id && (
+                    <button
+                      onClick={() => setReviewingId(o.id)}
+                      className="text-xs border border-line px-3 py-1.5 rounded-full hover:border-ink shrink-0"
+                    >
+                      Käufer bewerten
+                    </button>
+                  )}
+                  {o.reviewed && <span className="text-xs text-subtle shrink-0">✓ bewertet</span>}
                 </div>
                 {shippingId === o.id && (
                   <div className="flex items-center gap-2 mt-3">
@@ -330,11 +379,54 @@ function MyOrders() {
                     </button>
                   </div>
                 )}
+                {reviewingId === o.id && (
+                  <ReviewBox onDone={() => { setReviewingId(null); load(); }} orderId={o.id} />
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ReviewBox({ orderId, onDone }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      await submitOrderReview(orderId, { rating, comment: comment.trim() || null });
+      onDone();
+    } catch (err) {
+      setError(err.message || "Bewertung konnte nicht gespeichert werden.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <StarPicker value={rating} onChange={setRating} />
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="Kommentar (optional)"
+        rows={2}
+        className="mt-2 w-full border border-line rounded-xl px-3 py-2 text-sm bg-surface focus:outline-none focus:border-ink"
+      />
+      {error && <p className="text-rose text-xs mt-1">{error}</p>}
+      <button
+        onClick={submit}
+        disabled={busy}
+        className="mt-2 text-sm bg-yellow text-yellowInk font-medium px-4 py-1.5 rounded-full disabled:opacity-60"
+      >
+        {busy ? "…" : "Bewertung abschicken"}
+      </button>
     </div>
   );
 }

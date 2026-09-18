@@ -59,3 +59,23 @@ export function sendPasswordResetMail(email, token) {
 export function sendAdminMail(subject, { text, html }) {
   return send({ to: ADMIN_EMAIL, subject, text, html });
 }
+
+// Jemand bietet eine Karte an, die auf der Watchlist eines anderen Nutzers
+// steht - Community-Feature: statt nur selbst zu suchen, wird man
+// automatisch benachrichtigt, sobald "seine" Karte verfügbar wird.
+export function sendWishlistMatchMail(email, { cardName, price, listingUrl }) {
+  return send({
+    to: email,
+    subject: `mycardfolio – ${cardName} ist im Marktplatz aufgetaucht`,
+    text: `Eine Karte von deiner Watchlist wird gerade im Marktplatz angeboten:\n\n${cardName} – ${price}\n\n${listingUrl}\n\nDu bekommst diese Mail, weil "${cardName}" auf deiner Watchlist steht.`,
+  });
+}
+
+// Neue Frage/Kommentar zu einem eigenen Angebot.
+export function sendListingCommentMail(email, { listingTitle, listingUrl, authorName }) {
+  return send({
+    to: email,
+    subject: `mycardfolio – Neue Frage zu deinem Angebot "${listingTitle}"`,
+    text: `${authorName || "Jemand"} hat eine Frage zu deinem Angebot "${listingTitle}" gestellt:\n\n${listingUrl}`,
+  });
+}

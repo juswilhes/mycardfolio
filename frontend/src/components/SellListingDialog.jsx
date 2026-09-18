@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
+import { getMarketplaceConfig } from "../api.js";
+
+const eur = (n) => `${n.toFixed(2)} €`;
 
 // Dialog zum Einstellen einer Karte oder eines Sealed-Produkts im
 // Marktplatz. Setzt ein eingerichtetes Verkäuferkonto voraus (prüft der
-// Aufrufer/die API); hier nur Preis + optionale Beschreibung.
+// Aufrufer/die API) - hier Preis, optionale Beschreibung und optional ein
+// eigenes Foto des echten Exemplars (Vertrauen für Käufer, statt nur
+// Stockbild).
 export default function SellListingDialog({ title, image, busy, error, onConfirm, onClose }) {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [feePercent, setFeePercent] = useState(null);
+
+  useEffect(() => {
+    getMarketplaceConfig().then((c) => setFeePercent(c.feePercent)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -17,11 +28,14 @@ export default function SellListingDialog({ title, image, busy, error, onConfirm
     e.preventDefault();
     const p = parseFloat(price);
     if (busy || !p || p < 0.5) return;
-    onConfirm({ priceEur: p, description: description.trim() || null });
+    onConfirm({ priceEur: p, description: description.trim() || null, photoFile });
   }
 
   const inputCls =
     "mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink";
+
+  const p = parseFloat(price) || 0;
+  const fee = feePercent != null ? Math.round(p * feePercent) / 100 : null;
 
   return (
     <div
@@ -47,12 +61,27 @@ export default function SellListingDialog({ title, image, busy, error, onConfirm
             className={inputCls}
           />
         </label>
+        {fee != null && p > 0 && (
+          <p className="text-xs text-subtle mt-1">
+            Provision ({feePercent}%): −{eur(fee)} · du erhältst <strong>{eur(p - fee)}</strong>
+          </p>
+        )}
+
         <label className="text-xs text-subtle block mt-3">
           Beschreibung (optional)
           <textarea
             value={description} onChange={(e) => setDescription(e.target.value)}
             rows={2}
             className={inputCls}
+          />
+        </label>
+
+        <label className="text-xs text-subtle block mt-3">
+          Eigenes Foto (empfohlen – schafft Vertrauen bei Käufern)
+          <input
+            type="file" accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+            className="mt-1 w-full text-xs"
           />
         </label>
 

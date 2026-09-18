@@ -25,6 +25,8 @@ import NotFound from "./pages/NotFound.jsx";
 import ArtistCards from "./pages/ArtistCards.jsx";
 import Marketplace from "./pages/Marketplace.jsx";
 import MarketplaceTerms from "./pages/MarketplaceTerms.jsx";
+import ListingDetail from "./pages/ListingDetail.jsx";
+import SellerProfile from "./pages/SellerProfile.jsx";
 import Footer from "./components/Footer.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -127,6 +129,8 @@ export default function App() {
             <Route path="/sets" element={<AllCards />} />
             <Route path="/marktplatz" element={<Marketplace />} />
             <Route path="/marktplatz-agb" element={<MarketplaceTerms />} />
+            <Route path="/marktplatz/angebot/:id" element={<ListingDetail />} />
+            <Route path="/verkaeufer/:userId" element={<SellerProfile />} />
             <Route path="/sets/:setId" element={<SetDetail />} />
             <Route path="/database/:externalId" element={<CardInfo />} />
             <Route path="/illustrator/:name" element={<ArtistCards />} />

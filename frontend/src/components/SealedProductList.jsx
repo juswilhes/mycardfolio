@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSealedProducts, updateSealedProduct, deleteSealedProduct, createListing } from "../api.js";
+import { getSealedProducts, updateSealedProduct, deleteSealedProduct, createListing, uploadListingPhoto } from "../api.js";
 import SealedProductDialog from "./SealedProductDialog.jsx";
 import SellListingDialog from "./SellListingDialog.jsx";
 
@@ -59,11 +59,12 @@ export default function SealedProductList() {
     }
   }
 
-  async function listOnMarketplace(values) {
+  async function listOnMarketplace({ photoFile, ...values }) {
     setBusy(true);
     setListError(null);
     try {
-      await createListing({ kind: "sealed", sealedProductId: listItem.id, ...values });
+      const { id } = await createListing({ kind: "sealed", sealedProductId: listItem.id, ...values });
+      if (photoFile) await uploadListingPhoto(id, photoFile);
       setListed(listItem.id);
       setListItem(null);
     } catch (err) {

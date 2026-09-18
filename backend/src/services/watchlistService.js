@@ -45,3 +45,16 @@ export function listWatchlist(userId) {
 export function watchedExternalIds(userId) {
   return watchedExternalIdsStmt.all(userId).map((r) => r.external_id);
 }
+
+const watchersForExternalIdStmt = db.prepare(`
+  SELECT u.id AS user_id, u.email
+  FROM watchlist_items wi
+  JOIN cards c ON c.id = wi.card_id
+  JOIN users u ON u.id = wi.user_id
+  WHERE c.external_id = ?
+`);
+// Wer eine bestimmte Karte auf der Watchlist hat - für die Benachrichtigung
+// "diese Karte wurde gerade im Marktplatz angeboten".
+export function watchersForExternalId(externalId) {
+  return watchersForExternalIdStmt.all(externalId);
+}
