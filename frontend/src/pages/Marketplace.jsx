@@ -12,9 +12,11 @@ import {
   startSellerOnboarding,
   shipOrder,
   submitOrderReview,
+  getListing,
 } from "../api.js";
 import { conditionLabel } from "../components/CollectionItemDialog.jsx";
 import { StarRating, StarPicker } from "../components/StarRating.jsx";
+import PurchaseCelebrationAnimation from "../components/PurchaseCelebrationAnimation.jsx";
 
 const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
 
@@ -32,6 +34,7 @@ export default function Marketplace() {
   const [listings, setListings] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [buyError, setBuyError] = useState(null);
+  const [boughtListing, setBoughtListing] = useState(null);
 
   useEffect(() => {
     getMarketplaceConfig()
@@ -40,6 +43,16 @@ export default function Marketplace() {
     getMarketplaceListings()
       .then(setListings)
       .catch(() => setListings([]));
+  }, []);
+
+  // Rückkehr von Stripe nach erfolgreichem Kauf: statt einer trockenen
+  // Textzeile eine kleine Feier mit der gekauften Karte.
+  useEffect(() => {
+    const angebotId = params.get("angebot");
+    if (params.get("kauf") === "erfolgreich" && angebotId) {
+      getListing(angebotId).then(setBoughtListing).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function buy(listing) {
@@ -90,6 +103,9 @@ export default function Marketplace() {
         <p className="bg-mint/15 text-mint border border-mint/30 rounded-2xl px-4 py-3 text-sm mb-6">
           ✓ Kauf erfolgreich! Der Verkäufer wurde benachrichtigt und meldet sich mit dem Versand.
         </p>
+      )}
+      {boughtListing && (
+        <PurchaseCelebrationAnimation listing={boughtListing} onDone={() => setBoughtListing(null)} />
       )}
 
       <div className="flex gap-4 border-b border-line mb-6 text-sm">

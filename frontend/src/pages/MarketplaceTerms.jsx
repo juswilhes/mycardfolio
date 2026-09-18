@@ -33,8 +33,10 @@ export default function MarketplaceTerms() {
       <p>
         Verkäufer dürfen nur Karten und Produkte anbieten, die sich tatsächlich in ihrem Besitz und
         Eigentum befinden. Titel, Bild, Zustand und Beschreibung eines Angebots müssen der Realität
-        entsprechen. mycardfolio übernimmt keine Prüfung von Echtheit, Zustand oder Eigentum der
-        angebotenen Karten/Produkte.
+        entsprechen. Ab einem Angebotspreis von 10 € ist ein vom Verkäufer selbst aufgenommenes Foto
+        des tatsächlichen Exemplars Pflicht (statt eines generischen Kartenbilds); ohne ein solches
+        Foto lässt sich das Angebot ab diesem Preis nicht veröffentlichen. mycardfolio übernimmt
+        trotzdem keine Prüfung von Echtheit, Zustand oder Eigentum der angebotenen Karten/Produkte.
       </p>
 
       <h2>4. Zustandekommen des Kaufs</h2>

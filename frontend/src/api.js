@@ -117,7 +117,27 @@ export const getSetsOverview = () => request("/stats/sets-overview");
 export const getMarketplaceConfig = () => request("/marketplace/config");
 export const getMarketplaceListings = () => request("/marketplace/listings");
 export const getMyListings = () => request("/marketplace/listings/mine");
-export const createListing = (payload) => request("/marketplace/listings", { method: "POST", body: payload });
+// Läuft als EIN multipart-Request (Felder + optionales Foto zusammen),
+// damit ein Angebot ab dem Pflichtfoto-Preis nie ohne Foto existieren kann.
+export async function createListing({ photoFile, ...fields }) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) {
+    if (v != null) form.append(k, v);
+  }
+  if (photoFile) form.append("photo", photoFile);
+  const res = await fetch(`${BASE}/marketplace/listings`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.error || `Fehler ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
 export const cancelListing = (id) => request(`/marketplace/listings/${id}`, { method: "DELETE" });
 export const buyListing = (id) => request(`/marketplace/listings/${id}/checkout`, { method: "POST" });
 export const getSellerStatus = () => request("/marketplace/seller/status");

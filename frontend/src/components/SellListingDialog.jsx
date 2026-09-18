@@ -13,9 +13,15 @@ export default function SellListingDialog({ title, image, busy, error, onConfirm
   const [description, setDescription] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
   const [feePercent, setFeePercent] = useState(null);
+  const [photoRequiredFromEur, setPhotoRequiredFromEur] = useState(null);
 
   useEffect(() => {
-    getMarketplaceConfig().then((c) => setFeePercent(c.feePercent)).catch(() => {});
+    getMarketplaceConfig()
+      .then((c) => {
+        setFeePercent(c.feePercent);
+        setPhotoRequiredFromEur(c.photoRequiredFromEur);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -24,18 +30,19 @@ export default function SellListingDialog({ title, image, busy, error, onConfirm
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const p = parseFloat(price) || 0;
+  const fee = feePercent != null ? Math.round(p * feePercent) / 100 : null;
+  const photoRequired = photoRequiredFromEur != null && p >= photoRequiredFromEur;
+  const photoMissing = photoRequired && !photoFile;
+
   function submit(e) {
     e.preventDefault();
-    const p = parseFloat(price);
-    if (busy || !p || p < 0.5) return;
+    if (busy || !p || p < 0.5 || photoMissing) return;
     onConfirm({ priceEur: p, description: description.trim() || null, photoFile });
   }
 
   const inputCls =
     "mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm text-ink bg-canvas focus:outline-none focus:border-ink";
-
-  const p = parseFloat(price) || 0;
-  const fee = feePercent != null ? Math.round(p * feePercent) / 100 : null;
 
   return (
     <div
@@ -77,20 +84,33 @@ export default function SellListingDialog({ title, image, busy, error, onConfirm
         </label>
 
         <label className="text-xs text-subtle block mt-3">
-          Eigenes Foto (empfohlen – schafft Vertrauen bei Käufern)
+          {photoRequired ? (
+            <span className="text-rose font-medium">
+              Eigenes Foto (Pflicht ab {photoRequiredFromEur} € – für mehr Transparenz)
+            </span>
+          ) : (
+            `Eigenes Foto (empfohlen – schafft Vertrauen bei Käufern${
+              photoRequiredFromEur != null ? `, ab ${photoRequiredFromEur} € Pflicht` : ""
+            })`
+          )}
           <input
             type="file" accept="image/jpeg,image/png,image/webp"
             onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
             className="mt-1 w-full text-xs"
           />
         </label>
+        {photoMissing && (
+          <p className="text-rose text-xs mt-1">
+            Bitte ein Foto hochladen – ab {photoRequiredFromEur} € ist das Pflicht.
+          </p>
+        )}
 
         {error && <p className="text-rose text-sm mt-3">{error}</p>}
 
         <div className="flex gap-2 mt-5">
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || photoMissing}
             className="flex-1 bg-yellow text-yellowInk font-medium py-2 rounded-full text-sm disabled:opacity-60"
           >
             {busy ? "…" : "Angebot einstellen"}

@@ -42,6 +42,11 @@ const router = Router();
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const eur = (cents) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 
+// Ab diesem Preis ist ein eigenes Foto des echten Exemplars Pflicht statt
+// nur empfohlen - je teurer die Karte, desto wichtiger Beleg statt Stockbild.
+const PHOTO_REQUIRED_EUR = Number(process.env.MARKETPLACE_PHOTO_REQUIRED_EUR) || 10;
+const PHOTO_REQUIRED_CENTS = Math.round(PHOTO_REQUIRED_EUR * 100);
+
 // Solange kein STRIPE_SECRET_KEY hinterlegt ist, ist der Marktplatz bewusst
 // inaktiv statt mit kaputten Aufrufen zu crashen - das Anlegen des echten
 // Stripe-Kontos ist ein eigener, von uns nicht ausführbarer Schritt.
@@ -54,9 +59,9 @@ router.use((req, res, next) => {
   next();
 });
 
-// GET /api/marketplace/config -> öffentliche Eckdaten (Provision)
+// GET /api/marketplace/config -> öffentliche Eckdaten (Provision, ab wann ein Foto Pflicht ist)
 router.get("/config", (req, res) => {
-  res.json({ feePercent: MARKETPLACE_FEE_PERCENT });
+  res.json({ feePercent: MARKETPLACE_FEE_PERCENT, photoRequiredFromEur: PHOTO_REQUIRED_EUR });
 });
 
 // GET /api/marketplace/listings -> alle aktiven Angebote (öffentlich)
@@ -108,49 +113,64 @@ router.get("/seller/refresh", authRequired, async (req, res) => {
   }
 });
 
-// POST /api/marketplace/listings  { kind, collectionItemId | sealedProductId, priceEur, description }
+// POST /api/marketplace/listings  (multipart) - Felder kind, collectionItemId |
+// sealedProductId, priceEur, description, optional Datei "photo". Läuft
+// bewusst als EIN Request statt "erst Angebot, dann Foto nachreichen" -
+// sonst gäbe es einen Zwischenzustand "Angebot ab 10 € ohne Pflichtfoto".
 router.post("/listings", authRequired, (req, res) => {
-  const account = getSellerAccount(req.user.id);
-  if (!account?.onboarding_complete) {
-    return res.status(403).json({ error: "Bitte zuerst dein Verkäuferkonto einrichten." });
-  }
-  const { kind, collectionItemId, sealedProductId, priceEur, description } = req.body;
-  const priceCents = Math.round(Number(priceEur) * 100);
-  if (!priceCents || priceCents < 50) {
-    return res.status(400).json({ error: "Bitte einen gültigen Preis (mind. 0,50 €) angeben." });
-  }
-
-  let id = null;
-  if (kind === "card" && collectionItemId) {
-    id = createListingFromCollectionItem(req.user.id, Number(collectionItemId), {
-      priceCents,
-      description,
-    });
-  } else if (kind === "sealed" && sealedProductId) {
-    id = createListingFromSealedProduct(req.user.id, Number(sealedProductId), {
-      priceCents,
-      description,
-    });
-  } else {
-    return res.status(400).json({ error: "kind/collectionItemId/sealedProductId fehlt" });
-  }
-
-  if (!id) return res.status(404).json({ error: "Karte/Produkt nicht gefunden" });
-  res.status(201).json({ id });
-
-  // Community-Feature: alle, die genau diese Karte auf der Watchlist haben,
-  // bekommen eine Mail, statt selbst immer wieder nachschauen zu müssen.
-  const listing = getListingById(id);
-  if (listing?.external_id) {
-    for (const watcher of watchersForExternalId(listing.external_id)) {
-      if (watcher.user_id === req.user.id) continue;
-      sendWishlistMatchMail(watcher.email, {
-        cardName: listing.title,
-        price: eur(listing.price_cents),
-        listingUrl: `${FRONTEND_URL}/marktplatz/angebot/${listing.id}`,
-      }).catch(() => {});
+  uploadListingPhoto(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: "Foto konnte nicht hochgeladen werden (max. 8 MB, JPG/PNG/WebP)." });
     }
-  }
+
+    const account = getSellerAccount(req.user.id);
+    if (!account?.onboarding_complete) {
+      return res.status(403).json({ error: "Bitte zuerst dein Verkäuferkonto einrichten." });
+    }
+    const { kind, collectionItemId, sealedProductId, priceEur, description } = req.body;
+    const priceCents = Math.round(Number(priceEur) * 100);
+    if (!priceCents || priceCents < 50) {
+      return res.status(400).json({ error: "Bitte einen gültigen Preis (mind. 0,50 €) angeben." });
+    }
+    if (priceCents >= PHOTO_REQUIRED_CENTS && !req.file) {
+      return res.status(400).json({
+        error: `Ab ${PHOTO_REQUIRED_EUR} € ist ein eigenes Foto des Exemplars Pflicht (für mehr Transparenz beim Kauf).`,
+      });
+    }
+
+    let id = null;
+    if (kind === "card" && collectionItemId) {
+      id = createListingFromCollectionItem(req.user.id, Number(collectionItemId), {
+        priceCents,
+        description,
+      });
+    } else if (kind === "sealed" && sealedProductId) {
+      id = createListingFromSealedProduct(req.user.id, Number(sealedProductId), {
+        priceCents,
+        description,
+      });
+    } else {
+      return res.status(400).json({ error: "kind/collectionItemId/sealedProductId fehlt" });
+    }
+
+    if (!id) return res.status(404).json({ error: "Karte/Produkt nicht gefunden" });
+    if (req.file) setListingPhoto(id, req.user.id, listingPhotoUrl(req.file.filename));
+    res.status(201).json({ id });
+
+    // Community-Feature: alle, die genau diese Karte auf der Watchlist haben,
+    // bekommen eine Mail, statt selbst immer wieder nachschauen zu müssen.
+    const listing = getListingById(id);
+    if (listing?.external_id) {
+      for (const watcher of watchersForExternalId(listing.external_id)) {
+        if (watcher.user_id === req.user.id) continue;
+        sendWishlistMatchMail(watcher.email, {
+          cardName: listing.title,
+          price: eur(listing.price_cents),
+          listingUrl: `${FRONTEND_URL}/marktplatz/angebot/${listing.id}`,
+        }).catch(() => {});
+      }
+    }
+  });
 });
 
 // POST /api/marketplace/listings/:id/photo  (multipart, Feld "photo")
@@ -240,7 +260,7 @@ router.post("/listings/:id/checkout", authRequired, async (req, res) => {
       listing,
       sellerAccountId: sellerAccount.stripe_account_id,
       buyerEmail: req.user.email,
-      successUrl: `${FRONTEND_URL}/marktplatz?kauf=erfolgreich`,
+      successUrl: `${FRONTEND_URL}/marktplatz?kauf=erfolgreich&angebot=${listing.id}`,
       cancelUrl: `${FRONTEND_URL}/marktplatz`,
     });
     createPendingOrder({

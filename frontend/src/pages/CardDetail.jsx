@@ -7,7 +7,6 @@ import {
   deleteCollectionItem,
   sellCollectionItem,
   createListing,
-  uploadListingPhoto,
 } from "../api.js";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog, { conditionLabel, variantLabel, gradeLabel } from "../components/CollectionItemDialog.jsx";
@@ -135,16 +134,15 @@ export default function CardDetail() {
   const remove = (id) =>
     withReload(() => deleteCollectionItem(id)).then(() => setConfirmDeleteId(null));
 
-  async function listOnMarketplace({ photoFile, ...values }) {
+  async function listOnMarketplace(values) {
     setBusy(true);
     setListError(null);
     try {
-      const { id } = await createListing({
+      await createListing({
         kind: "card",
         collectionItemId: listEntry.collection_item_id,
         ...values,
       });
-      if (photoFile) await uploadListingPhoto(id, photoFile);
       setListEntry(null);
       setListed(listEntry.collection_item_id);
     } catch (err) {

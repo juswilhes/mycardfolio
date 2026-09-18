@@ -153,7 +153,8 @@ export default function Datenschutz() {
       <h2>9. Marktplatz: Angebote, Bewertungen und Zahlungsabwicklung</h2>
       <p>
         Angebote im Marktplatz (Titel, Preis, Zustand, Beschreibung sowie ein
-        optional von dir hochgeladenes Foto des Exemplars) sind öffentlich
+        von dir hochgeladenes Foto des Exemplars – ab 10 € Angebotspreis
+        Pflicht, darunter freiwillig) sind öffentlich
         einsehbar. Ebenso öffentlich sichtbar sind Fragen/Kommentare zu einem
         Angebot sowie Bewertungen (Sterne + optionaler Text), die sich Käufer
         und Verkäufer nach einem Kauf gegenseitig geben können – jeweils mit
