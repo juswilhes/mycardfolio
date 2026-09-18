@@ -10,7 +10,12 @@ import {
   upsertCardRow,
   recordPrices,
 } from "../services/cardService.js";
-import { searchCardsLocal, getCardByExternalIdLocal, bumpCardView } from "../services/cardRepository.js";
+import {
+  searchCardsLocal,
+  getCardByExternalIdLocal,
+  getCardsByArtistLocal,
+  bumpCardView,
+} from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
 import { authRequired } from "../middleware/auth.js";
 
@@ -21,6 +26,14 @@ router.get("/search", (req, res) => {
   const q = req.query.q;
   if (!q) return res.status(400).json({ error: "Query-Parameter 'q' fehlt" });
   res.json(searchCardsLocal(q.trim()));
+});
+
+// GET /api/cards/by-artist?name=Ken%20Sugimori -> alle Karten dieses
+// Illustrators (öffentlich, wie die Suche)
+router.get("/by-artist", (req, res) => {
+  const name = (req.query.name ?? "").trim();
+  if (!name) return res.status(400).json({ error: "Query-Parameter 'name' fehlt" });
+  res.json(getCardsByArtistLocal(name));
 });
 
 // GET /api/cards/external/:externalId -> Stammdaten (lokal) + aktuelle

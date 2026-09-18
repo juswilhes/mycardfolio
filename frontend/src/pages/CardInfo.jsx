@@ -118,7 +118,7 @@ export default function CardInfo() {
             {card.number ? ` · #${card.number}` : ""}
           </p>
 
-          {user && <ArtistLine card={card} externalId={externalId} onSaved={setCard} />}
+          <ArtistLine card={card} externalId={externalId} onSaved={setCard} canEdit={!!user} />
 
           <div className="mt-4 flex items-center gap-2">
             <button
@@ -176,7 +176,7 @@ export default function CardInfo() {
 
 // Illustrator-Zeile mit Inline-Bearbeitung. Fehlt der Wert, steht dort ein
 // klarer Hinweis + "eintragen"-Link.
-function ArtistLine({ card, externalId, onSaved }) {
+function ArtistLine({ card, externalId, onSaved, canEdit }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(card.artist ?? "");
   const [saving, setSaving] = useState(false);
@@ -224,15 +224,19 @@ function ArtistLine({ card, externalId, onSaved }) {
       <span className="text-subtle">Illustrator: </span>
       {card.artist ? (
         <>
-          {card.artist}
-          <button
-            onClick={() => setEditing(true)}
-            className="ml-2 text-xs text-subtle hover:text-ink underline"
-          >
-            ändern
-          </button>
+          <Link to={`/illustrator/${encodeURIComponent(card.artist)}`} className="underline hover:text-ink">
+            {card.artist}
+          </Link>
+          {canEdit && (
+            <button
+              onClick={() => setEditing(true)}
+              className="ml-2 text-xs text-subtle hover:text-ink underline"
+            >
+              ändern
+            </button>
+          )}
         </>
-      ) : (
+      ) : canEdit ? (
         <>
           <span className="text-rose">nicht hinterlegt</span>
           <button
@@ -242,6 +246,8 @@ function ArtistLine({ card, externalId, onSaved }) {
             eintragen
           </button>
         </>
+      ) : (
+        <span className="text-subtle">nicht hinterlegt</span>
       )}
     </p>
   );

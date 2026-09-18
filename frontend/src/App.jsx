@@ -22,6 +22,7 @@ import Account from "./pages/Account.jsx";
 import Orden from "./pages/Orden.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import ArtistCards from "./pages/ArtistCards.jsx";
 import Footer from "./components/Footer.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -123,6 +124,7 @@ export default function App() {
             <Route path="/sets" element={<AllCards />} />
             <Route path="/sets/:setId" element={<SetDetail />} />
             <Route path="/database/:externalId" element={<CardInfo />} />
+            <Route path="/illustrator/:name" element={<ArtistCards />} />
             {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
             <Route path="/add" element={<Navigate to="/sets" replace />} />
 

@@ -504,6 +504,22 @@ export function getCardByExternalIdLocal(externalId) {
   return rowToCard(byExternalIdStmt.get(externalId));
 }
 
+const byArtistStmt = db.prepare(`
+  SELECT c.*, s.release_date AS set_release_date, s.logo AS set_logo
+  FROM cards c
+  LEFT JOIN card_sets s ON s.id = c.set_id
+  WHERE c.game_id = (SELECT id FROM games WHERE slug = 'pokemon')
+    AND c.artist = ? COLLATE NOCASE
+  ORDER BY s.release_date DESC, c.name
+`);
+
+// Alle Karten eines Illustrators, ganz-genauer Namensvergleich (case-
+// insensitiv) - der Name kommt entweder von TCGdex oder wurde manuell
+// eingetragen, Tippfehler würden hier ohnehin zu falschen Treffern führen.
+export function getCardsByArtistLocal(artist) {
+  return byArtistStmt.all(artist).map(rowToCard);
+}
+
 const setsStmt = db.prepare(`
   SELECT id, name, series, printed_total, total, release_date, logo, symbol
   FROM card_sets

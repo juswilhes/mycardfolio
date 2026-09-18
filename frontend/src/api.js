@@ -46,6 +46,7 @@ export const exportDataUrl = `${BASE}/auth/export`;
 
 // --- Karten-Suche / -Datenbank -------------------------------------
 export const searchCards = (q) => request(`/cards/search?q=${encodeURIComponent(q)}`);
+export const getCardsByArtist = (artist) => request(`/cards/by-artist?name=${encodeURIComponent(artist)}`);
 export const getCardInfo = (externalId) => request(`/cards/external/${externalId}`);
 export const getCardPriceHistory = (externalId) => request(`/cards/external/${externalId}/prices`);
 export const getPriceHistory = (cardId) => request(`/cards/${cardId}/prices`);

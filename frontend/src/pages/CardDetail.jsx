@@ -143,6 +143,14 @@ export default function CardDetail() {
           <h1 className="text-xl font-semibold">{card.name}</h1>
           <p className="text-subtle text-sm mt-1">{card.set_name} · #{card.number}</p>
           <p className="text-subtle text-sm">{card.rarity}</p>
+          {card.artist && (
+            <p className="text-subtle text-sm">
+              Illustrator:{" "}
+              <Link to={`/illustrator/${encodeURIComponent(card.artist)}`} className="underline hover:text-ink">
+                {card.artist}
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 
