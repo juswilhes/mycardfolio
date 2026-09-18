@@ -18,6 +18,8 @@ import watchlistRouter from "./routes/watchlist.js";
 import sealedProductsRouter from "./routes/sealedProducts.js";
 import clientErrorsRouter from "./routes/clientErrors.js";
 import statsRouter from "./routes/stats.js";
+import marketplaceRouter from "./routes/marketplace.js";
+import { handleStripeWebhook } from "./routes/marketplaceWebhook.js";
 import { authRequired } from "./middleware/auth.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
@@ -70,6 +72,14 @@ const corsOrigin = process.env.CORS_ORIGIN
   : true;
 app.use(cors({ origin: corsOrigin, credentials: true }));
 
+// Stripe braucht den unveraenderten Rohkoerper zur Signaturpruefung - muss
+// deshalb VOR dem globalen express.json() stehen.
+app.post(
+  "/api/marketplace/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
+
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(countPageView); // einfache Seitenaufruf-Zählung (ohne IPs)
@@ -92,6 +102,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/sets", setsRouter);
 app.use("/api/client-error", clientErrorsRouter);
+app.use("/api/marketplace", marketplaceRouter);
 
 // Nur mit Login: alles Nutzerbezogene.
 app.use("/api/collection", authRequired, collectionRouter);

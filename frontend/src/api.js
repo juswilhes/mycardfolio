@@ -112,3 +112,17 @@ export const getWatchlistMovers = (days = 7) => request(`/stats/watchlist-movers
 export const getSetMomentum = (days = 30) => request(`/stats/set-momentum?days=${days}`);
 export const getThawing = () => request("/stats/thawing");
 export const getSetsOverview = () => request("/stats/sets-overview");
+
+// --- Marktplatz --------------------------------------------------------
+export const getMarketplaceConfig = () => request("/marketplace/config");
+export const getMarketplaceListings = () => request("/marketplace/listings");
+export const getMyListings = () => request("/marketplace/listings/mine");
+export const createListing = (payload) => request("/marketplace/listings", { method: "POST", body: payload });
+export const cancelListing = (id) => request(`/marketplace/listings/${id}`, { method: "DELETE" });
+export const buyListing = (id) => request(`/marketplace/listings/${id}/checkout`, { method: "POST" });
+export const getSellerStatus = () => request("/marketplace/seller/status");
+export const startSellerOnboarding = () => request("/marketplace/seller/onboard", { method: "POST" });
+export const refreshSellerStatus = () => request("/marketplace/seller/refresh");
+export const getMyOrders = () => request("/marketplace/orders");
+export const shipOrder = (id, trackingCode) =>
+  request(`/marketplace/orders/${id}/ship`, { method: "POST", body: { trackingCode } });

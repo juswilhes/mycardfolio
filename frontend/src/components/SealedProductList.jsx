@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { getSealedProducts, updateSealedProduct, deleteSealedProduct } from "../api.js";
+import { getSealedProducts, updateSealedProduct, deleteSealedProduct, createListing } from "../api.js";
 import SealedProductDialog from "./SealedProductDialog.jsx";
+import SellListingDialog from "./SellListingDialog.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -20,6 +21,9 @@ export default function SealedProductList() {
   const [confirmId, setConfirmId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [listItem, setListItem] = useState(null);
+  const [listError, setListError] = useState(null);
+  const [listed, setListed] = useState(null);
 
   const load = () => getSealedProducts().then(setItems).catch(() => setItems([]));
   // useEffect(load, []) wäre hier ein Bug: load() gibt das Promise von
@@ -50,6 +54,24 @@ export default function SealedProductList() {
       await deleteSealedProduct(id);
       setConfirmId(null);
       load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function listOnMarketplace(values) {
+    setBusy(true);
+    setListError(null);
+    try {
+      await createListing({ kind: "sealed", sealedProductId: listItem.id, ...values });
+      setListed(listItem.id);
+      setListItem(null);
+    } catch (err) {
+      setListError(
+        err.status === 503
+          ? "Der Marktplatz ist noch nicht eingerichtet."
+          : err.message || "Angebot konnte nicht erstellt werden."
+      );
     } finally {
       setBusy(false);
     }
@@ -142,6 +164,12 @@ export default function SealedProductList() {
                 >
                   Bearbeiten
                 </button>
+                <button
+                  onClick={() => { setListError(null); setListItem(p); }}
+                  className="shrink-0 text-xs text-subtle underline hover:text-ink"
+                >
+                  {listed === p.id ? "🛒 Im Marktplatz" : "🛒 Verkaufen"}
+                </button>
                 {confirmId === p.id ? (
                   <span className="flex items-center gap-1 shrink-0">
                     <button
@@ -168,6 +196,17 @@ export default function SealedProductList() {
             );
           })}
         </div>
+      )}
+
+      {listItem && (
+        <SellListingDialog
+          title={listItem.set_name ? `${listItem.name} (${listItem.set_name})` : listItem.name}
+          image={listItem.image_url}
+          busy={busy}
+          error={listError}
+          onConfirm={listOnMarketplace}
+          onClose={() => !busy && setListItem(null)}
+        />
       )}
 
       {editItem && (

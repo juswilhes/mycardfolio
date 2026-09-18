@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../hooks/useTheme.js";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
@@ -8,12 +8,15 @@ import {
   updateProfile,
   deleteAccount,
   exportDataUrl,
+  getSellerStatus,
+  refreshSellerStatus,
 } from "../api.js";
 
 export default function Account() {
   const { user, setUser, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [name, setName] = useState(user?.display_name || "");
   const [savedName, setSavedName] = useState(false);
   const [resent, setResent] = useState(false);
@@ -22,6 +25,14 @@ export default function Account() {
   const [pw, setPw] = useState("");
   const [delErr, setDelErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sellerStatus, setSellerStatus] = useState(null);
+
+  useEffect(() => {
+    // Nach Rückkehr vom Stripe-Onboarding (oder Abbruch/"refresh") den
+    // Status direkt bei Stripe nachschlagen statt auf den Webhook zu warten.
+    const check = params.get("stripe") ? refreshSellerStatus : getSellerStatus;
+    check().then(setSellerStatus).catch(() => setSellerStatus(null));
+  }, [params]);
 
   async function saveName(e) {
     e.preventDefault();
@@ -89,6 +100,25 @@ export default function Account() {
           </button>
         </div>
       </section>
+
+      {sellerStatus && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold mb-1">🛒 Marktplatz-Verkäuferkonto</h2>
+          <p className="text-xs text-subtle mb-2">
+            {sellerStatus.onboardingComplete
+              ? "Eingerichtet – du kannst Karten & Sealed-Produkte anbieten."
+              : sellerStatus.hasAccount
+                ? "Einrichtung bei Stripe noch nicht abgeschlossen."
+                : "Noch nicht eingerichtet – nötig, um im Marktplatz zu verkaufen."}
+          </p>
+          <Link
+            to="/marktplatz"
+            className="inline-block text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink"
+          >
+            Zum Marktplatz
+          </Link>
+        </section>
+      )}
 
       <form onSubmit={saveName} className="mb-8">
         <label className="block text-xs text-subtle">

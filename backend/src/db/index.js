@@ -208,6 +208,59 @@ CREATE TABLE IF NOT EXISTS app_meta (
   value TEXT NOT NULL
 );
 
+-- Marktplatz: Nutzer verkaufen Karten/Sealed-Produkte an andere Nutzer.
+-- Zahlungsabwicklung läuft über Stripe Connect (siehe stripeConnect.js) -
+-- mycardfolio selbst nimmt nie Geld entgegen, Stripe verwaltet Käuferschutz,
+-- KYC der Verkäufer und die Auszahlung; wir orchestrieren nur.
+CREATE TABLE IF NOT EXISTS seller_accounts (
+  user_id              INTEGER PRIMARY KEY REFERENCES users(id),
+  stripe_account_id    TEXT UNIQUE,
+  onboarding_complete  INTEGER NOT NULL DEFAULT 0,
+  created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS marketplace_listings (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  seller_user_id      INTEGER NOT NULL REFERENCES users(id),
+  kind                TEXT NOT NULL,   -- 'card' | 'sealed'
+  collection_item_id  INTEGER REFERENCES collection_items(id),
+  sealed_product_id   INTEGER REFERENCES sealed_products(id),
+  external_id         TEXT,            -- Karten-external_id (Bild/Link), NULL bei Sealed
+  title               TEXT NOT NULL,
+  image_url           TEXT,
+  price_cents         INTEGER NOT NULL,
+  currency            TEXT NOT NULL DEFAULT 'EUR',
+  quantity            INTEGER NOT NULL DEFAULT 1,
+  condition           TEXT,
+  description         TEXT,
+  status              TEXT NOT NULL DEFAULT 'active', -- active | sold | cancelled
+  created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_listings_status ON marketplace_listings(status);
+CREATE INDEX IF NOT EXISTS idx_listings_seller ON marketplace_listings(seller_user_id);
+
+CREATE TABLE IF NOT EXISTS marketplace_orders (
+  id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id                  INTEGER NOT NULL REFERENCES marketplace_listings(id),
+  buyer_user_id               INTEGER NOT NULL REFERENCES users(id),
+  seller_user_id              INTEGER NOT NULL REFERENCES users(id),
+  stripe_checkout_session_id  TEXT UNIQUE,
+  stripe_payment_intent_id    TEXT,
+  amount_cents                INTEGER NOT NULL,
+  fee_cents                   INTEGER NOT NULL DEFAULT 0,
+  currency                    TEXT NOT NULL DEFAULT 'EUR',
+  status                      TEXT NOT NULL DEFAULT 'pending', -- pending | paid | shipped | completed | cancelled | refunded
+  shipping_name               TEXT,
+  shipping_address            TEXT, -- JSON, von Stripe Checkout erfasst
+  tracking_code                TEXT,
+  created_at                  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at                  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_orders_buyer ON marketplace_orders(buyer_user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_seller ON marketplace_orders(seller_user_id);
+
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
 `);

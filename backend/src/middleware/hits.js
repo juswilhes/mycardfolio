@@ -43,9 +43,9 @@ const normalize = (path) =>
 const STATIC_PATHS = new Set([
   "/", "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen",
   "/verify", "/impressum", "/datenschutz", "/sets", "/add", "/import",
-  "/verkauft", "/statistik", "/konto", "/orden", "/watchlist",
+  "/verkauft", "/statistik", "/konto", "/orden", "/watchlist", "/marktplatz",
 ]);
-const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/"];
+const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/"];
 export const isKnownRoute = (path) =>
   STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
 

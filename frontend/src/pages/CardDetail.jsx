@@ -6,11 +6,13 @@ import {
   updateCollectionItem,
   deleteCollectionItem,
   sellCollectionItem,
+  createListing,
 } from "../api.js";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog, { conditionLabel, variantLabel, gradeLabel } from "../components/CollectionItemDialog.jsx";
 import SellDialog from "../components/SellDialog.jsx";
 import SaleCelebrationAnimation from "../components/SaleCelebrationAnimation.jsx";
+import SellListingDialog from "../components/SellListingDialog.jsx";
 
 const fmt = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -31,6 +33,9 @@ export default function CardDetail() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [listEntry, setListEntry] = useState(null);
+  const [listError, setListError] = useState(null);
+  const [listed, setListed] = useState(null);
 
   const load = useCallback(
     () =>
@@ -128,6 +133,28 @@ export default function CardDetail() {
 
   const remove = (id) =>
     withReload(() => deleteCollectionItem(id)).then(() => setConfirmDeleteId(null));
+
+  async function listOnMarketplace(values) {
+    setBusy(true);
+    setListError(null);
+    try {
+      await createListing({
+        kind: "card",
+        collectionItemId: listEntry.collection_item_id,
+        ...values,
+      });
+      setListEntry(null);
+      setListed(listEntry.collection_item_id);
+    } catch (err) {
+      setListError(
+        err.status === 503
+          ? "Der Marktplatz ist noch nicht eingerichtet."
+          : err.message || "Angebot konnte nicht erstellt werden."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div>
@@ -235,6 +262,12 @@ export default function CardDetail() {
                 >
                   Verkauft
                 </button>
+                <button
+                  onClick={() => { setListError(null); setListEntry(e); }}
+                  className="border border-line text-xs px-3 py-1.5 rounded-full hover:border-ink"
+                >
+                  {listed === e.collection_item_id ? "🛒 Im Marktplatz" : "🛒 Im Marktplatz anbieten"}
+                </button>
                 {confirmDeleteId === e.collection_item_id ? (
                   <>
                     <button
@@ -265,6 +298,16 @@ export default function CardDetail() {
         })}
       </div>
 
+      {listEntry && (
+        <SellListingDialog
+          title={`${card.name} (${card.set_name} #${card.number})`}
+          image={card.image_small}
+          busy={busy}
+          error={listError}
+          onConfirm={listOnMarketplace}
+          onClose={() => !busy && setListEntry(null)}
+        />
+      )}
       {editEntry && (
         <CollectionItemDialog
           card={card}
