@@ -1,0 +1,32 @@
+# Spielt jeden Stand von main automatisch auf mycardfolio.de ein.
+# Der Schlüssel in DEPLOY_KEY darf auf dem Server nur /usr/local/bin/mcf-deploy ausführen.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Auf Server einspielen
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "31.70.140.8 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPo+pA4Nk4hbWjpcboz8n3rOnS9J6VOm3e1NUoNi3I43" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key root@31.70.140.8
+
+      - name: Seite erreichbar?
+        run: |
+          sleep 10
+          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" https://mycardfolio.de/
