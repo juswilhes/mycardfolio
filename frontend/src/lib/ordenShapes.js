@@ -79,78 +79,26 @@ function diamondPoints(cx, cy, s) {
 }
 
 // Liefert für jeden Orden einen zusammengesetzten SVG-Pfad (0..100) - jeder
-// mit einem eigenen kleinen Motiv statt einer schlichten Einzelform. Alle
-// Teile überlappen sich bewusst, damit nichts als lose Einzelteile wirkt.
+// mit einem eigenen kleinen Motiv, passend zum Namen des Ordens. Alle Teile
+// überlappen sich bewusst, damit nichts als lose Einzelteile wirkt.
 // { d, extra }: "d" folgt style.fillRule (nötig für Formen mit Aussparungen
-// wie Pokéball/Lupe/Mondsichel/Zielscheibe); "extra" ist ein optionaler
-// zweiter, IMMER nonzero gefüllter Teil - so kann z.B. der Lupengriff oder
-// der kleine Stern frei über eine Aussparungs-Form greifen, ohne versehentlich
-// neue Löcher hineinzuschneiden.
+// wie Kompass/Lupe/Perfektion/Zielscheibe); "extra" ist ein optionaler
+// zweiter, IMMER nonzero gefüllter Teil - so kann z.B. der Lupengriff frei
+// über eine Aussparungs-Form greifen, ohne versehentlich neue Löcher
+// hineinzuschneiden.
 export function shapeToPathD(style) {
   switch (style.shape) {
-    // Erster Fang: ein Pokéball-Umriss (Kreis, Trennlinie, Knopf mit Loch).
-    case "pokeball":
+    // Kieselorden: drei überlappende, glatte Kiesel.
+    case "pebbles":
       return {
         d: [
-          circlePathD(50, 50, 42),
-          "M4,45 L96,45 L96,55 L4,55 Z",
-          circlePathD(50, 50, 8),
-          circlePathD(50, 50, 3.5),
+          ellipsePathD(36, 62, 27, 17, -14),
+          ellipsePathD(66, 56, 22, 14, 18),
+          ellipsePathD(52, 36, 17, 11, -6),
         ].join(" "),
       };
 
-    // Erster Handel: drei gestapelte Münzen.
-    case "coinstack":
-      return {
-        d: [
-          ellipsePathD(48, 68, 24, 14),
-          ellipsePathD(52, 50, 24, 14),
-          ellipsePathD(48, 32, 24, 14),
-        ].join(" "),
-      };
-
-    // Weltenbummler: eine Spur aus Wegpunkten, jeder mit dem nächsten
-    // verbunden - wie eine Fußspur auf der Reise.
-    case "scatter":
-      return {
-        d: [
-          circlePathD(24, 62, 17),
-          circlePathD(38, 45, 15),
-          circlePathD(55, 37, 13),
-          circlePathD(71, 32, 11),
-          circlePathD(84, 25, 8),
-        ].join(" "),
-      };
-
-    // Halber Weg: zwei Kreise, die sich in der Mitte treffen.
-    case "venn":
-      return { d: [circlePathD(38, 50, 29), circlePathD(62, 50, 29)].join(" ") };
-
-    // Meistersammler: eine Krone mit drei Zacken und Edelstein-Spitzen.
-    case "crown":
-      return {
-        d: [
-          "M20,72 L20,56 L30,40 L38,56 L50,32 L62,56 L70,40 L80,56 L80,72 Z",
-          circlePathD(30, 38, 5),
-          circlePathD(50, 30, 6),
-          circlePathD(70, 38, 5),
-        ].join(" "),
-      };
-
-    // Kunstkenner: die Blüte aus überlappenden Kreisen (Original-Motiv).
-    case "flower":
-      return {
-        d:
-          flowerPetals(6, 21, 17).map((p) => circlePathD(p.cx, p.cy, p.r)).join(" ") +
-          " " +
-          circlePathD(50, 50, 15),
-      };
-
-    // Fanclub: ein kleiner Strauß aus drei Herzen.
-    case "heartcluster":
-      return { d: [heartPathD(35, 66, 0.42), heartPathD(65, 63, 0.46), heartPathD(50, 36, 0.58)].join(" ") };
-
-    // Pokédex-Forscher: eine Lupe (Ring + Griff, der Griff überlappt den
+    // Forscherorden: eine Lupe (Ring + Griff, der Griff überlappt den
     // Ring bewusst, statt nur daneben zu schweben).
     case "magnifier":
       return {
@@ -158,7 +106,58 @@ export function shapeToPathD(style) {
         extra: "M56.53,61.48 L61.48,56.53 L94.48,89.53 L89.53,94.48 Z",
       };
 
-    // Elementmeister: vier Elementar-Zacken um einen gemeinsamen Kern.
+    // Kompassorden: Kompassring mit vierzackiger Nadel (evenodd: Ring bleibt
+    // hohl, die Nadel liegt gefüllt im Inneren).
+    case "compass":
+      return {
+        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34), pointsToPathD(starPoints(4, 30, 7))].join(" "),
+      };
+
+    // Pinselorden: ein schräg liegender Malerpinsel (Stiel, Zwinge, Borsten).
+    case "brush":
+      return {
+        d: [
+          "M76,8 L92,24 L52,64 L36,48 Z",
+          "M36,48 L52,64 L44,72 L28,56 Z",
+          "M28,56 L44,72 C44,86 32,94 14,92 C10,74 18,62 28,56 Z",
+        ].join(" "),
+      };
+
+    // Mosaikorden: vier Mosaiksteine um eine Raute in der Mitte.
+    case "mosaic":
+      return {
+        d: [
+          "M10,10 L47,10 L47,47 L10,47 Z",
+          "M53,10 L90,10 L90,47 L53,47 Z",
+          "M10,53 L47,53 L47,90 L10,90 Z",
+          "M53,53 L90,53 L90,90 L53,90 Z",
+          pointsToPathD(diamondPoints(50, 50, 22)),
+        ].join(" "),
+      };
+
+    // Babelorden: ein Turm aus drei Stufen mit Spitze.
+    case "tower":
+      return {
+        d: [
+          "M24,92 L76,92 L76,68 L24,68 Z",
+          "M31,70 L69,70 L69,46 L31,46 Z",
+          "M38,48 L62,48 L62,28 L38,28 Z",
+          "M43,30 L57,30 L50,6 Z",
+        ].join(" "),
+      };
+
+    // Goldorden: drei gestapelte Goldbarren mit Funkeln.
+    case "goldbars":
+      return {
+        d: [
+          "M6,90 L46,90 L52,72 L12,72 Z",
+          "M54,90 L94,90 L88,72 L48,72 Z",
+          "M28,70 L72,70 L78,52 L34,52 Z",
+          pointsToPathD(starPoints(4, 13, 4, 74, 28)),
+        ].join(" "),
+      };
+
+    // Elementarorden: vier Elementar-Zacken um einen gemeinsamen Kern.
     case "elements":
       return {
         d: [
@@ -170,57 +169,69 @@ export function shapeToPathD(style) {
         ].join(" "),
       };
 
-    // Wertvoller Fund: ein Edelstein mit zwei kleinen Funkeln an den Ecken.
-    case "gemsparkle":
+    // Herzorden: ein kleiner Strauß aus drei Herzen.
+    case "heartcluster":
+      return { d: [heartPathD(35, 66, 0.42), heartPathD(65, 63, 0.46), heartPathD(50, 36, 0.58)].join(" ") };
+
+    // Marktorden: ein Marktstand mit Dach, Girlande und Tresen.
+    case "stall":
       return {
         d: [
-          pointsToPathD("50,8 76,28 76,72 50,92 24,72 24,28"),
-          pointsToPathD(starPoints(4, 11, 4, 22, 22)),
-          pointsToPathD(starPoints(4, 9, 3, 79, 27)),
+          "M8,32 L26,10 L74,10 L92,32 Z",
+          circlePathD(16, 34, 7),
+          circlePathD(30, 34, 7),
+          circlePathD(44, 34, 7),
+          circlePathD(58, 34, 7),
+          circlePathD(72, 34, 7),
+          circlePathD(86, 34, 7),
+          "M16,36 L16,90 L84,90 L84,36 Z",
         ].join(" "),
       };
 
-    // Kostbarkeit: eine Mondsichel, an der ein kleiner Stern anliegt.
-    case "moonstar":
+    // Perfektionsorden: ein makelloser Stern im Ring (evenodd: Ring hohl,
+    // Stern gefüllt).
+    case "perfect":
       return {
-        d: [circlePathD(40, 52, 32), circlePathD(58, 52, 28)].join(" "),
-        extra: pointsToPathD(starPoints(5, 11, 4.5, 13, 29)),
+        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34), pointsToPathD(starPoints(5, 28, 12, 50, 52))].join(" "),
       };
 
-    // Volltreffer: eine Zielscheibe (konzentrische Ringe).
+    // Zielorden: eine Zielscheibe (konzentrische Ringe).
     case "target":
       return { d: [circlePathD(50, 50, 42), circlePathD(50, 50, 28), circlePathD(50, 50, 14)].join(" ") };
 
-    // Gewinnstratege: ein Balkendiagramm auf gemeinsamer Grundlinie mit
-    // Pfeilspitze nach oben.
-    case "growthchart":
+    // Vollendungsorden: ein Haken im Ring - "geschafft".
+    case "complete":
       return {
         d: [
-          "M16,84 L16,56 L32,56 L32,84 Z",
-          "M42,84 L42,36 L58,36 L58,84 Z",
-          "M68,84 L68,14 L84,14 L84,84 Z",
-          "M68,20 L84,20 L76,4 Z",
-          "M12,80 L88,80 L88,88 L12,88 Z",
+          circlePathD(50, 50, 42),
+          circlePathD(50, 50, 34),
+          "M26,52 L34,44 L45,55 L68,30 L76,38 L45,71 Z",
         ].join(" "),
       };
 
-    // Meistergrad: eine Medaille mit zwei Bandenden.
-    case "medal":
+    // Strategenorden: ein Schach-Turm.
+    case "rook":
       return {
         d: [
-          "M38,50 L46,50 L34,94 Z",
-          "M54,50 L62,50 L66,94 Z",
-          circlePathD(50, 38, 26),
-          circlePathD(50, 38, 17),
+          "M24,90 L76,90 L76,76 L24,76 Z",
+          "M32,78 L36,44 L64,44 L68,78 Z",
+          "M27,46 L27,18 L38,18 L38,27 L46,27 L46,18 L54,18 L54,27 L62,27 L62,18 L73,18 L73,46 Z",
         ].join(" "),
       };
 
-    // Sprachtalent: zwei überlappende Rauten.
-    case "diamondpair":
-      return { d: [pointsToPathD(diamondPoints(38, 50, 27)), pointsToPathD(diamondPoints(62, 50, 27))].join(" ") };
+    // Kronenorden: eine Krone mit drei Zacken und Edelstein-Spitzen.
+    case "crown":
+      return {
+        d: [
+          "M20,72 L20,56 L30,40 L38,56 L50,32 L62,56 L70,40 L80,56 L80,72 Z",
+          circlePathD(30, 38, 5),
+          circlePathD(50, 30, 6),
+          circlePathD(70, 38, 5),
+        ].join(" "),
+      };
 
-    // Treuer Trainer: ein Lorbeerkranz aus kleinen, sich überlappenden
-    // Blättern, unten durch eine gemeinsame Schleife verbunden.
+    // Treueorden: ein Lorbeerkranz aus kleinen, sich überlappenden Blättern,
+    // unten durch eine gemeinsame Schleife verbunden.
     case "wreath": {
       const leaves = [];
       const left = [

@@ -9,22 +9,22 @@ import { listSales } from "./portfolioService.js";
 // verdiente Orden bleiben verdient, auch wenn die Bedingung später
 // verschärft wird (Freischaltungen liegen in user_achievements).
 export const ACHIEVEMENTS = [
-  { id: "erster_fang", icon: "🃏", title: "Kieselorden", desc: "Baue eine Sammlung von 100 verschiedenen Karten auf" },
+  { id: "erster_fang", icon: "🪨", title: "Kieselorden", desc: "Baue eine Sammlung von 100 verschiedenen Karten auf" },
   { id: "pokedex_forscher", icon: "🔎", title: "Forscherorden", desc: "Sammle 300 verschiedene Pokémon-Arten" },
-  { id: "weltenbummler", icon: "🌍", title: "Kompassorden", desc: "Karten aus 50 verschiedenen Sets" },
-  { id: "kunstkenner", icon: "🎨", title: "Pinselorden", desc: "Karten von 100 verschiedenen Illustratoren" },
+  { id: "weltenbummler", icon: "🧭", title: "Kompassorden", desc: "Karten aus 50 verschiedenen Sets" },
+  { id: "kunstkenner", icon: "🖌️", title: "Pinselorden", desc: "Karten von 100 verschiedenen Illustratoren" },
   { id: "halber_weg", icon: "🧩", title: "Mosaikorden", desc: "Ein Set mit mindestens 50 Karten zu 90 % vervollständigt" },
-  { id: "sprachtalent", icon: "🌐", title: "Babelorden", desc: "Mindestens 75 Karten in Deutsch und 75 in Englisch" },
-  { id: "wertvoller_fund", icon: "💰", title: "Goldorden", desc: "Eine Karte im Wert von 500 € oder mehr" },
+  { id: "sprachtalent", icon: "🗼", title: "Babelorden", desc: "Mindestens 75 Karten in Deutsch und 75 in Englisch" },
+  { id: "wertvoller_fund", icon: "🪙", title: "Goldorden", desc: "Eine Karte im Wert von 500 € oder mehr" },
   { id: "elementmeister", icon: "⚡", title: "Elementarorden", desc: "Mindestens 10 Karten in jedem der 11 Pokémon-Typen" },
   { id: "fanclub", icon: "💖", title: "Herzorden", desc: "25 Karten von ein und demselben Illustrator" },
-  { id: "erster_handel", icon: "🤝", title: "Marktorden", desc: "10 Karten verkauft" },
-  { id: "meistergrad", icon: "🥇", title: "Perfektionsorden", desc: "3 Karten mit einer 10er-Bewertung (PSA/BGS/CGC)" },
+  { id: "erster_handel", icon: "🏪", title: "Marktorden", desc: "10 Karten verkauft" },
+  { id: "meistergrad", icon: "💯", title: "Perfektionsorden", desc: "3 Karten mit einer 10er-Bewertung (PSA/BGS/CGC)" },
   { id: "volltreffer", icon: "🎯", title: "Zielorden", desc: "Eine Karte (Kaufpreis ab 5 €) auf mindestens das Fünffache im Wert gestiegen" },
-  { id: "meistersammler", icon: "🏆", title: "Vollendungsorden", desc: "3 komplette Sets mit jeweils mindestens 50 Karten" },
-  { id: "gewinnstratege", icon: "📈", title: "Strategenorden", desc: "Insgesamt 2.500 € Gewinn aus Verkäufen erzielt" },
+  { id: "meistersammler", icon: "✅", title: "Vollendungsorden", desc: "3 komplette Sets mit jeweils mindestens 50 Karten" },
+  { id: "gewinnstratege", icon: "♟️", title: "Strategenorden", desc: "Insgesamt 2.500 € Gewinn aus Verkäufen erzielt" },
   { id: "kostbarkeit", icon: "👑", title: "Kronenorden", desc: "Eine Karte im Wert von 2.500 € oder mehr" },
-  { id: "treuer_trainer", icon: "⭐", title: "Treueorden", desc: "Seit 365 Tagen bei mycardfolio dabei" },
+  { id: "treuer_trainer", icon: "🌿", title: "Treueorden", desc: "Seit 365 Tagen bei mycardfolio dabei" },
 ];
 
 const setProgressWithTotal = db.prepare(`
