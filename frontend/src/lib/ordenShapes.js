@@ -34,13 +34,31 @@ export function flowerPetals(count = 6, ringR = 21, petalR = 17, cx = 50, cy = 5
   return petals;
 }
 
+// Reines M/L/Z-Polygon als Pfad, IMMER im Uhrzeigersinn. Überlappende Teile
+// mit entgegengesetzter Zeichenrichtung löschen sich bei nonzero-Füllung aus
+// (Loch/Lücke mitten im Orden) - so bleibt jede Silhouette ein Stück.
+function polyD(str) {
+  const nums = str.match(/-?\d+(?:\.\d+)?/g).map(Number);
+  let pts = [];
+  for (let i = 0; i < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % pts.length];
+    area += x1 * y2 - x2 * y1;
+  }
+  if (area < 0) pts = pts.reverse();
+  return `M${pts[0]} ` + pts.slice(1).map((p) => `L${p}`).join(" ") + " Z";
+}
+
+
 function pointsToPathD(pointsStr) {
   const pts = pointsStr.trim().split(" ");
   return `M${pts[0]} ` + pts.slice(1).map((p) => `L${p}`).join(" ") + " Z";
 }
 
 function circlePathD(cx, cy, r) {
-  return `M${cx - r},${cy} A${r},${r} 0 1,0 ${cx + r},${cy} A${r},${r} 0 1,0 ${cx - r},${cy} Z`;
+  return `M${cx - r},${cy} A${r},${r} 0 1,1 ${cx + r},${cy} A${r},${r} 0 1,1 ${cx - r},${cy} Z`;
 }
 
 // Ellipse, wahlweise gedreht - für Münzen/Blätter, die "von der Seite"
@@ -51,7 +69,7 @@ function ellipsePathD(cx, cy, rx, ry, rotationDeg = 0) {
   const dy = rx * Math.sin(rad);
   const p1 = [cx + dx, cy + dy];
   const p2 = [cx - dx, cy - dy];
-  return `M${p1} A${rx},${ry} ${rotationDeg} 1,0 ${p2} A${rx},${ry} ${rotationDeg} 1,0 ${p1} Z`;
+  return `M${p1} A${rx},${ry} ${rotationDeg} 1,1 ${p2} A${rx},${ry} ${rotationDeg} 1,1 ${p1} Z`;
 }
 
 // Ein Herz, parametrisiert über Mittelpunkt + Skalierung - für Cluster aus
@@ -103,23 +121,25 @@ export function shapeToPathD(style) {
     case "magnifier":
       return {
         d: [circlePathD(42, 42, 26), circlePathD(42, 42, 18)].join(" "),
-        extra: "M56.53,61.48 L61.48,56.53 L94.48,89.53 L89.53,94.48 Z",
+        extra: polyD("M56.53,61.48 L61.48,56.53 L94.48,89.53 L89.53,94.48 Z"),
       };
 
-    // Kompassorden: Kompassring mit vierzackiger Nadel (evenodd: Ring bleibt
-    // hohl, die Nadel liegt gefüllt im Inneren).
+    // Kompassorden: Kompassring mit vierzackiger Nadel, deren Spitzen in den
+    // Ring hineinragen (so hängt alles zusammen; Nadel = extra, damit sie
+    // nicht als Loch aus dem Ring geschnitten wird).
     case "compass":
       return {
-        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34), pointsToPathD(starPoints(4, 30, 7))].join(" "),
+        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34)].join(" "),
+        extra: pointsToPathD(starPoints(4, 38, 8)),
       };
 
     // Pinselorden: ein schräg liegender Malerpinsel (Stiel, Zwinge, Borsten).
     case "brush":
       return {
         d: [
-          "M76,8 L92,24 L52,64 L36,48 Z",
-          "M36,48 L52,64 L44,72 L28,56 Z",
-          "M28,56 L44,72 C44,86 32,94 14,92 C10,74 18,62 28,56 Z",
+          polyD("M76,8 L92,24 L52,64 L33,45 Z"),
+          polyD("M33,45 L55,67 L44,74 L26,56 Z"),
+          "M30,58 L42,70 C44,86 32,94 14,92 C10,74 18,62 30,58 Z",
         ].join(" "),
       };
 
@@ -127,10 +147,10 @@ export function shapeToPathD(style) {
     case "mosaic":
       return {
         d: [
-          "M10,10 L47,10 L47,47 L10,47 Z",
-          "M53,10 L90,10 L90,47 L53,47 Z",
-          "M10,53 L47,53 L47,90 L10,90 Z",
-          "M53,53 L90,53 L90,90 L53,90 Z",
+          polyD("M10,10 L47,10 L47,47 L10,47 Z"),
+          polyD("M53,10 L90,10 L90,47 L53,47 Z"),
+          polyD("M10,53 L47,53 L47,90 L10,90 Z"),
+          polyD("M53,53 L90,53 L90,90 L53,90 Z"),
           pointsToPathD(diamondPoints(50, 50, 22)),
         ].join(" "),
       };
@@ -139,10 +159,10 @@ export function shapeToPathD(style) {
     case "tower":
       return {
         d: [
-          "M24,92 L76,92 L76,68 L24,68 Z",
-          "M31,70 L69,70 L69,46 L31,46 Z",
-          "M38,48 L62,48 L62,28 L38,28 Z",
-          "M43,30 L57,30 L50,6 Z",
+          polyD("M24,92 L76,92 L76,68 L24,68 Z"),
+          polyD("M31,70 L69,70 L69,46 L31,46 Z"),
+          polyD("M38,48 L62,48 L62,28 L38,28 Z"),
+          polyD("M43,30 L57,30 L50,6 Z"),
         ].join(" "),
       };
 
@@ -150,10 +170,10 @@ export function shapeToPathD(style) {
     case "goldbars":
       return {
         d: [
-          "M6,90 L46,90 L52,72 L12,72 Z",
-          "M54,90 L94,90 L88,72 L48,72 Z",
-          "M28,70 L72,70 L78,52 L34,52 Z",
-          pointsToPathD(starPoints(4, 13, 4, 74, 28)),
+          polyD("M6,90 L48,90 L54,72 L12,72 Z"),
+          polyD("M46,90 L94,90 L88,72 L42,72 Z"),
+          polyD("M28,76 L72,76 L78,52 L34,52 Z"),
+          pointsToPathD(starPoints(4, 14, 4, 70, 42)),
         ].join(" "),
       };
 
@@ -165,7 +185,7 @@ export function shapeToPathD(style) {
           pointsToPathD(diamondPoints(78, 50, 17)),
           pointsToPathD(diamondPoints(50, 78, 17)),
           pointsToPathD(diamondPoints(22, 50, 17)),
-          circlePathD(50, 50, 16),
+          circlePathD(50, 50, 19),
         ].join(" "),
       };
 
@@ -177,45 +197,49 @@ export function shapeToPathD(style) {
     case "stall":
       return {
         d: [
-          "M8,32 L26,10 L74,10 L92,32 Z",
+          polyD("M8,32 L26,10 L74,10 L92,32 Z"),
           circlePathD(16, 34, 7),
           circlePathD(30, 34, 7),
           circlePathD(44, 34, 7),
           circlePathD(58, 34, 7),
           circlePathD(72, 34, 7),
           circlePathD(86, 34, 7),
-          "M16,36 L16,90 L84,90 L84,36 Z",
+          polyD("M16,36 L16,90 L84,90 L84,36 Z"),
         ].join(" "),
       };
 
-    // Perfektionsorden: ein makelloser Stern im Ring (evenodd: Ring hohl,
-    // Stern gefüllt).
+    // Perfektionsorden: ein makelloser Stern, dessen Spitzen den Ring berühren.
     case "perfect":
       return {
-        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34), pointsToPathD(starPoints(5, 28, 12, 50, 52))].join(" "),
+        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34)].join(" "),
+        extra: pointsToPathD(starPoints(5, 38, 16, 50, 53)),
       };
 
-    // Zielorden: eine Zielscheibe (konzentrische Ringe).
+    // Zielorden: ein Zielring mit Fadenkreuz und Mittelpunkt (alles verbunden).
     case "target":
-      return { d: [circlePathD(50, 50, 42), circlePathD(50, 50, 28), circlePathD(50, 50, 14)].join(" ") };
+      return {
+        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 30)].join(" "),
+        extra: [
+          circlePathD(50, 50, 12),
+          polyD("M46,8 L54,8 L54,92 L46,92 Z"),
+          polyD("M8,46 L92,46 L92,54 L8,54 Z"),
+        ].join(" "),
+      };
 
-    // Vollendungsorden: ein Haken im Ring - "geschafft".
+    // Vollendungsorden: ein Haken, dessen Ende den Ring durchbricht - "geschafft".
     case "complete":
       return {
-        d: [
-          circlePathD(50, 50, 42),
-          circlePathD(50, 50, 34),
-          "M26,52 L34,44 L45,55 L68,30 L76,38 L45,71 Z",
-        ].join(" "),
+        d: [circlePathD(50, 50, 42), circlePathD(50, 50, 34)].join(" "),
+        extra: polyD("M16,52 L26,42 L45,61 L74,24 L86,34 L45,81 Z"),
       };
 
     // Strategenorden: ein Schach-Turm.
     case "rook":
       return {
         d: [
-          "M24,90 L76,90 L76,76 L24,76 Z",
-          "M32,78 L36,44 L64,44 L68,78 Z",
-          "M27,46 L27,18 L38,18 L38,27 L46,27 L46,18 L54,18 L54,27 L62,27 L62,18 L73,18 L73,46 Z",
+          polyD("M24,90 L76,90 L76,76 L24,76 Z"),
+          polyD("M32,78 L36,44 L64,44 L68,78 Z"),
+          polyD("M27,46 L27,18 L38,18 L38,27 L46,27 L46,18 L54,18 L54,27 L62,27 L62,18 L73,18 L73,46 Z"),
         ].join(" "),
       };
 
@@ -223,7 +247,7 @@ export function shapeToPathD(style) {
     case "crown":
       return {
         d: [
-          "M20,72 L20,56 L30,40 L38,56 L50,32 L62,56 L70,40 L80,56 L80,72 Z",
+          polyD("M20,72 L20,56 L30,40 L38,56 L50,32 L62,56 L70,40 L80,56 L80,72 Z"),
           circlePathD(30, 38, 5),
           circlePathD(50, 30, 6),
           circlePathD(70, 38, 5),
