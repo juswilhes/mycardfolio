@@ -116,6 +116,8 @@ export const getSetsOverview = () => request("/stats/sets-overview");
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");
 export const getMarketplaceListings = () => request("/marketplace/listings");
+export const getListingsForCard = (externalId) =>
+  request(`/marketplace/listings?externalId=${encodeURIComponent(externalId)}`);
 export const getMyListings = () => request("/marketplace/listings/mine");
 // Läuft als EIN multipart-Request (Felder + optionales Foto zusammen),
 // damit ein Angebot ab dem Pflichtfoto-Preis nie ohne Foto existieren kann.

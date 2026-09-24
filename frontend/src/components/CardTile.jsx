@@ -48,6 +48,11 @@ export default function CardTile({ item, onChanged }) {
               {langLabel(item.language)}
             </span>
           )}
+          {item.listing_id && (
+            <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-mint border border-mint rounded px-1 py-0.5">
+              🛒 Im Marktplatz
+            </span>
+          )}
           {gradeLabel(item.grading_company, item.grade) && (
             <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-yellowInk bg-yellow rounded px-1 py-0.5">
               {gradeLabel(item.grading_company, item.grade)}

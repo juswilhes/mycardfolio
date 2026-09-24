@@ -93,6 +93,16 @@ export function createListingFromSealedProduct(userId, sealedProductId, { priceC
   return info.lastInsertRowid;
 }
 
+const activeForCollectionItemStmt = db.prepare(
+  `SELECT 1 FROM marketplace_listings WHERE collection_item_id = ? AND status = 'active'`
+);
+const activeForSealedStmt = db.prepare(
+  `SELECT 1 FROM marketplace_listings WHERE sealed_product_id = ? AND status = 'active'`
+);
+// Verhindert, dass derselbe Sammlungseintrag/dasselbe Produkt doppelt angeboten wird.
+export const hasActiveListingFor = (kind, id) =>
+  !!(kind === "card" ? activeForCollectionItemStmt : activeForSealedStmt).get(id);
+
 const listingByIdStmt = db.prepare(`SELECT * FROM marketplace_listings WHERE id = ?`);
 export const getListingById = (id) => listingByIdStmt.get(id);
 
@@ -113,6 +123,16 @@ const activeListingsStmt = db.prepare(`
   LIMIT 200
 `);
 export const listActiveListings = () => activeListingsStmt.all();
+
+// Angebote genau dieser Karte (gleiche external_id) - für die Kartenseite.
+const activeListingsForCardStmt = db.prepare(`
+  SELECT l.*, u.display_name AS seller_name, ${SELLER_RATING_SUBQUERY}
+  FROM marketplace_listings l
+  JOIN users u ON u.id = l.seller_user_id
+  WHERE l.status = 'active' AND l.external_id = ?
+  ORDER BY l.price_cents ASC
+`);
+export const listActiveListingsForCard = (externalId) => activeListingsForCardStmt.all(externalId);
 
 const listingWithSellerStmt = db.prepare(`
   SELECT l.*, u.display_name AS seller_name, u.id AS seller_id, ${SELLER_RATING_SUBQUERY}

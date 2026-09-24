@@ -19,6 +19,8 @@ import {
   getListingWithSeller,
   setListingPhoto,
   listActiveListings,
+  listActiveListingsForCard,
+  hasActiveListingFor,
   listMyListings,
   cancelListing,
   createPendingOrder,
@@ -78,7 +80,8 @@ router.get("/config", (req, res) => {
 
 // GET /api/marketplace/listings -> alle aktiven Angebote (öffentlich)
 router.get("/listings", (req, res) => {
-  res.json(listActiveListings());
+  const externalId = typeof req.query.externalId === "string" ? req.query.externalId : null;
+  res.json(externalId ? listActiveListingsForCard(externalId) : listActiveListings());
 });
 
 // GET /api/marketplace/seller/status -> eigener Verkäuferkonto-Status
@@ -148,6 +151,11 @@ router.post("/listings", authRequired, (req, res) => {
       return res.status(400).json({
         error: `Ab ${PHOTO_REQUIRED_EUR} € ist ein eigenes Foto des Exemplars Pflicht (für mehr Transparenz beim Kauf).`,
       });
+    }
+
+    const refId = Number(kind === "card" ? collectionItemId : sealedProductId);
+    if ((kind === "card" || kind === "sealed") && refId && hasActiveListingFor(kind, refId)) {
+      return res.status(409).json({ error: "Dieses Exemplar ist bereits im Marktplatz eingestellt." });
     }
 
     let id = null;

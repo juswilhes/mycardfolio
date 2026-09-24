@@ -29,7 +29,10 @@ export function createSealedProduct(userId, values) {
 }
 
 export const listSealedProducts = db.prepare(`
-  SELECT * FROM sealed_products WHERE user_id = ? ORDER BY created_at DESC
+  SELECT sp.*,
+    (SELECT l.id FROM marketplace_listings l
+      WHERE l.sealed_product_id = sp.id AND l.status = 'active' ORDER BY l.id DESC LIMIT 1) AS listing_id
+  FROM sealed_products sp WHERE sp.user_id = ? ORDER BY sp.created_at DESC
 `);
 
 const updateStmt = db.prepare(`

@@ -145,6 +145,7 @@ export default function CardDetail() {
       });
       setListEntry(null);
       setListed(listEntry.collection_item_id);
+      load();
     } catch (err) {
       setListError(
         err.status === 503
@@ -262,12 +263,21 @@ export default function CardDetail() {
                 >
                   Verkauft
                 </button>
-                <button
-                  onClick={() => { setListError(null); setListEntry(e); }}
-                  className="border border-line text-xs px-3 py-1.5 rounded-full hover:border-ink"
-                >
-                  {listed === e.collection_item_id ? "🛒 Im Marktplatz" : "🛒 Im Marktplatz anbieten"}
-                </button>
+                {e.listing_id || listed === e.collection_item_id ? (
+                  <Link
+                    to={e.listing_id ? `/marktplatz/angebot/${e.listing_id}` : "/marktplatz"}
+                    className="border border-mint text-mint text-xs px-3 py-1.5 rounded-full"
+                  >
+                    🛒 Im Marktplatz angeboten
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => { setListError(null); setListEntry(e); }}
+                    className="border border-line text-xs px-3 py-1.5 rounded-full hover:border-ink"
+                  >
+                    🛒 Im Marktplatz anbieten
+                  </button>
+                )}
                 {confirmDeleteId === e.collection_item_id ? (
                   <>
                     <button

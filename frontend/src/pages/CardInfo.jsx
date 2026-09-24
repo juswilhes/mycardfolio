@@ -6,6 +6,7 @@ import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
+import CardMarketListings from "../components/CardMarketListings.jsx";
 
 // Route: /database/:externalId – frei zugänglich, auch ohne Konto.
 // Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
@@ -157,6 +158,8 @@ export default function CardInfo() {
         onRefresh={user ? handleRefresh : undefined}
         refreshing={refreshing}
       />
+
+      <CardMarketListings externalId={externalId} />
 
       {dialogOpen && (
         <CollectionItemDialog

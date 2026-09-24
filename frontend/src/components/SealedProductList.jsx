@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getSealedProducts, updateSealedProduct, deleteSealedProduct, createListing } from "../api.js";
 import SealedProductDialog from "./SealedProductDialog.jsx";
 import SellListingDialog from "./SellListingDialog.jsx";
@@ -66,6 +67,7 @@ export default function SealedProductList() {
       await createListing({ kind: "sealed", sealedProductId: listItem.id, ...values });
       setListed(listItem.id);
       setListItem(null);
+      load();
     } catch (err) {
       setListError(
         err.status === 503
@@ -164,12 +166,21 @@ export default function SealedProductList() {
                 >
                   Bearbeiten
                 </button>
-                <button
-                  onClick={() => { setListError(null); setListItem(p); }}
-                  className="shrink-0 text-xs text-subtle underline hover:text-ink"
-                >
-                  {listed === p.id ? "🛒 Im Marktplatz" : "🛒 Verkaufen"}
-                </button>
+                {p.listing_id || listed === p.id ? (
+                  <Link
+                    to={p.listing_id ? `/marktplatz/angebot/${p.listing_id}` : "/marktplatz"}
+                    className="shrink-0 text-xs text-mint underline"
+                  >
+                    🛒 Im Marktplatz
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => { setListError(null); setListItem(p); }}
+                    className="shrink-0 text-xs text-subtle underline hover:text-ink"
+                  >
+                    🛒 Verkaufen
+                  </button>
+                )}
                 {confirmId === p.id ? (
                   <span className="flex items-center gap-1 shrink-0">
                     <button

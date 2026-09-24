@@ -65,7 +65,10 @@ const listCollectionStmt = db.prepare(`
          ci.language, ci.variant, ci.grading_company, ci.grade,
          c.id AS card_id, c.external_id, c.name, c.set_name, c.set_id, c.number, c.rarity,
          c.artist, c.image_small, c.image_large,
-         c.cardmarket_product_id, c.cardmarket_updated
+         c.cardmarket_product_id, c.cardmarket_updated,
+         (SELECT l.id FROM marketplace_listings l
+           WHERE l.collection_item_id = ci.id AND l.status = 'active'
+           ORDER BY l.id DESC LIMIT 1) AS listing_id
   FROM collection_items ci
   JOIN cards c ON c.id = ci.card_id
   WHERE ci.user_id = ?
