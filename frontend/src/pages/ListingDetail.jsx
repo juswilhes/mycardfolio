@@ -130,6 +130,11 @@ export default function ListingDetail() {
           {busy ? "…" : !user ? "Anmelden" : paymentsEnabled ? "Kaufen" : "Kontakt aufnehmen"}
         </button>
       )}
+      {!paymentsEnabled && listing.status === "active" && !isOwn && (
+        <p className="text-xs text-subtle mt-3">
+          ⚠️ Kein Käuferschutz: Zahlung und Versand regelt ihr direkt, mycardfolio ist nicht beteiligt.
+        </p>
+      )}
       {contactSent && (
         <p className="text-mint text-sm mt-3">✓ Nachricht gesendet – der Verkäufer antwortet dir per E-Mail.</p>
       )}

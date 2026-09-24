@@ -90,6 +90,15 @@ export default function Marketplace() {
         </Link>
         .
       </p>
+      {!paymentsEnabled && (
+        <div className="border border-yellow bg-yellow/10 rounded-xl px-4 py-3 text-sm mb-4">
+          <strong>⚠️ Kein Käuferschutz.</strong> Zahlung und Versand laufen direkt zwischen Käufer und
+          Verkäufer, mycardfolio ist daran nicht beteiligt und kann bei Problemen nicht helfen.
+          Tipp: bei höherwertigen Karten versicherten, nachverfolgbaren Versand und eine
+          nachvollziehbare Zahlungsart (z. B. PayPal Waren &amp; Dienstleistungen) vereinbaren und
+          das Foto des Verkäufers prüfen.
+        </div>
+      )}
       <ul className="text-subtle text-xs mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
         <li className="border border-line rounded-xl px-3 py-2">⭐ Echte Käufer-/Verkäufer-Bewertungen</li>
         <li className="border border-line rounded-xl px-3 py-2">📷 Fotos vom echten Exemplar statt Stockbild</li>
