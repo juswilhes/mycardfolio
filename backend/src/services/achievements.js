@@ -2,26 +2,29 @@ import db from "../db/index.js";
 import { listCollection, latestTrend } from "./cardService.js";
 import { listSales } from "./portfolioService.js";
 
-// 16 Orden für den "Ordenkoffer" - jeder auf einer eigenen Sammel-Dimension
-// (nicht nur "besitze mehr Karten"): Breite (Sets/Künstler/Arten/Typen),
-// Tiefe (ein Set/ein Künstler), Wert, Handelsgeschick und Treue.
+// 16 Orden für den "Ordenkoffer" - bewusst schwer: jeder Orden verlangt
+// deutlich mehr als "ein bisschen sammeln" und deckt eine eigene Dimension ab
+// (Breite, Tiefe, Wert, Handel, Qualität, Treue). Reihenfolge = grobe
+// Ordenreise von "gut dabei" bis "Legende". Die IDs bleiben stabil: bereits
+// verdiente Orden bleiben verdient, auch wenn die Bedingung später
+// verschärft wird (Freischaltungen liegen in user_achievements).
 export const ACHIEVEMENTS = [
-  { id: "erster_fang", icon: "🃏", title: "Erster Fang", desc: "Deine erste Karte zur Sammlung hinzugefügt" },
-  { id: "erster_handel", icon: "🤝", title: "Erster Handel", desc: "Deine erste Karte verkauft" },
-  { id: "weltenbummler", icon: "🌍", title: "Weltenbummler", desc: "Karten aus 30 verschiedenen Sets" },
-  { id: "halber_weg", icon: "🧩", title: "Halber Weg", desc: "Ein Set zu 75 % vervollständigt" },
-  { id: "meistersammler", icon: "🏆", title: "Meistersammler", desc: "Ein Set komplett vervollständigt" },
-  { id: "kunstkenner", icon: "🎨", title: "Kunstkenner", desc: "Karten von 30 verschiedenen Illustratoren" },
-  { id: "fanclub", icon: "💖", title: "Fanclub", desc: "50 Karten von ein und demselben Illustrator" },
-  { id: "pokedex_forscher", icon: "🔎", title: "Pokédex-Forscher", desc: "100 verschiedene Pokémon-Arten gesammelt" },
-  { id: "elementmeister", icon: "⚡", title: "Elementmeister", desc: "Karten aus allen 11 Pokémon-Typen der Sammelkartenwelt" },
-  { id: "wertvoller_fund", icon: "💰", title: "Wertvoller Fund", desc: "Eine Karte im Wert von 150 € oder mehr" },
-  { id: "kostbarkeit", icon: "👑", title: "Kostbarkeit", desc: "Eine Karte im Wert von 1.000 € oder mehr" },
-  { id: "volltreffer", icon: "🎯", title: "Volltreffer", desc: "Eine Karte mindestens verdreifacht im Wert seit dem Kauf" },
-  { id: "gewinnstratege", icon: "📈", title: "Gewinnstratege", desc: "Insgesamt 300 € Gewinn aus Verkäufen erzielt" },
-  { id: "meistergrad", icon: "🥇", title: "Meistergrad", desc: "Eine Karte mit einer 10er-Bewertung (PSA/BGS/CGC)" },
-  { id: "sprachtalent", icon: "🌐", title: "Sprachtalent", desc: "Mindestens 25 Karten in Deutsch und 25 in Englisch" },
-  { id: "treuer_trainer", icon: "⭐", title: "Treuer Trainer", desc: "Seit 365 Tagen bei mycardfolio dabei" },
+  { id: "erster_fang", icon: "🃏", title: "Kieselorden", desc: "Baue eine Sammlung von 100 verschiedenen Karten auf" },
+  { id: "pokedex_forscher", icon: "🔎", title: "Forscherorden", desc: "Sammle 400 verschiedene Pokémon-Arten – fast halb Pokédex" },
+  { id: "weltenbummler", icon: "🌍", title: "Kompassorden", desc: "Karten aus 60 verschiedenen Sets" },
+  { id: "kunstkenner", icon: "🎨", title: "Pinselorden", desc: "Karten von 100 verschiedenen Illustratoren" },
+  { id: "halber_weg", icon: "🧩", title: "Mosaikorden", desc: "Ein Set mit mindestens 50 Karten zu 90 % vervollständigt" },
+  { id: "sprachtalent", icon: "🌐", title: "Babelorden", desc: "Mindestens 75 Karten in Deutsch und 75 in Englisch" },
+  { id: "wertvoller_fund", icon: "💰", title: "Goldorden", desc: "Eine Karte im Wert von 500 € oder mehr" },
+  { id: "elementmeister", icon: "⚡", title: "Elementarorden", desc: "Mindestens 10 Karten in jedem der 11 Pokémon-Typen" },
+  { id: "fanclub", icon: "💖", title: "Herzorden", desc: "100 Karten von ein und demselben Illustrator" },
+  { id: "erster_handel", icon: "🤝", title: "Marktorden", desc: "10 Karten verkauft" },
+  { id: "meistergrad", icon: "🥇", title: "Perfektionsorden", desc: "3 Karten mit einer 10er-Bewertung (PSA/BGS/CGC)" },
+  { id: "volltreffer", icon: "🎯", title: "Zielorden", desc: "Eine Karte (Kaufpreis ab 5 €) auf mindestens das Fünffache im Wert gestiegen" },
+  { id: "meistersammler", icon: "🏆", title: "Vollendungsorden", desc: "3 komplette Sets mit jeweils mindestens 50 Karten" },
+  { id: "gewinnstratege", icon: "📈", title: "Strategenorden", desc: "Insgesamt 2.500 € Gewinn aus Verkäufen erzielt" },
+  { id: "kostbarkeit", icon: "👑", title: "Kronenorden", desc: "Eine Karte im Wert von 2.500 € oder mehr" },
+  { id: "treuer_trainer", icon: "⭐", title: "Treueorden", desc: "Seit 365 Tagen bei mycardfolio dabei" },
 ];
 
 const setProgressWithTotal = db.prepare(`
@@ -52,9 +55,10 @@ function computeProgress(userId) {
   const minLangCount = Math.min(langCount.de, langCount.en);
   const maxArtistCount = artistQty.size ? Math.max(...artistQty.values()) : 0;
 
-  const hasPerfectGrade = items.some(
-    (i) => i.grading_company && String(i.grade ?? "").trim() === "10"
-  );
+  const perfectGradeCount = items
+    .filter((i) => i.grading_company && String(i.grade ?? "").trim() === "10")
+    .reduce((n, i) => n + (i.quantity ?? 1), 0);
+  const distinctCards = new Set(items.map((i) => i.card_id)).size;
 
   // Pokémon-Typ- und Pokédex-Vielfalt: aus den Karten-Stammdaten (JSON-Arrays),
   // die in listCollection() nicht mitgeliefert werden - gezielt nachgeladen.
@@ -68,14 +72,17 @@ function computeProgress(userId) {
       metaById.set(row.id, row);
     }
   }
-  const typeSet = new Set();
   const dexSet = new Set();
+  // Pro Typ: wie viele VERSCHIEDENE Karten (nicht Stückzahl) - für "10 Karten je Typ".
+  const typeCards = new Map();
+  const typeDone = new Set();
   let bestGainRatio = 0;
   for (const i of items) {
     const meta = metaById.get(i.card_id);
-    if (meta?.types) {
+    if (meta?.types && !typeDone.has(i.card_id)) {
+      typeDone.add(i.card_id);
       try {
-        JSON.parse(meta.types).forEach((t) => typeSet.add(t));
+        for (const t of new Set(JSON.parse(meta.types))) typeCards.set(t, (typeCards.get(t) ?? 0) + 1);
       } catch {
         /* ignore malformed JSON */
       }
@@ -87,7 +94,7 @@ function computeProgress(userId) {
         /* ignore malformed JSON */
       }
     }
-    if (i.purchase_price > 0) {
+    if (i.purchase_price >= 5) {
       const current = latestTrend(i.card_id, i.variant || "normal")?.price ?? 0;
       bestGainRatio = Math.max(bestGainRatio, current / i.purchase_price);
     }
@@ -98,8 +105,11 @@ function computeProgress(userId) {
     return Math.max(max, price);
   }, 0);
   const setRows = setProgressWithTotal.all(userId);
-  const bestSetPct = setRows.reduce((max, r) => Math.max(max, r.owned / r.total), 0);
-  const hasCompleteSet = setRows.some((r) => r.owned >= r.total);
+  // Nur Sets ab 50 Karten zählen - sonst wären Mini-Sets (8-25 Karten) ein Freifahrtschein.
+  const bigSets = setRows.filter((r) => r.total >= 50);
+  const bestSetPct = bigSets.reduce((max, r) => Math.max(max, r.owned / r.total), 0);
+  const completeSets = bigSets.filter((r) => r.owned >= r.total).length;
+  const typesWith10 = [...typeCards.values()].filter((n) => n >= 10).length;
 
   const { sales } = listSales(userId);
   const totalRealizedProfit = sales.reduce((s, x) => s + x.realized, 0);
@@ -110,23 +120,32 @@ function computeProgress(userId) {
     : 0;
 
   return {
-    erster_fang: { current: totalQuantity, target: 1 },
-    erster_handel: { current: sales.length, target: 1 },
-    weltenbummler: { current: sets.size, target: 30 },
-    halber_weg: { current: Math.round(bestSetPct * 100), target: 75 },
-    meistersammler: { current: hasCompleteSet ? 1 : 0, target: 1 },
-    kunstkenner: { current: artists.size, target: 30 },
-    fanclub: { current: maxArtistCount, target: 50 },
-    pokedex_forscher: { current: dexSet.size, target: 100 },
-    elementmeister: { current: typeSet.size, target: 11 },
-    wertvoller_fund: { current: Math.round(maxCardValue), target: 150 },
-    kostbarkeit: { current: Math.round(maxCardValue), target: 1000 },
-    volltreffer: { current: Math.round(bestGainRatio * 100), target: 300 },
-    gewinnstratege: { current: Math.round(totalRealizedProfit), target: 300 },
-    meistergrad: { current: hasPerfectGrade ? 1 : 0, target: 1 },
-    sprachtalent: { current: minLangCount, target: 25 },
+    erster_fang: { current: distinctCards, target: 100 },
+    pokedex_forscher: { current: dexSet.size, target: 400 },
+    weltenbummler: { current: sets.size, target: 60 },
+    kunstkenner: { current: artists.size, target: 100 },
+    halber_weg: { current: Math.round(bestSetPct * 100), target: 90 },
+    sprachtalent: { current: minLangCount, target: 75 },
+    wertvoller_fund: { current: Math.round(maxCardValue), target: 500 },
+    elementmeister: { current: typesWith10, target: 11 },
+    fanclub: { current: maxArtistCount, target: 100 },
+    erster_handel: { current: sales.length, target: 10 },
+    meistergrad: { current: perfectGradeCount, target: 3 },
+    volltreffer: { current: Math.round(bestGainRatio * 100), target: 500 },
+    meistersammler: { current: completeSets, target: 3 },
+    gewinnstratege: { current: Math.round(totalRealizedProfit), target: 2500 },
+    kostbarkeit: { current: Math.round(maxCardValue), target: 2500 },
     treuer_trainer: { current: Math.floor(accountAgeDays), target: 365 },
   };
+}
+
+// Einmalige Neubewertung nach der Verschärfung aller 16 Orden (v2): Freischaltungen
+// unter den alten, leichteren Regeln würden sonst mit Fortschritt unter dem neuen
+// Ziel als "verdient" stehen bleiben. Danach schaltet getAchievements() alles
+// Erreichte wieder frei (mit neuem Datum). Läuft genau einmal pro Datenbank.
+if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = 'orden_v2_reset'`).get()) {
+  db.prepare(`DELETE FROM user_achievements`).run();
+  db.prepare(`INSERT INTO app_meta (key, value) VALUES ('orden_v2_reset', datetime('now'))`).run();
 }
 
 const insertIfNew = db.prepare(`
