@@ -41,13 +41,24 @@ export default function MarketplaceTerms() {
 
       <h2>4. Zustandekommen des Kaufs</h2>
       <p>
-        Mit Klick auf "Kaufen" gibt der Käufer ein verbindliches Kaufangebot zum angezeigten Preis
-        ab. Der Kaufvertrag kommt mit erfolgreicher Zahlungsabwicklung zustande. Der Verkäufer ist
-        verpflichtet, die Ware unverzüglich, spätestens innerhalb von 5 Werktagen nach Zahlungseingang,
-        an die vom Käufer angegebene Adresse zu versenden.
+        <strong>Solange die Bezahlfunktion nicht aktiv ist</strong> (aktuell der Fall), ist der
+        Marktplatz eine reine Kontaktbörse: Interessenten schreiben dem Verkäufer über mycardfolio.
+        Der Verkäufer erhält die Nachricht per E-Mail samt E-Mail-Adresse des Interessenten und
+        antwortet ihm direkt. Ein Kaufvertrag kommt, wenn überhaupt, außerhalb von mycardfolio
+        zwischen Käufer und Verkäufer zustande; Zahlung und Versand regeln beide selbst.
+        mycardfolio erhebt in diesem Fall keine Provision, bietet <strong>keinen Käuferschutz</strong>{" "}
+        und ist an Zahlung, Versand und Streitigkeiten nicht beteiligt. Käufer und Verkäufer sollten
+        eine nachvollziehbare, versicherte Zahlungs- und Versandart vereinbaren.
+      </p>
+      <p>
+        <strong>Sobald die Bezahlfunktion aktiv ist:</strong> Mit Klick auf "Kaufen" gibt der Käufer
+        ein verbindliches Kaufangebot zum angezeigten Preis ab. Der Kaufvertrag kommt mit
+        erfolgreicher Zahlungsabwicklung zustande. Der Verkäufer ist verpflichtet, die Ware
+        unverzüglich, spätestens innerhalb von 5 Werktagen nach Zahlungseingang, an die vom Käufer
+        angegebene Adresse zu versenden.
       </p>
 
-      <h2>5. Zahlungsabwicklung, Provision</h2>
+      <h2>5. Zahlungsabwicklung, Provision (nur bei aktiver Bezahlfunktion)</h2>
       <p>
         Die Zahlung wickelt ausschließlich unser Zahlungsdienstleister Stripe ab (Stripe Connect).
         Der Käufer zahlt den vollen Angebotspreis; Stripe transferiert den Betrag abzüglich der

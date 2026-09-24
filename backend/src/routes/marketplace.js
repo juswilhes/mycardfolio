@@ -32,9 +32,14 @@ import {
   listActiveListingsForSeller,
   addListingComment,
   listCommentsForListing,
+  hasRecentContact,
+  addContact,
+  listContactsForListing,
+  createCompletedOrder,
+  markListingSold,
 } from "../services/marketplaceService.js";
 import { watchersForExternalId } from "../services/watchlistService.js";
-import { sendWishlistMatchMail, sendListingCommentMail } from "../services/mailer.js";
+import { sendWishlistMatchMail, sendListingCommentMail, sendListingContactMail } from "../services/mailer.js";
 import { uploadListingPhoto, listingPhotoUrl } from "../lib/uploads.js";
 import { findUserById } from "../services/authService.js";
 
@@ -47,21 +52,28 @@ const eur = (cents) => `${(cents / 100).toFixed(2).replace(".", ",")} €`;
 const PHOTO_REQUIRED_EUR = Number(process.env.MARKETPLACE_PHOTO_REQUIRED_EUR) || 10;
 const PHOTO_REQUIRED_CENTS = Math.round(PHOTO_REQUIRED_EUR * 100);
 
-// Solange kein STRIPE_SECRET_KEY hinterlegt ist, ist der Marktplatz bewusst
-// inaktiv statt mit kaputten Aufrufen zu crashen - das Anlegen des echten
-// Stripe-Kontos ist ein eigener, von uns nicht ausführbarer Schritt.
-router.use((req, res, next) => {
+// Stufe 1: der Marktplatz läuft auch OHNE Stripe als reine Kontaktbörse
+// (Angebote, Fragen, Kontaktaufnahme, Bewertungen) - Zahlung und Versand
+// regeln Käufer und Verkäufer selbst. Nur die Bezahl-Endpunkte (Verkäufer-
+// Onboarding, Checkout) brauchen einen STRIPE_SECRET_KEY und antworten
+// sonst mit 503. Sobald der Schlüssel in der .env steht, schaltet sich der
+// Bezahl-Ablauf von selbst dazu (siehe paymentsEnabled in /config).
+const requirePayments = (req, res, next) => {
   if (!isConfigured()) {
-    return res.status(503).json({
-      error: "Der Marktplatz ist noch nicht eingerichtet (Zahlungsdienst fehlt).",
-    });
+    return res.status(503).json({ error: "Die Bezahlfunktion ist noch nicht aktiv." });
   }
   next();
-});
+};
 
-// GET /api/marketplace/config -> öffentliche Eckdaten (Provision, ab wann ein Foto Pflicht ist)
+// GET /api/marketplace/config -> öffentliche Eckdaten. Provision gibt es nur
+// mit aktiver Bezahlfunktion (in der Kontaktbörse ist alles kostenlos).
 router.get("/config", (req, res) => {
-  res.json({ feePercent: MARKETPLACE_FEE_PERCENT, photoRequiredFromEur: PHOTO_REQUIRED_EUR });
+  const paymentsEnabled = isConfigured();
+  res.json({
+    paymentsEnabled,
+    feePercent: paymentsEnabled ? MARKETPLACE_FEE_PERCENT : null,
+    photoRequiredFromEur: PHOTO_REQUIRED_EUR,
+  });
 });
 
 // GET /api/marketplace/listings -> alle aktiven Angebote (öffentlich)
@@ -70,7 +82,7 @@ router.get("/listings", (req, res) => {
 });
 
 // GET /api/marketplace/seller/status -> eigener Verkäuferkonto-Status
-router.get("/seller/status", authRequired, async (req, res) => {
+router.get("/seller/status", requirePayments, authRequired, async (req, res) => {
   const account = getSellerAccount(req.user.id);
   res.json({
     hasAccount: !!account,
@@ -80,7 +92,7 @@ router.get("/seller/status", authRequired, async (req, res) => {
 
 // POST /api/marketplace/seller/onboard -> Stripe-Konto anlegen (falls nötig)
 // + frischen Onboarding-Link zurückgeben, zu dem das Frontend weiterleitet.
-router.post("/seller/onboard", authRequired, async (req, res) => {
+router.post("/seller/onboard", requirePayments, authRequired, async (req, res) => {
   try {
     let account = getSellerAccount(req.user.id);
     if (!account) {
@@ -100,7 +112,7 @@ router.post("/seller/onboard", authRequired, async (req, res) => {
 
 // GET /api/marketplace/seller/refresh -> Onboarding-Status bei Stripe
 // nachschlagen (nach Rückkehr vom Onboarding-Formular aufgerufen).
-router.get("/seller/refresh", authRequired, async (req, res) => {
+router.get("/seller/refresh", requirePayments, authRequired, async (req, res) => {
   const account = getSellerAccount(req.user.id);
   if (!account) return res.json({ hasAccount: false, onboardingComplete: false });
   try {
@@ -123,8 +135,8 @@ router.post("/listings", authRequired, (req, res) => {
       return res.status(400).json({ error: "Foto konnte nicht hochgeladen werden (max. 8 MB, JPG/PNG/WebP)." });
     }
 
-    const account = getSellerAccount(req.user.id);
-    if (!account?.onboarding_complete) {
+    // Verkäuferkonto (Stripe) nur nötig, wenn die Bezahlfunktion aktiv ist.
+    if (isConfigured() && !getSellerAccount(req.user.id)?.onboarding_complete) {
       return res.status(403).json({ error: "Bitte zuerst dein Verkäuferkonto einrichten." });
     }
     const { kind, collectionItemId, sealedProductId, priceEur, description } = req.body;
@@ -216,6 +228,63 @@ router.post("/listings/:id/comments", authRequired, (req, res) => {
   }
 });
 
+// POST /api/marketplace/listings/:id/contact  { message } -> Käufer schreibt
+// dem Verkäufer (Mail mit Reply-To an den Käufer). Max. 1 Anfrage/Stunde
+// je Angebot, damit niemand einen Verkäufer zuspammt.
+router.post("/listings/:id/contact", authRequired, (req, res) => {
+  const message = (req.body?.message ?? "").trim().slice(0, 1000);
+  if (!message) return res.status(400).json({ error: "Bitte eine Nachricht eingeben." });
+  const listing = getListingById(Number(req.params.id));
+  if (!listing || listing.status !== "active") {
+    return res.status(404).json({ error: "Angebot nicht (mehr) verfügbar" });
+  }
+  if (listing.seller_user_id === req.user.id) {
+    return res.status(400).json({ error: "Das ist dein eigenes Angebot." });
+  }
+  if (hasRecentContact(listing.id, req.user.id)) {
+    return res.status(429).json({ error: "Du hast dem Verkäufer gerade erst geschrieben. Bitte kurz warten." });
+  }
+  const seller = findUserById(listing.seller_user_id);
+  if (!seller) return res.status(404).json({ error: "Verkäufer nicht gefunden" });
+
+  addContact(listing.id, req.user.id, message);
+  sendListingContactMail(seller.email, {
+    listingTitle: listing.title,
+    listingUrl: `${FRONTEND_URL}/marktplatz/angebot/${listing.id}`,
+    message,
+    buyerName: req.user.display_name,
+    buyerEmail: req.user.email,
+  }).catch(() => {});
+  res.status(201).json({ ok: true });
+});
+
+// GET /api/marketplace/listings/:id/contacts -> wer hat dem Verkäufer geschrieben
+router.get("/listings/:id/contacts", authRequired, (req, res) => {
+  const listing = getListingById(Number(req.params.id));
+  if (!listing || listing.seller_user_id !== req.user.id) {
+    return res.status(404).json({ error: "Angebot nicht gefunden" });
+  }
+  res.json(listContactsForListing(listing.id));
+});
+
+// POST /api/marketplace/listings/:id/sold  { buyerUserId? } -> Verkäufer
+// markiert sein Angebot als verkauft. Mit buyerUserId (jemand, der geschrieben
+// hat) entsteht ein abgeschlossenes Geschäft, damit beide sich bewerten können.
+router.post("/listings/:id/sold", authRequired, (req, res) => {
+  const listing = getListingById(Number(req.params.id));
+  if (!listing || listing.seller_user_id !== req.user.id || listing.status !== "active") {
+    return res.status(404).json({ error: "Angebot nicht gefunden" });
+  }
+  const buyerUserId = req.body?.buyerUserId ? Number(req.body.buyerUserId) : null;
+  if (buyerUserId) {
+    const isContact = listContactsForListing(listing.id).some((c) => c.buyer_user_id === buyerUserId);
+    if (!isContact) return res.status(400).json({ error: "Diese Person hat dir zu dem Angebot nicht geschrieben." });
+    createCompletedOrder(listing, buyerUserId);
+  }
+  markListingSold(listing.id);
+  res.json({ ok: true });
+});
+
 // GET /api/marketplace/sellers/:userId -> öffentliches Verkäuferprofil
 router.get("/sellers/:userId", (req, res) => {
   const userId = Number(req.params.userId);
@@ -242,7 +311,7 @@ router.delete("/listings/:id", authRequired, (req, res) => {
 
 // POST /api/marketplace/listings/:id/checkout -> Stripe-Checkout-Session
 // für einen Kauf, Frontend leitet zur zurückgegebenen URL weiter.
-router.post("/listings/:id/checkout", authRequired, async (req, res) => {
+router.post("/listings/:id/checkout", requirePayments, authRequired, async (req, res) => {
   const listing = getListingById(Number(req.params.id));
   if (!listing || listing.status !== "active") {
     return res.status(404).json({ error: "Angebot nicht (mehr) verfügbar" });

@@ -170,6 +170,7 @@ export function deleteAccount(userId) {
        WHERE seller_user_id = ? AND status = 'active'`
     ).run(userId);
     db.prepare(`DELETE FROM seller_accounts WHERE user_id = ?`).run(userId);
+    db.prepare(`DELETE FROM marketplace_contacts WHERE buyer_user_id = ?`).run(userId);
     db.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
   });
   tx();

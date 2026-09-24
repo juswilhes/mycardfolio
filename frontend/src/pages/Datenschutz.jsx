@@ -166,7 +166,20 @@ export default function Datenschutz() {
         Kontos anonymisiert.
       </p>
       <p>
-        Für Käufe und Verkäufe im Marktplatz-Bereich setzen wir den
+        <strong>Kontaktaufnahme (aktuell ohne Bezahlfunktion):</strong> Schreibst
+        du einem Verkäufer über „Kontakt aufnehmen“, senden wir deine Nachricht
+        per E-Mail an den Verkäufer – zusammen mit deiner E-Mail-Adresse und
+        deinem Anzeigenamen, damit er dir direkt antworten kann. Wir speichern
+        die Nachricht (Angebot, Absender, Text, Zeitpunkt), um Missbrauch
+        (Spam) zu begrenzen und dem Verkäufer beim Abschluss eines Geschäfts
+        die Auswahl der Kontaktpersonen zu ermöglichen. Zahlung und Versand
+        regeln Käufer und Verkäufer selbst. Rechtsgrundlage: Art. 6 Abs. 1
+        lit. b DSGVO (Vermittlung des Kontakts auf deine Anfrage). Die Daten
+        werden mit deinem Konto gelöscht.
+      </p>
+      <p>
+        Sobald die Bezahlfunktion aktiv ist, setzen wir für Käufe und Verkäufe
+        im Marktplatz-Bereich den
         Zahlungsdienstleister Stripe ein (Stripe Payments Europe, Limited, 1
         Grand Canal Street Lower, Dublin 2, Irland). Deine Zahlungsdaten
         (z. B. Kartennummer) gibst du direkt bei Stripe ein – sie laufen nie

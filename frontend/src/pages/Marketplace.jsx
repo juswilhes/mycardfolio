@@ -13,33 +13,41 @@ import {
   shipOrder,
   submitOrderReview,
   getListing,
+  getListingContacts,
+  markListingSold,
 } from "../api.js";
 import { conditionLabel } from "../components/CollectionItemDialog.jsx";
 import { StarRating, StarPicker } from "../components/StarRating.jsx";
 import PurchaseCelebrationAnimation from "../components/PurchaseCelebrationAnimation.jsx";
+import ContactSellerDialog from "../components/ContactSellerDialog.jsx";
 
 const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
 
 // Route: /marktplatz – Karten & Sealed-Produkte, die andere Nutzer
-// verkaufen. Zahlung läuft über Stripe Connect (siehe Backend); solange
-// dort keine Stripe-Keys hinterlegt sind, antwortet die API mit 503 und
-// diese Seite zeigt stattdessen einen "startet in Kürze"-Hinweis.
+// verkaufen. Ohne Stripe-Schlüssel (paymentsEnabled = false) ist das eine
+// Kontaktbörse: Interessenten schreiben dem Verkäufer, Zahlung und Versand
+// regeln beide selbst. Mit Schlüssel erscheint stattdessen "Kaufen" (Stripe).
 export default function Marketplace() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [tab, setTab] = useState("kaufen");
-  const [unavailable, setUnavailable] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [feePercent, setFeePercent] = useState(null);
   const [listings, setListings] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [buyError, setBuyError] = useState(null);
   const [boughtListing, setBoughtListing] = useState(null);
+  const [contactListing, setContactListing] = useState(null);
+  const [contactSent, setContactSent] = useState(false);
 
   useEffect(() => {
     getMarketplaceConfig()
-      .then((c) => setFeePercent(c.feePercent))
-      .catch((err) => setUnavailable(err.status === 503));
+      .then((c) => {
+        setPaymentsEnabled(!!c.paymentsEnabled);
+        setFeePercent(c.feePercent);
+      })
+      .catch(() => {});
     getMarketplaceListings()
       .then(setListings)
       .catch(() => setListings([]));
@@ -67,26 +75,16 @@ export default function Marketplace() {
     }
   }
 
-  if (unavailable) {
-    return (
-      <div className="text-center py-24">
-        <p className="text-lg font-medium mb-1">🚧 Marktplatz startet in Kürze</p>
-        <p className="text-subtle max-w-md mx-auto">
-          Hier kannst du bald Karten und Sealed-Produkte an andere mycardfolio-Nutzer verkaufen und
-          kaufen. Die Zahlungsabwicklung wird gerade eingerichtet.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1">🛒 Marktplatz</h1>
       <p className="text-subtle text-sm mb-3">
         Karten &amp; Sealed-Produkte von anderen mycardfolio-Nutzern kaufen oder deine eigenen
         verkaufen.
-        {feePercent != null && ` mycardfolio behält nur ${feePercent}% Provision je Verkauf – keine Grundgebühr, kein Abo.`}{" "}
-        Mit einem Kauf oder Angebot gelten die{" "}
+        {paymentsEnabled
+          ? feePercent != null && ` mycardfolio behält nur ${feePercent}% Provision je Verkauf – keine Grundgebühr, kein Abo.`
+          : " Komplett kostenlos: Du schreibst dem Verkäufer, Zahlung und Versand regelt ihr direkt untereinander."}{" "}
+        Es gelten die{" "}
         <Link to="/marktplatz-agb" className="underline hover:text-ink">
           Marktplatz-Nutzungsbedingungen
         </Link>
@@ -107,12 +105,27 @@ export default function Marketplace() {
       {boughtListing && (
         <PurchaseCelebrationAnimation listing={boughtListing} onDone={() => setBoughtListing(null)} />
       )}
+      {contactSent && (
+        <p className="bg-mint/15 text-mint border border-mint/30 rounded-2xl px-4 py-3 text-sm mb-6">
+          ✓ Nachricht gesendet! Der Verkäufer antwortet dir per E-Mail.
+        </p>
+      )}
+      {contactListing && (
+        <ContactSellerDialog
+          listing={contactListing}
+          onClose={() => setContactListing(null)}
+          onSent={() => {
+            setContactListing(null);
+            setContactSent(true);
+          }}
+        />
+      )}
 
       <div className="flex gap-4 border-b border-line mb-6 text-sm">
         {[
-          ["kaufen", "Kaufen"],
+          ["kaufen", "Angebote"],
           ["angebote", "Meine Angebote"],
-          ["bestellungen", "Meine Bestellungen"],
+          ["bestellungen", paymentsEnabled ? "Meine Bestellungen" : "Meine Geschäfte"],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -161,11 +174,24 @@ export default function Marketplace() {
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <span className="font-mono font-medium">{eur(l.price_cents)}</span>
                     <button
-                      onClick={() => (user ? buy(l) : navigate("/login"))}
-                      disabled={busyId === l.id}
+                      onClick={() => {
+                        if (!user) return navigate("/login");
+                        if (paymentsEnabled) return buy(l);
+                        setContactSent(false);
+                        setContactListing(l);
+                      }}
+                      disabled={busyId === l.id || (user && user.id === l.seller_user_id)}
                       className="text-xs bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full disabled:opacity-60"
                     >
-                      {busyId === l.id ? "…" : user ? "Kaufen" : "Anmelden zum Kaufen"}
+                      {busyId === l.id
+                        ? "…"
+                        : !user
+                          ? "Anmelden"
+                          : user.id === l.seller_user_id
+                            ? "Dein Angebot"
+                            : paymentsEnabled
+                              ? "Kaufen"
+                              : "Kontakt aufnehmen"}
                     </button>
                   </div>
                 </div>
@@ -175,23 +201,73 @@ export default function Marketplace() {
         </>
       )}
 
-      {tab === "angebote" && user && <MyListings />}
+      {tab === "angebote" && user && <MyListings paymentsEnabled={paymentsEnabled} />}
       {tab === "bestellungen" && user && <MyOrders />}
     </div>
   );
 }
 
-function MyListings() {
+// "Verkauft"-Auswahl (nur Kontaktbörse): an wen ging die Karte? Nur wer dem
+// Verkäufer geschrieben hat, kommt infrage - daraus entsteht ein Geschäft,
+// das beide bewerten können.
+function SoldPicker({ listingId, onDone, onCancel }) {
+  const [contacts, setContacts] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getListingContacts(listingId).then(setContacts).catch(() => setContacts([]));
+  }, [listingId]);
+
+  async function pick(buyerUserId) {
+    setBusy(true);
+    try {
+      await markListingSold(listingId, buyerUserId);
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (contacts === null) return <p className="text-xs text-subtle mt-2">Lade …</p>;
+  return (
+    <div className="mt-3 border-t border-line pt-3 text-xs">
+      <p className="text-subtle mb-2">An wen verkauft? (Nur Personen, die dir geschrieben haben, können dich danach bewerten.)</p>
+      <div className="flex flex-wrap gap-2">
+        {contacts.map((c) => (
+          <button
+            key={c.buyer_user_id}
+            disabled={busy}
+            onClick={() => pick(c.buyer_user_id)}
+            className="border border-line px-3 py-1.5 rounded-full hover:border-ink disabled:opacity-60"
+          >
+            {c.name}
+          </button>
+        ))}
+        <button
+          disabled={busy}
+          onClick={() => pick(null)}
+          className="border border-line px-3 py-1.5 rounded-full text-subtle hover:border-ink disabled:opacity-60"
+        >
+          Anderswo verkauft
+        </button>
+        <button onClick={onCancel} className="px-2 text-subtle">Abbrechen</button>
+      </div>
+    </div>
+  );
+}
+
+function MyListings({ paymentsEnabled }) {
   const [status, setStatus] = useState(null);
   const [onboarding, setOnboarding] = useState(false);
   const [listings, setListings] = useState(null);
   const [error, setError] = useState(null);
+  const [soldFor, setSoldFor] = useState(null);
 
   const load = () => {
-    getSellerStatus().then(setStatus).catch(() => setStatus(null));
+    if (paymentsEnabled) getSellerStatus().then(setStatus).catch(() => setStatus(null));
     getMyListings().then(setListings).catch(() => setListings([]));
   };
-  useEffect(load, []);
+  useEffect(load, [paymentsEnabled]);
 
   async function onboard() {
     setOnboarding(true);
@@ -210,7 +286,7 @@ function MyListings() {
     load();
   }
 
-  if (status && !status.onboardingComplete) {
+  if (paymentsEnabled && status && !status.onboardingComplete) {
     return (
       <div className="border border-line rounded-2xl p-6 text-center">
         <p className="font-medium mb-1">Verkäuferkonto einrichten</p>
@@ -247,7 +323,8 @@ function MyListings() {
       ) : (
         <div className="space-y-2">
           {listings.map((l) => (
-            <div key={l.id} className="border border-line rounded-2xl p-3 flex items-center gap-3">
+            <div key={l.id} className="border border-line rounded-2xl p-3">
+             <div className="flex items-center gap-3">
               {(l.photo_url || l.image_url) && (
                 <img src={l.photo_url || l.image_url} alt="" className="w-12 h-12 object-contain rounded-lg bg-canvas" />
               )}
@@ -261,6 +338,14 @@ function MyListings() {
                   {!l.photo_url && l.status === "active" && " · kein eigenes Foto"}
                 </p>
               </div>
+              {l.status === "active" && !paymentsEnabled && soldFor !== l.id && (
+                <button
+                  onClick={() => setSoldFor(l.id)}
+                  className="text-xs border border-line px-3 py-1.5 rounded-full hover:border-ink"
+                >
+                  Verkauft
+                </button>
+              )}
               {l.status === "active" && (
                 <button
                   onClick={() => cancel(l.id)}
@@ -269,6 +354,10 @@ function MyListings() {
                   Zurückziehen
                 </button>
               )}
+             </div>
+             {soldFor === l.id && (
+               <SoldPicker listingId={l.id} onDone={() => { setSoldFor(null); load(); }} onCancel={() => setSoldFor(null)} />
+             )}
             </div>
           ))}
         </div>
@@ -284,7 +373,10 @@ function MyOrders() {
   const [reviewingId, setReviewingId] = useState(null);
 
   const load = () => getMyOrders().then(setOrders).catch(() => setOrders({ purchases: [], sales: [] }));
-  useEffect(load, []);
+  // Nicht useEffect(load, []): load() gibt ein Promise zurück, React hielte es für die Cleanup-Funktion.
+  useEffect(() => {
+    load();
+  }, []);
 
   async function submitShip(id) {
     await shipOrder(id, tracking.trim() || null);

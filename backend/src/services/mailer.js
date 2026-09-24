@@ -24,14 +24,14 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
 
 export const mailReady = () => !!transport;
 
-async function send({ to, subject, text, html }) {
+async function send({ to, subject, text, html, replyTo }) {
   if (!to) return;
   if (!transport) {
     console.log(`\n[mail:LOG] an ${to}\nBetreff: ${subject}\n${text || html}\n`);
     return;
   }
   try {
-    await transport.sendMail({ from: FROM, to, subject, text, html });
+    await transport.sendMail({ from: FROM, to, subject, text, html, replyTo });
   } catch (e) {
     console.error(`[mail] Versand an ${to} fehlgeschlagen:`, e.message);
   }
@@ -68,6 +68,18 @@ export function sendWishlistMatchMail(email, { cardName, price, listingUrl }) {
     to: email,
     subject: `mycardfolio – ${cardName} ist im Marktplatz aufgetaucht`,
     text: `Eine Karte von deiner Watchlist wird gerade im Marktplatz angeboten:\n\n${cardName} – ${price}\n\n${listingUrl}\n\nDu bekommst diese Mail, weil "${cardName}" auf deiner Watchlist steht.`,
+  });
+}
+
+// Kaufinteresse: Nachricht eines Käufers an den Verkäufer. Reply-To ist die
+// Adresse des Käufers, damit beide direkt per Mail weiterschreiben können
+// (Zahlung und Versand regeln sie ohne mycardfolio selbst).
+export function sendListingContactMail(email, { listingTitle, listingUrl, message, buyerName, buyerEmail }) {
+  return send({
+    to: email,
+    replyTo: buyerEmail,
+    subject: `mycardfolio – Interesse an "${listingTitle}"`,
+    text: `${buyerName || buyerEmail} interessiert sich für dein Angebot "${listingTitle}":\n\n${message}\n\nAntworten kannst du direkt auf diese Mail (Antwort geht an ${buyerEmail}).\nAngebot: ${listingUrl}\n\nWenn ihr euch einig seid: Markiere das Angebot bei mycardfolio als verkauft, dann könnt ihr euch gegenseitig bewerten.`,
   });
 }
 

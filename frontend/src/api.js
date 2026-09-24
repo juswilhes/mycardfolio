@@ -152,6 +152,11 @@ export const getListing = (id) => request(`/marketplace/listings/${id}`);
 export const postListingComment = (id, body) =>
   request(`/marketplace/listings/${id}/comments`, { method: "POST", body: { body } });
 export const getSellerProfile = (userId) => request(`/marketplace/sellers/${userId}`);
+export const contactSeller = (id, message) =>
+  request(`/marketplace/listings/${id}/contact`, { method: "POST", body: { message } });
+export const getListingContacts = (id) => request(`/marketplace/listings/${id}/contacts`);
+export const markListingSold = (id, buyerUserId) =>
+  request(`/marketplace/listings/${id}/sold`, { method: "POST", body: { buyerUserId: buyerUserId ?? null } });
 
 // Datei-Upload braucht FormData statt JSON - eigener, schlanker Aufruf statt
 // über den zentralen request()-Helfer (der immer Content-Type: json setzt).

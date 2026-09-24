@@ -256,3 +256,38 @@ const commentsForListingStmt = db.prepare(`
   ORDER BY c.created_at ASC
 `);
 export const listCommentsForListing = (listingId) => commentsForListingStmt.all(listingId);
+
+// --- Kontaktanfragen & manuell abgeschlossene Geschäfte (Stufe 1) ----------
+
+const recentContactStmt = db.prepare(`
+  SELECT 1 FROM marketplace_contacts
+  WHERE listing_id = ? AND buyer_user_id = ? AND created_at > datetime('now', '-1 hour')
+`);
+export const hasRecentContact = (listingId, buyerUserId) => !!recentContactStmt.get(listingId, buyerUserId);
+
+const insertContactStmt = db.prepare(`
+  INSERT INTO marketplace_contacts (listing_id, buyer_user_id, message) VALUES (?, ?, ?)
+`);
+export const addContact = (listingId, buyerUserId, message) =>
+  insertContactStmt.run(listingId, buyerUserId, message);
+
+// Jede Person einmal (jüngste Anfrage), für die Auswahl "verkauft an ...".
+const contactsForListingStmt = db.prepare(`
+  SELECT c.buyer_user_id, COALESCE(u.display_name, u.email) AS name, MAX(c.created_at) AS created_at
+  FROM marketplace_contacts c
+  JOIN users u ON u.id = c.buyer_user_id
+  WHERE c.listing_id = ?
+  GROUP BY c.buyer_user_id
+  ORDER BY created_at DESC
+`);
+export const listContactsForListing = (listingId) => contactsForListingStmt.all(listingId);
+
+// Verkäufer meldet: "an diese Person verkauft". Legt eine abgeschlossene
+// Bestellung ohne Stripe an (Provision 0), damit beide sich bewerten können
+// und der Verkäufer seine Verkaufszahl bekommt.
+const insertCompletedOrderStmt = db.prepare(`
+  INSERT INTO marketplace_orders (listing_id, buyer_user_id, seller_user_id, amount_cents, fee_cents, currency, status)
+  VALUES (?, ?, ?, ?, 0, ?, 'completed')
+`);
+export const createCompletedOrder = (listing, buyerUserId) =>
+  insertCompletedOrderStmt.run(listing.id, buyerUserId, listing.seller_user_id, listing.price_cents, listing.currency);

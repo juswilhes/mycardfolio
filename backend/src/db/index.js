@@ -278,6 +278,19 @@ CREATE TABLE IF NOT EXISTS marketplace_reviews (
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_reviewee ON marketplace_reviews(reviewee_user_id);
 
+-- Kontaktanfragen (Stufe 1 ohne Bezahlfunktion): Käufer schreibt dem
+-- Verkäufer, die Nachricht geht per Mail raus. Die Tabelle dient dem
+-- Spam-Schutz (max. 1 Anfrage/Stunde je Angebot und Käufer) und als
+-- Auswahlliste, wenn der Verkäufer "verkauft an ..." markiert.
+CREATE TABLE IF NOT EXISTS marketplace_contacts (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id     INTEGER NOT NULL REFERENCES marketplace_listings(id),
+  buyer_user_id  INTEGER NOT NULL REFERENCES users(id),
+  message        TEXT NOT NULL,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_contacts_listing ON marketplace_contacts(listing_id);
+
 -- Fragen/Kommentare zu einem Angebot - Community-Austausch statt rein
 -- transaktionaler Kauf ohne jeden Kontakt vorher.
 CREATE TABLE IF NOT EXISTS marketplace_listing_comments (
