@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getListingsForCard } from "../api.js";
 import { conditionLabel } from "./CollectionItemDialog.jsx";
 import { StarRating } from "./StarRating.jsx";
 
@@ -8,21 +6,13 @@ const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
 
 // Alle aktuellen Marktplatz-Angebote GENAU dieser Karte (günstigstes zuerst),
 // direkt auf der Kartenseite - man muss nicht extra im Marktplatz suchen.
-// Ohne Angebote bleibt der Abschnitt unsichtbar.
-export default function CardMarketListings({ externalId }) {
-  const [listings, setListings] = useState(null);
-
-  useEffect(() => {
-    setListings(null);
-    getListingsForCard(externalId)
-      .then(setListings)
-      .catch(() => setListings([]));
-  }, [externalId]);
-
+// Ohne Angebote bleibt der Abschnitt unsichtbar. Die Angebote lädt die
+// Kartenseite selbst (der Button oben braucht die Anzahl ebenfalls).
+export default function CardMarketListings({ listings }) {
   if (!listings || listings.length === 0) return null;
 
   return (
-    <section className="mt-10">
+    <section id="angebote" className="mt-10 scroll-mt-6">
       <h2 className="text-sm font-semibold mb-3">
         🛒 Im Marktplatz angeboten ({listings.length})
       </h2>

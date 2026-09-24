@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection, getWatchlistIds, refreshCardPrice } from "../api.js";
+import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection, getWatchlistIds, refreshCardPrice, getListingsForCard } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
@@ -24,6 +24,7 @@ export default function CardInfo() {
   const [addError, setAddError] = useState(null);
   const [watched, setWatched] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [listings, setListings] = useState(null);
   const navigate = useNavigate();
 
   async function handleRefresh() {
@@ -44,6 +45,13 @@ export default function CardInfo() {
     if (!user) return setWatched(false);
     getWatchlistIds().then((ids) => setWatched(ids.includes(externalId))).catch(() => {});
   }, [externalId, user]);
+
+  useEffect(() => {
+    setListings(null);
+    getListingsForCard(externalId)
+      .then(setListings)
+      .catch(() => setListings([]));
+  }, [externalId]);
 
   useEffect(() => {
     setCard(null);
@@ -130,6 +138,15 @@ export default function CardInfo() {
             >
               {user ? "+ Zum Portfolio hinzufügen" : "Anmelden zum Hinzufügen"}
             </button>
+            <button
+              onClick={() => document.getElementById("angebote")?.scrollIntoView({ behavior: "smooth" })}
+              disabled={!listings || listings.length === 0}
+              className="border border-line px-4 py-2 rounded-full text-sm hover:border-ink disabled:opacity-50 disabled:hover:border-line"
+            >
+              {listings && listings.length > 0
+                ? `🛒 ${listings.length} ${listings.length === 1 ? "Angebot" : "Angebote"} ansehen`
+                : "🛒 Keine Angebote"}
+            </button>
             {user && (
               <WatchlistHeart
                 externalId={externalId}
@@ -159,7 +176,7 @@ export default function CardInfo() {
         refreshing={refreshing}
       />
 
-      <CardMarketListings externalId={externalId} />
+      <CardMarketListings listings={listings} />
 
       {dialogOpen && (
         <CollectionItemDialog
