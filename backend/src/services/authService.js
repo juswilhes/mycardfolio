@@ -8,6 +8,28 @@ const BCRYPT_ROUNDS = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const token = (bytes = 32) => crypto.randomBytes(bytes).toString("base64url");
+
+// Sitzungs-, Bestätigungs- und Reset-Token liegen NUR als SHA-256-Hash in der
+// Datenbank. Die Klartext-Werte kennen nur Cookie bzw. Mail-Link - ein Leck
+// der Datenbank (Backup, SQL-Fehler) erlaubt so weder Sitzungsübernahme noch
+// Passwort-Reset. Die Token sind zufällig und lang (192-256 Bit), ein
+// schneller Hash reicht deshalb (anders als bei Passwörtern).
+const hashToken = (t) => crypto.createHash("sha256").update(String(t)).digest("hex");
+
+// Einmalige Umstellung: bisher im Klartext gespeicherte Token in Hashes
+// überführen (Länge 64 = schon Hash). Laufende Sitzungen bleiben gültig,
+// weil beim Prüfen das Cookie ebenfalls gehasht wird.
+db.transaction(() => {
+  for (const r of db.prepare(`SELECT token FROM sessions WHERE length(token) != 64`).all()) {
+    db.prepare(`UPDATE sessions SET token = ? WHERE token = ?`).run(hashToken(r.token), r.token);
+  }
+  for (const col of ["verify_token", "reset_token"]) {
+    for (const r of db.prepare(`SELECT id, ${col} AS t FROM users WHERE ${col} IS NOT NULL AND length(${col}) != 64`).all()) {
+      db.prepare(`UPDATE users SET ${col} = ? WHERE id = ?`).run(hashToken(r.t), r.id);
+    }
+  }
+  db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(new Date().toISOString());
+})();
 export const normEmail = (e) => String(e ?? "").trim().toLowerCase();
 
 // --- Statements ----------------------------------------------------------
@@ -73,45 +95,78 @@ export function createUser({ email, password, displayName }) {
     email: e,
     hash: bcrypt.hashSync(password, BCRYPT_ROUNDS),
     display_name: displayName ? String(displayName).trim().slice(0, 60) || null : null,
-    verify_token,
+    verify_token: hashToken(verify_token),
   });
   return { user: sUserById.get(info.lastInsertRowid), verifyToken: verify_token };
 }
 
+// Gegen diesen Hash wird verglichen, wenn die E-Mail gar nicht existiert -
+// sonst wäre "unbekannte Adresse" messbar schneller (bcrypt entfällt) und
+// verriete, welche Adressen registriert sind.
+const DUMMY_HASH = bcrypt.hashSync("nicht-das-passwort-von-irgendwem", BCRYPT_ROUNDS);
+
 export function checkPassword(user, password) {
-  if (!user?.password_hash) return false;
+  const hash = user?.password_hash || DUMMY_HASH;
+  let ok = false;
   try {
-    return bcrypt.compareSync(String(password ?? ""), user.password_hash);
+    ok = bcrypt.compareSync(String(password ?? ""), hash);
   } catch {
-    return false;
+    ok = false;
   }
+  return !!user?.password_hash && ok;
+}
+
+// --- Kontosperre ---------------------------------------------------------
+const MAX_FAILED_LOGINS = 5;
+const LOCK_MINUTES = 15;
+
+export const isLocked = (user) => !!user?.locked_until && new Date(user.locked_until).getTime() > Date.now();
+
+// Fehlversuch zählen; ab MAX_FAILED_LOGINS wird das Konto LOCK_MINUTES gesperrt.
+// Das IP-Limit allein reicht nicht: ein Angreifer mit vielen IPs könnte sonst
+// beliebig viele Passwörter für ein Konto durchprobieren. (Passwort-Reset
+// bleibt auch bei Sperre möglich.)
+export function registerFailedLogin(userId) {
+  const u = sUserById.get(userId);
+  const n = (u?.failed_logins ?? 0) + 1;
+  if (n >= MAX_FAILED_LOGINS) {
+    const until = new Date(Date.now() + LOCK_MINUTES * 60000).toISOString();
+    db.prepare(`UPDATE users SET failed_logins = 0, locked_until = ? WHERE id = ?`).run(until, userId);
+  } else {
+    db.prepare(`UPDATE users SET failed_logins = ? WHERE id = ?`).run(n, userId);
+  }
+}
+
+export function resetFailedLogins(userId) {
+  db.prepare(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`).run(userId);
 }
 
 // --- Sessions --------------------------------------------------------
 export function createSession(userId, userAgent = "") {
   const t = token(32);
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
-  sInsertSession.run(t, userId, String(userAgent).slice(0, 255), expires);
+  sInsertSession.run(hashToken(t), userId, String(userAgent).slice(0, 255), expires);
   return { token: t, expiresMs: SESSION_DAYS * 86400000 };
 }
 
 export function userForSession(t) {
   if (!t) return null;
-  const s = sSessionByToken.get(t);
+  const h = hashToken(t);
+  const s = sSessionByToken.get(h);
   if (!s) return null;
   if (new Date(s.expires_at).getTime() < Date.now()) {
-    sDeleteSession.run(t);
+    sDeleteSession.run(h);
     return null;
   }
   return sUserById.get(s.user_id) || null;
 }
 
-export const endSession = (t) => t && sDeleteSession.run(t);
+export const endSession = (t) => t && sDeleteSession.run(hashToken(t));
 export const endAllSessions = (userId) => sDeleteUserSessions.run(userId);
 
 // --- E-Mail-Bestätigung --------------------------------------------
 export function confirmEmail(verifyToken) {
-  const u = sUserByVerifyToken.get(verifyToken);
+  const u = sUserByVerifyToken.get(hashToken(verifyToken));
   if (!u) return { error: "Der Bestätigungslink ist ungültig oder wurde bereits verwendet." };
   sSetVerified.run(u.id);
   return { user: sUserById.get(u.id) };
@@ -119,7 +174,7 @@ export function confirmEmail(verifyToken) {
 
 export function newVerifyToken(userId) {
   const t = token(24);
-  sSetVerifyToken.run(t, userId);
+  sSetVerifyToken.run(hashToken(t), userId);
   return t;
 }
 
@@ -129,12 +184,12 @@ export function startPasswordReset(email) {
   if (!u) return null; // absichtlich keine Rückmeldung, ob die Adresse existiert
   const t = token(24);
   const expires = new Date(Date.now() + RESET_TTL_MIN * 60000).toISOString();
-  sSetResetToken.run(t, expires, u.id);
+  sSetResetToken.run(hashToken(t), expires, u.id);
   return { user: u, resetToken: t };
 }
 
 export function completePasswordReset(resetToken, password) {
-  const u = sUserByResetToken.get(resetToken);
+  const u = sUserByResetToken.get(hashToken(resetToken));
   if (!u || !u.reset_expires || new Date(u.reset_expires).getTime() < Date.now()) {
     return { error: "Der Link ist ungültig oder abgelaufen." };
   }

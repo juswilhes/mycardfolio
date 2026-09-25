@@ -6,6 +6,9 @@ import {
   findUserByEmail,
   findUserById,
   checkPassword,
+  isLocked,
+  registerFailedLogin,
+  resetFailedLogins,
   createSession,
   endSession,
   endAllSessions,
@@ -68,9 +71,16 @@ router.post("/register", authLimiter, (req, res) => {
 router.post("/login", authLimiter, (req, res) => {
   const { email, password } = req.body ?? {};
   const user = findUserByEmail(email);
-  if (!user || !checkPassword(user, password)) {
+  if (isLocked(user)) {
+    return res.status(429).json({
+      error: "Zu viele Fehlversuche. Bitte in 15 Minuten erneut probieren oder das Passwort zurücksetzen.",
+    });
+  }
+  if (!checkPassword(user, password)) {
+    if (user) registerFailedLogin(user.id);
     return res.status(401).json({ error: "E-Mail oder Passwort ist falsch." });
   }
+  resetFailedLogins(user.id);
   startSession(res, user, req);
   res.json({ user: publicUser(user) });
 });

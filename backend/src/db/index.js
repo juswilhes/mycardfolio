@@ -427,11 +427,12 @@ if (userCount === 0 && (orphanItems > 0 || portfolioSnapshotsRebuilt)) {
     .trim()
     .toLowerCase();
   const resetToken = crypto.randomBytes(24).toString("base64url");
-  // reset_expires weit in der Zukunft -> Link laeuft praktisch nicht ab
+  // reset_expires weit in der Zukunft -> Link laeuft praktisch nicht ab.
+  // In der DB nur der SHA-256-Hash (wie in authService), im Link das Klartext-Token.
   db.prepare(
     `INSERT INTO users (email, password_hash, email_verified, reset_token, reset_expires)
      VALUES (?, '', 1, ?, '2099-01-01T00:00:00.000Z')`
-  ).run(seedEmail, resetToken);
+  ).run(seedEmail, crypto.createHash("sha256").update(resetToken).digest("hex"));
   const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
   console.log(
     `\n[setup] Bestehende Sammlung wurde dem Konto "${seedEmail}" zugeordnet.\n` +
@@ -465,6 +466,11 @@ if (!mlColumns.has("photo_url")) {
   db.exec(`ALTER TABLE marketplace_listings ADD COLUMN photo_url TEXT`);
 }
 
+// Kontosperre nach zu vielen Fehlversuchen (zusätzlich zum IP-Limit).
+const userColumns = new Set(db.prepare(`PRAGMA table_info(users)`).all().map((c) => c.name));
+if (!userColumns.has("failed_logins")) db.exec(`ALTER TABLE users ADD COLUMN failed_logins INTEGER NOT NULL DEFAULT 0`);
+if (!userColumns.has("locked_until")) db.exec(`ALTER TABLE users ADD COLUMN locked_until TEXT`);
+
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
 
@@ -475,7 +481,7 @@ for (const u of db.prepare(`SELECT id, email FROM users WHERE password_hash = ''
   const t = crypto.randomBytes(24).toString("base64url");
   db.prepare(
     `UPDATE users SET reset_token = ?, reset_expires = '2099-01-01T00:00:00.000Z' WHERE id = ?`
-  ).run(t, u.id);
+  ).run(crypto.createHash("sha256").update(t).digest("hex"), u.id);
   const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
   console.log(
     `\n[setup] Konto "${u.email}" hat noch kein Passwort. Jetzt setzen:\n` +
