@@ -13,6 +13,7 @@ import CollectionItemDialog, { conditionLabel, variantLabel, gradeLabel } from "
 import SellDialog from "../components/SellDialog.jsx";
 import SaleCelebrationAnimation from "../components/SaleCelebrationAnimation.jsx";
 import SellListingDialog from "../components/SellListingDialog.jsx";
+import ZoomableCardImage from "../components/ZoomableCardImage.jsx";
 
 const fmt = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -162,7 +163,7 @@ export default function CardDetail() {
       <Link to="/" className="text-sm text-subtle hover:text-ink">← Zur Sammlung</Link>
 
       <div className="flex gap-5 mt-5 mb-6">
-        <img
+        <ZoomableCardImage
           src={card.image_large ?? card.image_small}
           alt={`${card.name} (Englisch)`}
           className="w-36 rounded-2xl"

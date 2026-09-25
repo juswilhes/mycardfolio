@@ -7,6 +7,7 @@ import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import CardMarketListings from "../components/CardMarketListings.jsx";
+import ZoomableCardImage from "../components/ZoomableCardImage.jsx";
 
 // Route: /database/:externalId – frei zugänglich, auch ohne Konto.
 // Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
@@ -115,10 +116,10 @@ export default function CardInfo() {
       </Link>
 
       <div className="flex flex-col sm:flex-row gap-6 mt-4 mb-8">
-        <img
+        <ZoomableCardImage
           src={card.image_large ?? card.image_small}
           alt={`${card.name} (Englisch)`}
-          className="w-52 rounded-2xl shrink-0 self-start shadow-sm"
+          className="w-52 rounded-2xl shadow-sm"
         />
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold">{card.name}</h1>
