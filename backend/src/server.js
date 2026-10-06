@@ -23,7 +23,7 @@ import { handleStripeWebhook } from "./routes/marketplaceWebhook.js";
 import { authRequired } from "./middleware/auth.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
-import { scheduleMissingPriceBackfill } from "./services/setPriceBackfill.js";
+import { scheduleMissingPriceBackfill, backfillAllMissingPrices } from "./services/setPriceBackfill.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
 import db from "./db/index.js";
@@ -164,6 +164,11 @@ app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
   scheduleMissingPriceBackfill();
+  // auch sofort beim Start einmal laufen lassen, nicht nur um 3 Uhr nachts -
+  // sonst müsste man nach jedem Deploy bis zu 24h auf den nächsten Lauf
+  // warten. Im Dauerbetrieb ist das ein No-Op (keine Karte ohne Preis mehr),
+  // nur direkt nach einem Deploy oder einem neu importierten Set tut sich was.
+  backfillAllMissingPrices().catch((e) => console.error("[priceBackfill] Start-Sweep fehlgeschlagen:", e));
   // beim Start je Nutzer einen aktuellen Portfolio-Punkt sichern
   try {
     recordAllPortfolioSnapshots();
