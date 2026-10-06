@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { searchCards, addToCollection, getSets, getSetProgress, getWatchlistIds } from "../api.js";
+import { searchCards, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
@@ -21,6 +21,12 @@ export default function AllCards() {
   const [progress, setProgress] = useState({});
   const [watchedIds, setWatchedIds] = useState(new Set());
 
+  // "sets" = Set-Übersicht (Standard), "movers" = größte Preisbewegungen -
+  // Umschalter unter dem Suchfeld, siehe Toggle-Buttons unten.
+  const [view, setView] = useState("sets");
+  const [movers, setMovers] = useState(null);
+  const [moversLoading, setMoversLoading] = useState(false);
+
   const [dialogCard, setDialogCard] = useState(null);
   const [celebrateCard, setCelebrateCard] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -39,6 +45,17 @@ export default function AllCards() {
     if (!user) return setWatchedIds(new Set());
     getWatchlistIds().then((ids) => setWatchedIds(new Set(ids))).catch(() => {});
   }, [user]);
+
+  // Lädt erst beim ersten Umschalten auf "Preisbewegungen" (nicht beim
+  // Seitenaufbau), danach bleibt das Ergebnis für die Session im State.
+  useEffect(() => {
+    if (view !== "movers" || movers) return;
+    setMoversLoading(true);
+    getMarketMovers(30)
+      .then(setMovers)
+      .catch(() => setMovers({ gainers: [], losers: [], trackedCount: 0 }))
+      .finally(() => setMoversLoading(false));
+  }, [view, movers]);
 
   async function runSearch(q) {
     const term = q.trim();
@@ -134,6 +151,27 @@ export default function AllCards() {
         </button>
       </form>
 
+      {!isSearching && (
+        <div className="inline-flex rounded-full border border-line p-0.5 mb-6 text-sm">
+          <button
+            onClick={() => setView("sets")}
+            className={`px-3 py-1.5 rounded-full ${
+              view === "sets" ? "bg-yellow text-yellowInk font-medium" : "text-subtle hover:text-ink"
+            }`}
+          >
+            Alle Sets
+          </button>
+          <button
+            onClick={() => setView("movers")}
+            className={`px-3 py-1.5 rounded-full ${
+              view === "movers" ? "bg-yellow text-yellowInk font-medium" : "text-subtle hover:text-ink"
+            }`}
+          >
+            📈 Preisbewegungen
+          </button>
+        </div>
+      )}
+
       {isSearching ? (
         <>
           {loading && <p className="text-subtle text-sm">Suche läuft …</p>}
@@ -194,6 +232,8 @@ export default function AllCards() {
             ))}
           </div>
         </>
+      ) : view === "movers" ? (
+        <MoversBrowser data={movers} loading={moversLoading} />
       ) : sets === null ? (
         <p className="text-subtle text-sm">Lade Sets …</p>
       ) : (
@@ -254,6 +294,71 @@ export default function AllCards() {
       )}
       {celebrateCard && (
         <PortfolioAddedAnimation card={celebrateCard} onDone={() => navigate("/")} />
+      )}
+    </div>
+  );
+}
+
+// Zeigt die größten Preisausschläge (30 Tage) über alle beobachteten Karten
+// hinweg - Vorschläge, welche Karten einen Blick wert sein könnten, nicht
+// nur die eigene Sammlung (die hat Collection.jsx/Movers.jsx schon).
+function MoversBrowser({ data, loading }) {
+  if (loading || !data) return <p className="text-subtle text-sm">Lade Preisbewegungen …</p>;
+
+  const gainers = data.gainers ?? [];
+  const losers = data.losers ?? [];
+  if (!gainers.length && !losers.length) {
+    return (
+      <p className="text-subtle text-sm">
+        Noch keine ausreichenden Preisdaten für die letzten 30 Tage.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-subtle text-sm mb-6">
+        Größte Preisausschläge der letzten 30 Tage über {data.trackedCount ?? 0} beobachtete
+        Karten hinweg – vielleicht einen Blick wert.
+      </p>
+      <div className="grid sm:grid-cols-2 gap-x-8 gap-y-6">
+        <MoverColumn title="📈 Größte Gewinner" items={gainers} positive />
+        <MoverColumn title="📉 Größte Verlierer" items={losers} positive={false} />
+      </div>
+    </div>
+  );
+}
+
+function MoverColumn({ title, items, positive }) {
+  return (
+    <div>
+      <p className="text-sm font-medium mb-2">{title}</p>
+      {items.length ? (
+        <div className="space-y-1">
+          {items.map((m) => (
+            <Link
+              key={m.external_id}
+              to={`/database/${m.external_id}`}
+              className="flex items-center gap-2 py-1.5 text-sm hover:opacity-80"
+            >
+              <img src={m.image_small} alt="" className="w-8 h-auto rounded shrink-0" />
+              <span className="flex-1 min-w-0 truncate">
+                {m.name}
+                <span className="text-subtle text-xs block truncate">{m.set_name}</span>
+              </span>
+              <span className={`font-mono text-xs shrink-0 text-right ${positive ? "text-mint" : "text-rose"}`}>
+                {positive ? "+" : "−"}
+                {Math.abs(m.delta).toFixed(2)} €
+                <span className="text-subtle block">
+                  ({positive ? "+" : "−"}
+                  {Math.abs(m.delta_pct).toFixed(1)} %)
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="text-subtle text-sm">–</p>
       )}
     </div>
   );

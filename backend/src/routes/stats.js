@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing, getSetsOverview } from "../services/marketStats.js";
+import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -19,7 +20,9 @@ router.get("/tracked-sets", (_req, res) => {
 });
 
 // GET /api/stats/watchlist-movers?days=7|30|120 -> Preisstatus der eigenen Watchlist
-router.get("/watchlist-movers", (req, res) => {
+// (einzige Route hier, die einen eingeloggten Nutzer braucht - der Rest ist
+// marktweit und bewusst ohne Login erreichbar, siehe server.js)
+router.get("/watchlist-movers", authRequired, (req, res) => {
   res.json(getWatchlistMovers(req.user.id, { days: parseDays(req.query.days) }));
 });
 

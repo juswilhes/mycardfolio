@@ -113,7 +113,9 @@ app.use("/api/sales", authRequired, salesRouter);
 app.use("/api/achievements", authRequired, achievementsRouter);
 app.use("/api/watchlist", authRequired, watchlistRouter);
 app.use("/api/sealed-products", authRequired, sealedProductsRouter);
-app.use("/api/stats", authRequired, statsRouter);
+// stats: marktweite Routen (market-movers etc.) sind bewusst öffentlich,
+// siehe routes/stats.js - nur die Watchlist-Route braucht req.user.
+app.use("/api/stats", statsRouter);
 
 // Manueller Trigger, praktisch zum Testen (normalerweise übernimmt der Cron-Job das)
 app.post("/api/refresh-prices", authRequired, async (_req, res) => {
