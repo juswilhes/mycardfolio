@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const eur = (n) =>
@@ -7,9 +8,15 @@ const VARIANT_LABEL = { normal: "Normal", holo: "Holo", reverse: "Reverse Holo" 
 
 // Erwartet Trend-Snapshots ({price, fetched_at, variant}) in EUR und
 // zeichnet Normal plus die vorhandene Sonder-Variante (Holo ODER Reverse
-// Holo - pro Karte kommt von der Quelle nie beides gleichzeitig, siehe
-// priceProvider.js) als eigene, farbige Linie.
+// Holo) als eigene, farbige Linie - abwählbar über die Legende, standard-
+// mäßig beide an. Mehr als diese zwei Reihen (z.B. getrennt für Reverse
+// Holo UND Holo gleichzeitig, oder 1st Edition) liefert die kostenlose
+// Quelle (Cardmarket über TCGdex) nicht - die hat strukturell nur zwei
+// Preisfelder pro Karte, unabhängig davon, wie viele Druckvarianten es
+// tatsächlich gibt.
 export default function PriceChart({ data }) {
+  const [hidden, setHidden] = useState(() => new Set());
+
   if (!data || data.length === 0) {
     return (
       <p className="text-subtle text-sm py-6">
@@ -45,6 +52,18 @@ export default function PriceChart({ data }) {
     );
   }
 
+  const toggle = (key) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  const legendItems = [
+    { key: "normal", label: "Normal", colorClass: "bg-yellow" },
+    ...(hasSpecial ? [{ key: "special", label: specialLabel, colorClass: "bg-holo" }] : []),
+  ];
+
   return (
     <div>
       <ResponsiveContainer width="100%" height={150}>
@@ -70,20 +89,27 @@ export default function PriceChart({ data }) {
             labelStyle={{ color: "var(--subtle)" }}
             formatter={(value, name) => [eur(value), name === "special" ? specialLabel : "Normal"]}
           />
-          <Line type="monotone" dataKey="normal" name="normal" stroke="var(--yellow)" strokeWidth={2.5} dot={false} connectNulls />
-          {hasSpecial && (
+          {!hidden.has("normal") && (
+            <Line type="monotone" dataKey="normal" name="normal" stroke="var(--yellow)" strokeWidth={2.5} dot={false} connectNulls />
+          )}
+          {hasSpecial && !hidden.has("special") && (
             <Line type="monotone" dataKey="special" name="special" stroke="var(--holo)" strokeWidth={2.5} dot={false} connectNulls />
           )}
         </LineChart>
       </ResponsiveContainer>
-      {hasSpecial && (
-        <div className="flex items-center gap-4 mt-1.5 text-xs text-subtle">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-yellow" /> Normal
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-holo" /> {specialLabel}
-          </span>
+      {legendItems.length > 1 && (
+        <div className="flex items-center gap-4 mt-1.5 text-xs">
+          {legendItems.map(({ key, label, colorClass }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggle(key)}
+              className={`flex items-center gap-1.5 ${hidden.has(key) ? "text-subtle opacity-50" : "text-subtle"}`}
+            >
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${colorClass}`} />
+              {label}
+            </button>
+          ))}
         </div>
       )}
     </div>
