@@ -366,6 +366,14 @@ if (!spColumns.has("cardmarket_url")) {
   db.exec(`ALTER TABLE sealed_products ADD COLUMN cardmarket_url TEXT`);
 }
 
+// card_sets.box_price_cents: Booster-Box-Preis in Cent, von Hand vom
+// Betreiber gepflegt (keine freie API-Quelle dafür) - Basis für die
+// Top-20-Karten-vs-Boxpreis-Auswertung auf der Set-Seite.
+const csColumns = new Set(db.prepare(`PRAGMA table_info(card_sets)`).all().map((c) => c.name));
+if (!csColumns.has("box_price_cents")) {
+  db.exec(`ALTER TABLE card_sets ADD COLUMN box_price_cents INTEGER`);
+}
+
 const psColumns = new Set(db.prepare(`PRAGMA table_info(price_snapshots)`).all().map((c) => c.name));
 if (!psColumns.has("variant")) {
   db.exec(`ALTER TABLE price_snapshots ADD COLUMN variant TEXT DEFAULT 'normal'`);

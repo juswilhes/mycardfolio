@@ -85,6 +85,8 @@ export const getSet = (setId) => request(`/sets/${setId}`);
 export const getCardsForSet = (setId) => request(`/sets/${setId}/cards`);
 export const getSetProgress = () => request("/sets/progress");
 export const getOwnedInSet = (setId) => request(`/sets/${setId}/owned`);
+export const updateSetBoxPrice = (setId, eur) =>
+  request(`/sets/${setId}/box-price`, { method: "PATCH", body: { eur } });
 
 // --- Orden ---------------------------------------------------------
 export const getAchievements = () => request("/achievements");

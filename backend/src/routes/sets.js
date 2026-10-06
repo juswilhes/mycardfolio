@@ -3,8 +3,12 @@ import { listSetsLocal, getSetLocal, getCardsBySetLocal } from "../services/card
 import { setProgress, ownedInSet, pricesForSet } from "../services/cardService.js";
 import { backfillSetPrices } from "../services/setPriceBackfill.js";
 import { authRequired } from "../middleware/auth.js";
+import { isOperatorUser } from "../lib/admin.js";
+import db from "../db/index.js";
 
 const router = Router();
+
+const setBoxPriceStmt = db.prepare(`UPDATE card_sets SET box_price_cents = ? WHERE id = ?`);
 
 // GET /api/sets -> alle Sets, für die "Alle Karten"-Übersichtsseite (öffentlich)
 router.get("/", (_req, res) => {
@@ -39,6 +43,29 @@ router.get("/:setId/cards", (req, res) => {
 // GET /api/sets/:setId/owned -> external_ids der Karten aus dem Set, die der Nutzer besitzt
 router.get("/:setId/owned", authRequired, (req, res) => {
   res.json(ownedInSet.all(req.params.setId, req.user.id).map((r) => r.external_id));
+});
+
+// PATCH /api/sets/:setId/box-price -> Booster-Box-Preis setzen/ändern (nur
+// Betreiber - es gibt keine freie API-Quelle dafür, das trägt Justus von
+// Hand ein). { eur: 45.90 } oder { eur: null } zum Löschen.
+router.patch("/:setId/box-price", authRequired, (req, res) => {
+  if (!isOperatorUser(req.user)) {
+    return res.status(403).json({ error: "Nur der Betreiber darf das ändern." });
+  }
+  const set = getSetLocal(req.params.setId);
+  if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
+
+  const { eur } = req.body ?? {};
+  let cents = null;
+  if (eur != null && eur !== "") {
+    const n = Number(eur);
+    if (!Number.isFinite(n) || n < 0) {
+      return res.status(400).json({ error: "Ungültiger Preis" });
+    }
+    cents = Math.round(n * 100);
+  }
+  setBoxPriceStmt.run(cents, req.params.setId);
+  res.json({ box_price_cents: cents });
 });
 
 export default router;

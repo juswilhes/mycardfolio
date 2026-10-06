@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct } from "../api.js";
+import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct, updateSetBoxPrice } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
@@ -81,6 +81,15 @@ export default function SetDetail() {
   const total = cards?.length ?? 0;
   const have = cards ? cards.filter((c) => owned.has(c.external_id)).length : 0;
 
+  const top20 = useMemo(() => {
+    if (!cards) return [];
+    return [...cards]
+      .filter((c) => c.price != null)
+      .sort((a, b) => b.price - a.price)
+      .slice(0, 20);
+  }, [cards]);
+  const top20Value = top20.reduce((s, c) => s + c.price, 0);
+
   async function confirmSealed(values) {
     setSealedBusy(true);
     setSealedError(null);
@@ -138,6 +147,16 @@ export default function SetDetail() {
           Hinzugefügt – in deiner{" "}
           <Link to="/" className="underline">Sammlung</Link> sichtbar.
         </p>
+      )}
+
+      {set && (
+        <BoxValueSection
+          set={set}
+          top20Value={top20Value}
+          top20Count={top20.length}
+          canEdit={!!user?.is_operator}
+          onSaved={(cents) => setSet((s) => ({ ...s, box_price_cents: cents }))}
+        />
       )}
 
       {cards && user && (
@@ -239,6 +258,25 @@ export default function SetDetail() {
         </div>
       )}
 
+      {top20.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-sm font-medium mb-3">💎 Top 20 teuerste Karten im Set</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+            {top20.map((card) => (
+              <Link key={card.external_id} to={`/database/${card.external_id}`} className="flex flex-col">
+                <img
+                  src={card.image_small}
+                  alt={`${card.name} (Englisch)`}
+                  className="rounded-2xl border border-line mb-1.5 shadow-sm"
+                />
+                <p className="text-xs font-medium truncate">{card.name}</p>
+                <p className="text-[11px] font-mono text-subtle">{eur(card.price)}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {sealedOpen && (
         <SealedProductDialog
           setName={set?.name}
@@ -247,6 +285,93 @@ export default function SetDetail() {
           onConfirm={confirmSealed}
           onClose={() => !sealedBusy && (setSealedOpen(false), setSealedError(null))}
         />
+      )}
+    </div>
+  );
+}
+
+// Booster-Box-Preis (nur Betreiber editierbar, keine freie API-Quelle dafür)
+// + Vergleich mit dem Wert der 20 teuersten Karten im Set.
+function BoxValueSection({ set, top20Value, top20Count, canEdit, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(
+    set.box_price_cents != null ? (set.box_price_cents / 100).toFixed(2) : ""
+  );
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const { box_price_cents } = await updateSetBoxPrice(set.id, value.trim() ? value.trim() : null);
+      onSaved(box_price_cents);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const boxPriceEur = set.box_price_cents != null ? set.box_price_cents / 100 : null;
+  const ratioPct = boxPriceEur && top20Count ? (top20Value / boxPriceEur) * 100 : null;
+
+  if (!canEdit && boxPriceEur == null) return null;
+
+  return (
+    <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
+      <p className="text-sm font-medium mb-2">📦 Booster Box</p>
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <input
+            autoFocus
+            type="number"
+            step="0.01"
+            min="0"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            placeholder="z. B. 109.90"
+            className="border border-line rounded-full px-3 py-1 text-sm bg-canvas w-28 focus:outline-none focus:border-ink"
+          />
+          <span className="text-sm text-subtle">€</span>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="text-sm bg-yellow text-yellowInk px-3 py-1 rounded-full disabled:opacity-60"
+          >
+            {saving ? "…" : "Speichern"}
+          </button>
+          <button onClick={() => setEditing(false)} className="text-sm text-subtle">
+            Abbrechen
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+          <p>
+            <span className="text-subtle">Boxpreis: </span>
+            {boxPriceEur != null ? (
+              <span className="font-mono">{eur(boxPriceEur)}</span>
+            ) : (
+              <span className="text-subtle">nicht hinterlegt</span>
+            )}
+            {canEdit && (
+              <button onClick={() => setEditing(true)} className="ml-2 text-xs text-subtle hover:text-ink underline">
+                {boxPriceEur != null ? "ändern" : "eintragen"}
+              </button>
+            )}
+          </p>
+          {top20Count > 0 && (
+            <p>
+              <span className="text-subtle">Top {top20Count} Karten zusammen: </span>
+              <span className="font-mono">{eur(top20Value)}</span>
+            </p>
+          )}
+          {ratioPct != null && (
+            <p>
+              <span className="text-subtle">Verhältnis: </span>
+              <span className="font-mono">{ratioPct.toFixed(0)} %</span>
+              <span className="text-subtle"> des Boxpreises</span>
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
