@@ -87,9 +87,37 @@ const trendRows = db.prepare(`
   ORDER BY (source = 'cardmarket') DESC, fetched_at DESC
 `);
 
-// Aktueller Referenzpreis (Trend, EUR) für eine Karte + Variante. Fällt auf
-// 'normal' zurück, wenn es für die Variante keinen eigenen Preis gibt.
+const avg30Stmt = db.prepare(`
+  SELECT price, fetched_at, n FROM card_price_avg30 WHERE card_id = ? AND variant = ?
+`);
+
+// Selbst berechneter Durchschnitt aus allen Cardmarket-Trend-Punkten der
+// letzten 30 Tage (card_price_avg30, siehe db/index.js) - NICHT Cardmarkets
+// eigener Trend- oder avg30-Wert. Ein einzelner schlecht getroffener Tag
+// (z.B. eine kurz falsch zugeordnete Karte) fällt so weniger ins Gewicht.
+function avg30(cardId, variant) {
+  const r = avg30Stmt.get(cardId, variant);
+  if (!r || r.price == null) return null;
+  return {
+    price: Math.round(r.price * 100) / 100,
+    currency: "EUR",
+    price_type: "trend",
+    source: "cardmarket",
+    variant,
+    fetched_at: r.fetched_at,
+    sampleSize: r.n,
+  };
+}
+
+// Aktueller Referenzpreis für eine Karte + Variante. Fällt auf 'normal'
+// zurück, wenn es für die Variante keinen eigenen Preis gibt, und ohne
+// Daten der letzten 30 Tage (z.B. eine sehr lange nicht aktualisierte
+// Karte) auf den letzten bekannten Einzelwert, egal wie alt - damit keine
+// Karte plötzlich preislos dasteht, nur weil sie 30+ Tage nicht neu
+// abgerufen wurde.
 export function latestTrend(cardId, variant = "normal") {
+  const a = avg30(cardId, variant) ?? avg30(cardId, "normal");
+  if (a) return a;
   const rows = trendRows.all(cardId);
   return (
     rows.find((r) => r.variant === variant) ??
@@ -185,23 +213,28 @@ export function latestTrendByExternal(externalId, variant = "normal") {
 }
 export const latestPriceByExternalId = { get: (externalId) => latestTrendByExternal(externalId, "normal") };
 
-// Aktueller Preis (Trend, normal, bevorzugt Cardmarket) für ALLE Karten
-// eines Sets auf einmal - für die Set-Übersicht (Sortierung/Anzeige nach
-// Preis), statt pro Karte einzeln nachzufragen.
+// Aktueller Preis (30-Tage-Schnitt, normal) für ALLE Karten eines Sets auf
+// einmal - für die Set-Übersicht (Sortierung/Anzeige nach Preis), statt pro
+// Karte einzeln nachzufragen. Ohne Daten der letzten 30 Tage Fallback auf
+// den letzten bekannten Einzelwert (egal wie alt), wie bei latestTrend().
 const pricesForSetStmt = db.prepare(`
-  SELECT c.external_id, ps.price
+  SELECT c.external_id,
+    COALESCE(
+      a30.price,
+      (SELECT ps2.price FROM price_snapshots ps2
+       WHERE ps2.card_id = c.id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
+       ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC
+       LIMIT 1)
+    ) AS price
   FROM cards c
-  LEFT JOIN price_snapshots ps ON ps.id = (
-    SELECT ps2.id FROM price_snapshots ps2
-    WHERE ps2.card_id = c.id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
-    ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC
-    LIMIT 1
-  )
+  LEFT JOIN card_price_avg30 a30 ON a30.card_id = c.id AND a30.variant = 'normal'
   WHERE c.set_id = ?
 `);
 export function pricesForSet(setId) {
   const map = new Map();
-  for (const r of pricesForSetStmt.all(setId)) map.set(r.external_id, r.price ?? null);
+  for (const r of pricesForSetStmt.all(setId)) {
+    map.set(r.external_id, r.price != null ? Math.round(r.price * 100) / 100 : null);
+  }
   return map;
 }
 

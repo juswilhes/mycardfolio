@@ -58,6 +58,22 @@ export function getTrackedSets() {
   return trackedSetsStmt.all().map((r) => r.set_name);
 }
 
+// Preis je Karte: selbst berechneter 30-Tage-Schnitt (card_price_avg30,
+// siehe db/index.js), ohne Daten der letzten 30 Tage Fallback auf den
+// letzten bekannten Einzelwert - dieselbe Logik wie cardService.js
+// latestTrend()/pricesForSet(), hier aber für ALLE Karten auf einmal.
+const cardCurrentPriceSubquery = `
+  SELECT ps.card_id,
+    COALESCE(
+      a30.price,
+      (SELECT ps2.price FROM price_snapshots ps2
+       WHERE ps2.card_id = ps.card_id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
+       ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC LIMIT 1)
+    ) AS price
+  FROM (SELECT DISTINCT card_id FROM price_snapshots WHERE price_type = 'trend' AND variant = 'normal') ps
+  LEFT JOIN card_price_avg30 a30 ON a30.card_id = ps.card_id AND a30.variant = 'normal'
+`;
+
 // Allgemeine Set-Übersicht: ALLE Sets aus dem Datensatz (nicht nur die mit
 // zufällig angesehenen Karten), mit Preisdaten der "Chase"-Karten (jenseits
 // von Common/Uncommon/Rare/Rare Holo/Promo) je Set, sofern vorhanden -
@@ -68,12 +84,7 @@ const setsOverviewStmt = db.prepare(`
          COALESCE(SUM(lp.price), 0) AS sum_price
   FROM card_sets cs
   LEFT JOIN cards c ON c.set_id = cs.id
-  LEFT JOIN (
-    SELECT ps.card_id, ps.price,
-           ROW_NUMBER() OVER (PARTITION BY ps.card_id ORDER BY ps.fetched_at DESC) AS rn
-    FROM price_snapshots ps
-    WHERE ps.price_type = 'trend' AND ps.variant = 'normal'
-  ) lp ON lp.card_id = c.id AND lp.rn = 1
+  LEFT JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
   GROUP BY cs.id
   ORDER BY cs.release_date DESC
 `);
@@ -81,13 +92,8 @@ const setsOverviewStmt = db.prepare(`
 const topCardForSetStmt = db.prepare(`
   SELECT c.name, c.external_id, c.image_small, lp.price
   FROM cards c
-  JOIN (
-    SELECT ps.card_id, ps.price,
-           ROW_NUMBER() OVER (PARTITION BY ps.card_id ORDER BY ps.fetched_at DESC) AS rn
-    FROM price_snapshots ps
-    WHERE ps.price_type = 'trend' AND ps.variant = 'normal'
-  ) lp ON lp.card_id = c.id AND lp.rn = 1
-  WHERE c.set_id = ? AND lp.rn = 1
+  JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
+  WHERE c.set_id = ?
   ORDER BY lp.price DESC
   LIMIT 1
 `);

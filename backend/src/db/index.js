@@ -482,6 +482,25 @@ if (!userColumns.has("locked_until")) db.exec(`ALTER TABLE users ADD COLUMN lock
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
 
+// card_price_avg30: der "aktuelle Preis" einer Karte ist NICHT mehr
+// Cardmarkets einzelner Trend-Wert (der kann an einem schlecht getroffenen
+// Tag stark danebenliegen, siehe die Jolteon-V-Geschichte), sondern unser
+// eigener Durchschnitt über alle in den letzten 30 Tagen gesammelten
+// Trend-Punkte je Karte+Variante. Steht nach den Migrationen (unten), weil
+// die View die Spalte "variant" braucht, die erst per ALTER TABLE dazu-
+// kommt - auf einer frischen Datenbank gäbe es die Spalte sonst noch nicht.
+db.exec(`
+CREATE VIEW IF NOT EXISTS card_price_avg30 AS
+SELECT card_id, variant,
+       AVG(price) AS price,
+       MAX(fetched_at) AS fetched_at,
+       COUNT(*) AS n
+FROM price_snapshots
+WHERE price_type = 'trend' AND source = 'cardmarket'
+  AND fetched_at >= datetime('now', '-30 days')
+GROUP BY card_id, variant
+`);
+
 // Solange ein Konto noch kein Passwort hat (Seed-Konto), bei jedem Start
 // einen frischen "Passwort setzen"-Link ausgeben, damit der Betreiber
 // jederzeit hineinkommt.
