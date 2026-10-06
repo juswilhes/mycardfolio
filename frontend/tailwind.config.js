@@ -20,6 +20,7 @@ export default {
         yellowInk: "var(--yellow-ink)",
         mint: "var(--mint)",
         rose: "var(--rose)",
+        holo: "var(--holo)",
       },
       fontFamily: {
         sans: ["'Poppins'", "sans-serif"],

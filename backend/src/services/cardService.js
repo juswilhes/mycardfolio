@@ -137,11 +137,15 @@ export const setArtistManual = db.prepare(`
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
 
+// variant IN ('normal','holo') statt nur 'normal' - der Graph zeigt beide
+// getrennt (siehe PriceChart.jsx). Reverse Holo liefert die kostenlose
+// Quelle nicht separat, bleibt also außen vor (steht auch so im "Wie kommt
+// der Preis zustande?"-Hinweis auf der Kartenseite).
 export const priceHistoryByExternalId = db.prepare(`
-  SELECT ps.price, ps.currency, ps.price_type, ps.source, ps.fetched_at
+  SELECT ps.price, ps.currency, ps.price_type, ps.source, ps.variant, ps.fetched_at
   FROM price_snapshots ps
   JOIN cards c ON c.id = ps.card_id
-  WHERE c.external_id = ? AND ps.price_type = 'trend' AND ps.variant = 'normal'
+  WHERE c.external_id = ? AND ps.price_type = 'trend' AND ps.variant IN ('normal', 'holo')
   ORDER BY ps.fetched_at ASC
 `);
 

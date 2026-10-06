@@ -21,6 +21,7 @@
   --yellow-ink: #3d2c00;
   --mint: #1fae6b;
   --rose: #d3455b;
+  --holo: #7c5cff; /* zweite Linie im Preisgraphen (Holo-Variante) - bewusst nicht mint/rose, die bedeuten anderswo Gewinn/Verlust */
 }
 
 :root.dark {
@@ -33,6 +34,7 @@
   --yellow-ink: #241c15;
   --mint: #35d488;
   --rose: #ff6b81;
+  --holo: #a78bfa;
 }
 
 body {

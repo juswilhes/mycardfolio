@@ -15,6 +15,7 @@ function computeMomentum(history) {
   const byDay = new Map();
   for (const h of history) {
     if (h.price == null) continue;
+    if ((h.variant ?? "normal") !== "normal") continue; // Momentum nur für die Standard-Variante, nicht mit Holo vermischen
     byDay.set(h.fetched_at.slice(0, 10), h.price);
   }
   const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
