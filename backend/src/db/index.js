@@ -304,6 +304,21 @@ CREATE INDEX IF NOT EXISTS idx_listing_comments_listing ON marketplace_listing_c
 
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
+
+-- Pull Rates: von Hand gepflegt (Betreiber), es gibt dafür keine offizielle
+-- API - Quelle sind z.B. Auswertungen von geöffneten Boostern (TCGplayer/
+-- PikaPika). "rarity" muss exakt zum cards.rarity-Wert in diesem Set
+-- passen. any_denominator = 1 von X Packs enthält IRGENDEINE Karte dieser
+-- Seltenheit, specific_denominator = 1 von X Packs enthält GENAU DIESE Karte.
+CREATE TABLE IF NOT EXISTS pull_rates (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id             TEXT NOT NULL REFERENCES card_sets(id),
+  rarity             TEXT NOT NULL,
+  any_denominator    REAL,
+  specific_denominator REAL,
+  created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(set_id, rarity)
+);
 `);
 
 // --- Migrationen --------------------------------------------------------
@@ -372,6 +387,13 @@ if (!spColumns.has("cardmarket_url")) {
 const csColumns = new Set(db.prepare(`PRAGMA table_info(card_sets)`).all().map((c) => c.name));
 if (!csColumns.has("box_price_cents")) {
   db.exec(`ALTER TABLE card_sets ADD COLUMN box_price_cents INTEGER`);
+}
+
+// card_sets.chase_hit_rate_pct: "Chance auf mind. 1 Chase-Karte pro Pack"
+// in Prozent, von Hand gepflegt - gehört inhaltlich zu den Pull Rates
+// (pull_rates-Tabelle), aber ist ein Wert pro SET statt pro Seltenheit.
+if (!csColumns.has("chase_hit_rate_pct")) {
+  db.exec(`ALTER TABLE card_sets ADD COLUMN chase_hit_rate_pct REAL`);
 }
 
 const psColumns = new Set(db.prepare(`PRAGMA table_info(price_snapshots)`).all().map((c) => c.name));

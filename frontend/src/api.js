@@ -87,6 +87,9 @@ export const getSetProgress = () => request("/sets/progress");
 export const getOwnedInSet = (setId) => request(`/sets/${setId}/owned`);
 export const updateSetBoxPrice = (setId, eur) =>
   request(`/sets/${setId}/box-price`, { method: "PATCH", body: { eur } });
+export const getPullRates = (setId) => request(`/sets/${setId}/pull-rates`);
+export const updatePullRates = (setId, payload) =>
+  request(`/sets/${setId}/pull-rates`, { method: "PATCH", body: payload });
 
 // --- Orden ---------------------------------------------------------
 export const getAchievements = () => request("/achievements");

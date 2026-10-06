@@ -558,6 +558,7 @@ function mapSetRow(s) {
     logo: s.logo,
     symbol: s.symbol,
     box_price_cents: s.box_price_cents ?? null,
+    chase_hit_rate_pct: s.chase_hit_rate_pct ?? null,
   };
 }
 

@@ -9,6 +9,16 @@ import db from "../db/index.js";
 const router = Router();
 
 const setBoxPriceStmt = db.prepare(`UPDATE card_sets SET box_price_cents = ? WHERE id = ?`);
+const setChaseHitRateStmt = db.prepare(`UPDATE card_sets SET chase_hit_rate_pct = ? WHERE id = ?`);
+const pullRatesForSetStmt = db.prepare(`SELECT rarity, any_denominator, specific_denominator FROM pull_rates WHERE set_id = ? ORDER BY rarity`);
+const upsertPullRateStmt = db.prepare(`
+  INSERT INTO pull_rates (set_id, rarity, any_denominator, specific_denominator)
+  VALUES (@set_id, @rarity, @any_denominator, @specific_denominator)
+  ON CONFLICT(set_id, rarity) DO UPDATE SET
+    any_denominator = excluded.any_denominator,
+    specific_denominator = excluded.specific_denominator
+`);
+const deletePullRateStmt = db.prepare(`DELETE FROM pull_rates WHERE set_id = ? AND rarity = ?`);
 
 // GET /api/sets -> alle Sets, für die "Alle Karten"-Übersichtsseite (öffentlich)
 router.get("/", (_req, res) => {
@@ -66,6 +76,72 @@ router.patch("/:setId/box-price", authRequired, (req, res) => {
   }
   setBoxPriceStmt.run(cents, req.params.setId);
   res.json({ box_price_cents: cents });
+});
+
+// GET /api/sets/:setId/pull-rates -> öffentlich. { chaseHitRatePct, rarities: [...] }
+router.get("/:setId/pull-rates", (req, res) => {
+  const set = getSetLocal(req.params.setId);
+  if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
+  res.json({
+    chaseHitRatePct: set.chase_hit_rate_pct ?? null,
+    rarities: pullRatesForSetStmt.all(req.params.setId).map((r) => ({
+      rarity: r.rarity,
+      anyDenominator: r.any_denominator,
+      specificDenominator: r.specific_denominator,
+    })),
+  });
+});
+
+// PATCH /api/sets/:setId/pull-rates -> nur Betreiber, keine freie API-Quelle
+// dafür (Hand-Eingabe aus Booster-Auswertungen wie TCGplayer/PikaPika).
+// Body: { chaseHitRatePct: 34 | null, rarities: [{ rarity, anyDenominator, specificDenominator }] }
+// Ein rarity-Eintrag ohne beide Werte (null/leer) löscht die Zeile wieder.
+router.patch("/:setId/pull-rates", authRequired, (req, res) => {
+  if (!isOperatorUser(req.user)) {
+    return res.status(403).json({ error: "Nur der Betreiber darf das ändern." });
+  }
+  const set = getSetLocal(req.params.setId);
+  if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
+
+  const { chaseHitRatePct, rarities } = req.body ?? {};
+
+  let hitRate = null;
+  if (chaseHitRatePct != null && chaseHitRatePct !== "") {
+    const n = Number(chaseHitRatePct);
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      return res.status(400).json({ error: "Ungültige Trefferquote (0-100)" });
+    }
+    hitRate = n;
+  }
+  setChaseHitRateStmt.run(hitRate, req.params.setId);
+
+  for (const r of rarities ?? []) {
+    if (!r.rarity) continue;
+    const any = r.anyDenominator != null && r.anyDenominator !== "" ? Number(r.anyDenominator) : null;
+    const specific = r.specificDenominator != null && r.specificDenominator !== "" ? Number(r.specificDenominator) : null;
+    if (any == null && specific == null) {
+      deletePullRateStmt.run(req.params.setId, r.rarity);
+      continue;
+    }
+    if ((any != null && !Number.isFinite(any)) || (specific != null && !Number.isFinite(specific))) {
+      return res.status(400).json({ error: `Ungültiger Wert bei "${r.rarity}"` });
+    }
+    upsertPullRateStmt.run({
+      set_id: req.params.setId,
+      rarity: r.rarity,
+      any_denominator: any,
+      specific_denominator: specific,
+    });
+  }
+
+  res.json({
+    chaseHitRatePct: hitRate,
+    rarities: pullRatesForSetStmt.all(req.params.setId).map((r) => ({
+      rarity: r.rarity,
+      anyDenominator: r.any_denominator,
+      specificDenominator: r.specific_denominator,
+    })),
+  });
 });
 
 export default router;
