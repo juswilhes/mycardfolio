@@ -53,13 +53,13 @@ export default function CollectionGroup({ group, onChanged }) {
 
   return (
     <div className="border-b border-line">
-      <div className="flex items-center gap-4 py-4">
+      <div className="flex items-center gap-3 sm:gap-4 py-4">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-4 flex-1 min-w-0 text-left"
+          className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 text-left"
         >
-          <img src={group.image_small} alt="" className="w-12 h-auto rounded shrink-0" />
+          <img src={group.image_small} alt="" className="w-14 sm:w-12 h-auto rounded shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-medium truncate">
               {group.name}
@@ -89,10 +89,19 @@ export default function CollectionGroup({ group, onChanged }) {
               {[group.rarity, group.set_name].filter(Boolean).join(" · ")} · {qty}× ·{" "}
               {entries.length} Käufe · {conditions.join(", ")}
             </p>
+            <p className="sm:hidden font-mono text-sm mt-1 tabular-nums">
+              {value != null ? eur(value) : <span className="text-subtle font-sans">kein Preis</span>}
+              {gain != null && (
+                <span className={gain >= 0 ? "text-mint ml-2" : "text-rose ml-2"}>
+                  {gain >= 0 ? "+" : "−"}
+                  {eur(Math.abs(gain))}
+                </span>
+              )}
+            </p>
           </div>
         </button>
 
-        <div className="text-right shrink-0 tabular-nums">
+        <div className="hidden sm:block text-right shrink-0 tabular-nums">
           {value != null ? (
             <p className="font-mono font-medium">{eur(value)}</p>
           ) : (

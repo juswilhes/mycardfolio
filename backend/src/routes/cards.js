@@ -18,6 +18,7 @@ import {
 } from "../services/cardRepository.js";
 import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
 import { authRequired } from "../middleware/auth.js";
+import { isOperatorUser } from "../lib/admin.js";
 
 const router = Router();
 
@@ -118,9 +119,10 @@ router.post("/external/:externalId/refresh", authRequired, async (req, res) => {
 });
 
 // PATCH /api/cards/external/:externalId/artist  { artist }
-// Angemeldet, damit nicht anonym Kartendaten verändert werden können
-// (die Suche selbst bleibt öffentlich).
+// Nur der Betreiber darf das ändern - sonst könnte jeder angemeldete
+// Nutzer Kartenstammdaten verfälschen (die Suche selbst bleibt öffentlich).
 router.patch("/external/:externalId/artist", authRequired, (req, res) => {
+  if (!isOperatorUser(req.user)) return res.status(403).json({ error: "Nur der Betreiber darf das ändern." });
   const artist = (req.body?.artist ?? "").trim();
   if (!artist) return res.status(400).json({ error: "artist fehlt" });
   const info = setArtistManual.run(artist, req.params.externalId);

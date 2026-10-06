@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import db from "../db/index.js";
+import { isOperatorUser } from "../lib/admin.js";
 
 const SESSION_DAYS = 30;
 const RESET_TTL_MIN = 60;
@@ -80,6 +81,7 @@ export function publicUser(u) {
     email: u.email,
     display_name: u.display_name || null,
     email_verified: !!u.email_verified,
+    is_operator: isOperatorUser(u),
   };
 }
 

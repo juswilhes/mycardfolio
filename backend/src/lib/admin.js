@@ -22,3 +22,9 @@ export const ADMIN_IPS = new Set(
     .map((s) => s.trim())
     .filter(Boolean)
 );
+
+// Ist dieser Nutzer der Betreiber? Für Dinge, die nur du ändern darfst
+// (Illustrator-Korrektur, Booster-Box-Preise, Pull-Rates, ...) - normale
+// Nutzer sollen Kartenstammdaten nicht anonym verändern können.
+export const isOperatorUser = (user) =>
+  !!OPERATOR_EMAIL && !!user && String(user.email).toLowerCase() === OPERATOR_EMAIL;

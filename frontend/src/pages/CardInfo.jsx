@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getCardInfo, getCardPriceHistory, updateCardArtist, addToCollection, getWatchlistIds, refreshCardPrice, getListingsForCard } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
@@ -12,10 +12,11 @@ import ZoomableCardImage from "../components/ZoomableCardImage.jsx";
 // Route: /database/:externalId – frei zugänglich, auch ohne Konto.
 // Bewusst reduziert: nur die Kern-Stammdaten + Preisverlauf. Die
 // Illustrator-Angabe lässt sich hier von Hand ergänzen/korrigieren
-// (angemeldet – schützt vor anonymem Vandalismus).
+// (nur der Betreiber – schützt vor Vandalismus durch angemeldete Nutzer).
 export default function CardInfo() {
   const { user, registrationOpen } = useAuth();
   const { externalId } = useParams();
+  const location = useLocation();
   const [card, setCard] = useState(null);
   const [history, setHistory] = useState(null);
   const [error, setError] = useState(false);
@@ -111,9 +112,15 @@ export default function CardInfo() {
 
   return (
     <div>
-      <Link to="/sets" className="text-sm text-subtle hover:text-ink">
-        ← Zur Kartendatenbank
-      </Link>
+      {location.key !== "default" ? (
+        <button onClick={() => navigate(-1)} className="text-sm text-subtle hover:text-ink">
+          ← Zurück
+        </button>
+      ) : (
+        <Link to="/sets" className="text-sm text-subtle hover:text-ink">
+          ← Zur Kartendatenbank
+        </Link>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-6 mt-4 mb-8">
         <ZoomableCardImage
@@ -128,7 +135,7 @@ export default function CardInfo() {
             {card.number ? ` · #${card.number}` : ""}
           </p>
 
-          <ArtistLine card={card} externalId={externalId} onSaved={setCard} canEdit={!!user} />
+          <ArtistLine card={card} externalId={externalId} onSaved={setCard} canEdit={!!user?.is_operator} />
 
           <div className="mt-4 flex items-center gap-2">
             <button

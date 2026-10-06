@@ -33,12 +33,12 @@ export default function CardTile({ item, onChanged }) {
   return (
     <Link
       to={`/card/${item.card_id}`}
-      className="group flex items-center gap-4 py-4 border-b border-line"
+      className="group flex items-center gap-3 sm:gap-4 py-4 border-b border-line"
     >
       <img
         src={item.image_small}
         alt={`${item.name} (Englisch)`}
-        className="w-12 h-auto rounded shrink-0"
+        className="w-14 sm:w-12 h-auto rounded shrink-0"
       />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">
@@ -63,9 +63,20 @@ export default function CardTile({ item, onChanged }) {
           {[item.rarity, item.set_name].filter(Boolean).join(" · ")} · {qty}× · {conditionLabel(item.condition)}
           {item.variant && item.variant !== "normal" ? ` · ${variantLabel(item.variant)}` : ""}
         </p>
+        {/* Auf dem Handy unter den Namen statt rechts daneben - sonst drückt
+            der Preisblock (shrink-0) den Namen auf schmalen Screens zusammen. */}
+        <p className="sm:hidden font-mono text-sm mt-1 tabular-nums">
+          {price ? eur(value) : <span className="text-subtle font-sans">kein Preis</span>}
+          {gain != null && (
+            <span className={gain >= 0 ? "text-mint ml-2" : "text-rose ml-2"}>
+              {gain >= 0 ? "+" : "−"}
+              {eur(Math.abs(gain))}
+            </span>
+          )}
+        </p>
       </div>
 
-      <div className="text-right shrink-0 tabular-nums">
+      <div className="hidden sm:block text-right shrink-0 tabular-nums">
         {price ? (
           <p className="font-mono font-medium">{eur(value)}</p>
         ) : (

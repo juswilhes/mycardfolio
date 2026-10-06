@@ -164,7 +164,10 @@ export default function AllCards() {
                     />
                   )}
                   <p className="text-sm font-medium truncate">{card.name}</p>
-                  <p className="text-subtle text-xs truncate">{card.set_name}</p>
+                  <p className="text-subtle text-xs truncate">
+                    {card.set_name}
+                    {card.year ? ` (${card.year})` : ""}
+                  </p>
                   <p className="text-subtle text-[11px] mb-2 truncate">
                     {[card.rarity, card.artist && `✎ ${card.artist}`].filter(Boolean).join(" · ")}
                   </p>

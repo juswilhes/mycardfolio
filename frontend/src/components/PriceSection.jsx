@@ -3,7 +3,7 @@ import PriceChart from "./PriceChart.jsx";
 const eur = (n) =>
   Number(n).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 
-const LABELS = { trend: "Trend", low: "Tiefstpreis", avg30: "Ø 30 Tage" };
+const LABELS = { avg30: "Ø 30 Tage" };
 
 // Momentum-Signal: reine Beobachtung ("Preis hat sich seit dem ersten
 // getrackten Tag so verändert"), keine Vorhersage. Bewusst simpel und
@@ -73,7 +73,7 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
             {headline != null ? eur(headline) : "—"}
           </p>
         </div>
-        {["low", "avg30"].map((t) =>
+        {["avg30"].map((t) =>
           byType[t] != null ? (
             <div key={t} className="text-sm">
               <p className="text-subtle text-xs">{LABELS[t]}</p>
@@ -108,7 +108,6 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
         <div className="flex items-baseline gap-4 flex-wrap mt-2 text-sm">
           <span className="text-subtle text-xs">Holo-Variante:</span>
           <span className="font-mono">Trend {eur(holo.trend)}</span>
-          {holo.low != null && <span className="font-mono text-subtle">Tiefst {eur(holo.low)}</span>}
         </div>
       )}
 
@@ -125,21 +124,19 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
         <PriceChart data={history} />
       </div>
 
-      <p className="text-xs text-subtle mt-3">
+      {card.cardmarket_url && (
+        <a
+          href={card.cardmarket_url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-block mt-3 text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink"
+        >
+          🔗 Auf Cardmarket ansehen
+        </a>
+      )}
+
+      <p className="text-xs text-subtle mt-2">
         {sourceLabel}
-        {basis !== "tcgplayer" && card.cardmarket_url && (
-          <>
-            {" · "}
-            <a
-              href={card.cardmarket_url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline hover:text-ink"
-            >
-              auf Cardmarket ansehen
-            </a>
-          </>
-        )}
         {onRefresh && (
           <>
             {" · "}
@@ -160,8 +157,10 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
           <p>
             <b>Trend</b> ist Cardmarkets eigener Richtwert – grob „was die Karte
             aktuell wert ist", geglättet über die letzten Verkäufe.{" "}
-            <b>Tiefstpreis</b> ist das günstigste offene Angebot, <b>Ø 30 Tage</b>{" "}
-            der Durchschnitts­verkaufspreis des letzten Monats.
+            <b>Ø 30 Tage</b> ist der Durchschnitts­verkaufspreis des letzten
+            Monats. (Den „Tiefstpreis" zeigen wir bewusst nicht mehr an – der
+            ist oft nur ein einzelnes Schnäppchen-Angebot und verzerrt den
+            Eindruck, was die Karte wirklich kostet.)
           </p>
           <p>
             Es ist der Preis der <b>englischen</b> Karte. Für die deutsche

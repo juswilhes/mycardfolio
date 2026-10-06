@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import db from "../db/index.js";
 import { userForSession } from "../services/authService.js";
 import { SESSION_COOKIE } from "./auth.js";
-import { OPERATOR_EMAIL, ADMIN_IPS } from "../lib/admin.js";
+import { ADMIN_IPS, isOperatorUser } from "../lib/admin.js";
 
 const bumpHit = db.prepare(`
   INSERT INTO daily_hits (day, path, hits) VALUES (?, ?, 1)
@@ -56,9 +56,7 @@ const visitorHash = (ip, day) =>
 // Ist der Zugriff vom Betreiber selbst? (bekannte IP oder als Admin angemeldet)
 function isOperator(req) {
   if (req.ip && ADMIN_IPS.has(req.ip)) return true;
-  if (!OPERATOR_EMAIL) return false;
-  const u = userForSession(req.cookies?.[SESSION_COOKIE]);
-  return !!u && String(u.email).toLowerCase() === OPERATOR_EMAIL;
+  return isOperatorUser(userForSession(req.cookies?.[SESSION_COOKIE]));
 }
 
 export function countPageView(req, res, next) {

@@ -29,6 +29,7 @@ import ListingDetail from "./pages/ListingDetail.jsx";
 import SellerProfile from "./pages/SellerProfile.jsx";
 import Footer from "./components/Footer.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
+import NavMenu from "./components/NavMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { useTheme } from "./hooks/useTheme.js";
 import { useAuth } from "./context/AuthContext.jsx";
@@ -63,12 +64,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-line px-6 py-4 flex items-center justify-between">
-        <Link to="/" aria-label="mycardfolio – Startseite">
-          <Logo className="h-11" />
-        </Link>
-        <div className="flex items-center gap-6">
-          <nav className="flex gap-6 text-sm">
+      <header className="border-b border-line px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <NavMenu user={user} loading={loading} />
+          <Link to="/" aria-label="mycardfolio – Startseite" className="shrink-0">
+            <Logo className="h-6 sm:h-11" />
+          </Link>
+        </div>
+        <div className="flex items-center gap-4 sm:gap-6">
+          <nav className="hidden sm:flex gap-6 text-sm">
             <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
             <NavLink to="/marktplatz" className={navCls}>🛒 Marktplatz</NavLink>
             {user && (
@@ -81,10 +85,12 @@ export default function App() {
             )}
           </nav>
           {!loading && !user && (
-            <div className="flex items-center gap-3 text-sm">
-              <NavLink to="/login" className={navCls}>Anmelden</NavLink>
+            <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+              <NavLink to="/login" className={(s) => `hidden sm:inline ${navCls(s)}`}>
+                Anmelden
+              </NavLink>
               {registrationOpen && (
-                <Link to="/register" className="bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full">
+                <Link to="/register" className="bg-yellow text-yellowInk font-medium px-3 py-1.5 rounded-full text-xs sm:text-sm whitespace-nowrap">
                   Registrieren
                 </Link>
               )}
