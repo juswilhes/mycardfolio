@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getCardById } from "../services/pokemonTcgApi.js";
 import {
-  priceHistoryForCard,
+  priceHistoryForCardAllVariants,
   setArtistManual,
   priceHistoryByExternalId,
   cardmarketBreakdownByExternalId,
@@ -130,9 +130,11 @@ router.patch("/external/:externalId/artist", authRequired, (req, res) => {
   res.json({ ok: true, artist });
 });
 
-// GET /api/cards/:id/prices  -> Trend-Verlauf (EUR), interne ID
+// GET /api/cards/:id/prices  -> Trend-Verlauf (EUR) inkl. Holo/Reverse,
+// interne ID - für die Kartenseite in der Sammlung, dieselbe Ansicht wie
+// in der Kartensuche (siehe /external/:externalId/prices).
 router.get("/:id/prices", (req, res) => {
-  res.json(priceHistoryForCard.all(req.params.id));
+  res.json(priceHistoryForCardAllVariants.all(req.params.id));
 });
 
 export default router;

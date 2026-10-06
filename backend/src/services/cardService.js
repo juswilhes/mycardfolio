@@ -112,11 +112,25 @@ export function cardmarketBreakdown(cardId) {
 }
 export const cardmarketBreakdownForCard = { all: cardmarketBreakdown };
 
-// Trend-Verlauf (EUR, Variante 'normal') für den Graphen.
+// Trend-Verlauf (EUR, Variante 'normal') für den Graphen. NUR 'normal' -
+// wird u.a. von marketStats.js (Preisbewegungen) genutzt, das eine einzelne
+// saubere Preisreihe je Karte erwartet; Holo/Reverse würden die Berechnung
+// verfälschen. Für die Kartenseite selbst (mit Holo/Reverse-Linie) siehe
+// priceHistoryForCardAllVariants unten bzw. priceHistoryByExternalId.
 export const priceHistoryForCard = db.prepare(`
   SELECT price, currency, price_type, source, fetched_at
   FROM price_snapshots
   WHERE card_id = ? AND price_type = 'trend' AND variant = 'normal'
+  ORDER BY fetched_at ASC
+`);
+
+// Wie priceHistoryForCard, aber inkl. Holo/Reverse - für die Preisgraphen
+// auf den Kartenseiten (Sammlung UND Kartensuche sollen dieselbe Ansicht
+// zeigen, siehe priceHistoryByExternalId für die externalId-Variante).
+export const priceHistoryForCardAllVariants = db.prepare(`
+  SELECT price, currency, price_type, source, variant, fetched_at
+  FROM price_snapshots
+  WHERE card_id = ? AND price_type = 'trend' AND variant IN ('normal', 'holo', 'reverse')
   ORDER BY fetched_at ASC
 `);
 
