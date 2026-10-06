@@ -107,6 +107,24 @@ export function getSetsOverview() {
   }));
 }
 
+// Unter diesem Betrag verzerren schon einzelne Cent den Prozentwert (z.B.
+// 0,02 € -> 0,05 € sieht wie "+150 %" aus, ist aber keine echte Bewegung).
+const MOVER_MIN_PRICE = 0.5;
+// Jenseits dieser Marke handelt es sich praktisch immer um einen Daten-/
+// Zuordnungsfehler der Quelle statt um eine echte Marktbewegung - typisch
+// bei frisch getrackten "Black Star Promos" mit dünner Handelstiefe, wo der
+// allererste Preispunkt kurz nach Trackingbeginn noch falsch zugeordnet war
+// und sich dann auf einen realistischen (aber viel höheren/niedrigeren)
+// Wert "korrigiert" hat. Eine Karte, die binnen 30 Tagen ihr Vielfaches
+// wert sein soll, ist fast nie ein echter Markttrend.
+const MOVER_MAX_ABS_PCT = 300;
+
+function isPlausibleMove(m) {
+  if (m.current < MOVER_MIN_PRICE || m.previous < MOVER_MIN_PRICE) return false;
+  if (Math.abs(m.delta_pct) > MOVER_MAX_ABS_PCT) return false;
+  return true;
+}
+
 // Größte Gewinner/Verlierer (Trendpreis, Variante 'normal') über alle
 // jemals angesehenen Karten - unabhängig davon, wer sie besitzt. Wächst mit
 // der Zeit, je mehr Karten Nutzer sich ansehen (siehe priceFetcher.js).
@@ -115,7 +133,8 @@ export function getMarketMovers({ days = 7, limit = 25, setName = null } = {}) {
   const cards = trackedCardsStmt.all().filter((c) => !setName || c.set_name === setName);
   const movers = cards
     .map((c) => moverFor(c, days))
-    .filter((m) => m && !m.singlePoint && Math.abs(m.delta) >= 0.01 && m.previous);
+    .filter((m) => m && !m.singlePoint && Math.abs(m.delta) >= 0.01 && m.previous)
+    .filter(isPlausibleMove);
 
   const gainers = movers.filter((m) => m.delta > 0).sort((a, b) => b.delta_pct - a.delta_pct).slice(0, limit);
   const losers = movers.filter((m) => m.delta < 0).sort((a, b) => a.delta_pct - b.delta_pct).slice(0, limit);
