@@ -53,21 +53,30 @@ export default function PriceChart({ data }) {
   const hasSpecial = chartData.some((d) => d.special != null);
   const specialLabel = VARIANT_LABEL[specialVariant] ?? specialVariant;
 
-  const legendItems = [
-    { key: "normal", label: "Normal", price: lastValue(chartData, "normal"), bg: "bg-yellow", text: "text-yellowInk", border: "border-yellow" },
-    ...(hasSpecial
-      ? [{ key: "special", label: specialLabel, price: lastValue(chartData, "special"), bg: "bg-holo", text: "text-white", border: "border-holo" }]
-      : []),
-  ];
+  // "Normal" ist nur dann eine sinnvolle Bezeichnung, wenn es tatsächlich
+  // eine zweite Variante zum Abgrenzen gibt (z.B. Common mit Reverse Holo).
+  // Bei Karten, die es nur in genau einer Ausführung gibt (Illustration
+  // Rare, SIR, ...), gibt es kein "Normal" - dann zeigen wir gar keine
+  // Legende, nur den Graphen.
+  const legendItems = hasSpecial
+    ? [
+        { key: "normal", label: "Normal", price: lastValue(chartData, "normal"), bg: "bg-yellow", text: "text-yellowInk", border: "border-yellow" },
+        { key: "special", label: specialLabel, price: lastValue(chartData, "special"), bg: "bg-holo", text: "text-white", border: "border-holo" },
+      ]
+    : [];
 
+  // Mindestens eine Linie muss sichtbar bleiben - sonst könnte man den
+  // Graphen komplett leer klicken.
   const toggle = (key) =>
     setHidden((prev) => {
+      const isHidden = prev.has(key);
+      if (!isHidden && legendItems.length - prev.size <= 1) return prev;
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      isHidden ? next.delete(key) : next.add(key);
       return next;
     });
 
-  const Legend = (
+  const Legend = legendItems.length > 0 && (
     <div className="flex flex-wrap items-center gap-2 mb-2">
       {legendItems.map(({ key, label, price, bg, text, border }) => (
         <button
