@@ -23,6 +23,7 @@ import { handleStripeWebhook } from "./routes/marketplaceWebhook.js";
 import { authRequired } from "./middleware/auth.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
+import { scheduleMissingPriceBackfill } from "./services/setPriceBackfill.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
 import db from "./db/index.js";
@@ -162,6 +163,7 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
+  scheduleMissingPriceBackfill();
   // beim Start je Nutzer einen aktuellen Portfolio-Punkt sichern
   try {
     recordAllPortfolioSnapshots();
