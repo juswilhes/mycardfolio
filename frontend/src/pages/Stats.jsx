@@ -237,7 +237,7 @@ function CollectionStats() {
           {top.map((i, idx) => (
             <Link
               key={i.collection_item_id}
-              to={`/card/${i.card_id}`}
+              to={`/database/${i.external_id}`}
               className="flex items-center gap-3 py-2.5 border-b border-line text-sm"
             >
               <span className="text-subtle w-5 text-right shrink-0">{idx + 1}</span>

@@ -3,7 +3,6 @@ import { Routes, Route, NavLink, Link, Navigate, useLocation } from "react-route
 import Logo from "./components/Logo.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
 import Collection from "./pages/Collection.jsx";
-import CardDetail from "./pages/CardDetail.jsx";
 import AllCards from "./pages/AllCards.jsx";
 import SetDetail from "./pages/SetDetail.jsx";
 import CardInfo from "./pages/CardInfo.jsx";
@@ -150,7 +149,6 @@ export default function App() {
             />
 
             {/* Nur mit Login */}
-            <Route path="/card/:cardId" element={<RequireAuth><CardDetail /></RequireAuth>} />
             <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
             <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
             <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />

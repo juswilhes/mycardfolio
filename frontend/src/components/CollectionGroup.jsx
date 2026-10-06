@@ -141,7 +141,7 @@ export default function CollectionGroup({ group, onChanged }) {
             const g = c != null && v != null ? v - c : null;
             return (
               <div key={e.collection_item_id} className="flex items-center justify-between gap-3 text-xs">
-                <Link to={`/card/${group.card_id}`} className="text-subtle truncate hover:text-ink">
+                <Link to={`/database/${group.external_id}`} className="text-subtle truncate hover:text-ink">
                   {e.purchase_date
                     ? new Date(e.purchase_date).toLocaleDateString("de-DE")
                     : "Datum unbekannt"}
@@ -187,7 +187,7 @@ export default function CollectionGroup({ group, onChanged }) {
             );
           })}
           <Link
-            to={`/card/${group.card_id}`}
+            to={`/database/${group.external_id}`}
             className="inline-block text-xs text-subtle underline hover:text-ink mt-1"
           >
             Käufe verwalten →

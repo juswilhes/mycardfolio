@@ -236,6 +236,7 @@ export default function Collection() {
       if (!g) {
         g = {
           card_id: it.card_id,
+          external_id: it.external_id,
           name: it.name,
           set_name: it.set_name,
           rarity: it.rarity,

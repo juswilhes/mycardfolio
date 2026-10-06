@@ -32,7 +32,7 @@ export default function CardTile({ item, onChanged }) {
 
   return (
     <Link
-      to={`/card/${item.card_id}`}
+      to={`/database/${item.external_id}`}
       className="group flex items-center gap-3 sm:gap-4 py-4 border-b border-line"
     >
       <img

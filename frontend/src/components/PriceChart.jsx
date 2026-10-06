@@ -6,14 +6,24 @@ const eur = (n) =>
 
 const VARIANT_LABEL = { normal: "Normal", holo: "Holo", reverse: "Reverse Holo" };
 
+// Letzter bekannter (nicht-leerer) Wert einer Spalte - für den Preis direkt
+// im Legenden-Button.
+function lastValue(chartData, key) {
+  for (let i = chartData.length - 1; i >= 0; i--) {
+    if (chartData[i][key] != null) return chartData[i][key];
+  }
+  return null;
+}
+
 // Erwartet Trend-Snapshots ({price, fetched_at, variant}) in EUR und
 // zeichnet Normal plus die vorhandene Sonder-Variante (Holo ODER Reverse
-// Holo) als eigene, farbige Linie - abwählbar über die Legende, standard-
-// mäßig beide an. Mehr als diese zwei Reihen (z.B. getrennt für Reverse
-// Holo UND Holo gleichzeitig, oder 1st Edition) liefert die kostenlose
-// Quelle (Cardmarket über TCGdex) nicht - die hat strukturell nur zwei
-// Preisfelder pro Karte, unabhängig davon, wie viele Druckvarianten es
-// tatsächlich gibt.
+// Holo) als eigene, farbige Linie. Die Legende steht OBEN, als farbige
+// Buttons mit dem jeweils aktuellen Preis - Klick blendet die Linie aus/ein,
+// standardmäßig sind alle an. Mehr als diese zwei Reihen (z.B. getrennt für
+// Reverse Holo UND Holo gleichzeitig, oder 1st Edition) liefert die
+// kostenlose Quelle (Cardmarket über TCGdex) nicht - die hat strukturell
+// nur zwei Preisfelder pro Karte, unabhängig davon, wie viele Druck-
+// varianten es tatsächlich gibt.
 export default function PriceChart({ data }) {
   const [hidden, setHidden] = useState(() => new Set());
 
@@ -43,14 +53,12 @@ export default function PriceChart({ data }) {
   const hasSpecial = chartData.some((d) => d.special != null);
   const specialLabel = VARIANT_LABEL[specialVariant] ?? specialVariant;
 
-  if (chartData.length < 2) {
-    return (
-      <p className="text-subtle text-sm py-4">
-        Erst ein Datenpunkt ({eur(chartData[0].normal ?? chartData[0].special)}) — die
-        Verlaufslinie entsteht über die nächsten Tage.
-      </p>
-    );
-  }
+  const legendItems = [
+    { key: "normal", label: "Normal", price: lastValue(chartData, "normal"), bg: "bg-yellow", text: "text-yellowInk", border: "border-yellow" },
+    ...(hasSpecial
+      ? [{ key: "special", label: specialLabel, price: lastValue(chartData, "special"), bg: "bg-holo", text: "text-white", border: "border-holo" }]
+      : []),
+  ];
 
   const toggle = (key) =>
     setHidden((prev) => {
@@ -59,13 +67,39 @@ export default function PriceChart({ data }) {
       return next;
     });
 
-  const legendItems = [
-    { key: "normal", label: "Normal", colorClass: "bg-yellow" },
-    ...(hasSpecial ? [{ key: "special", label: specialLabel, colorClass: "bg-holo" }] : []),
-  ];
+  const Legend = (
+    <div className="flex flex-wrap items-center gap-2 mb-2">
+      {legendItems.map(({ key, label, price, bg, text, border }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => toggle(key)}
+          aria-pressed={!hidden.has(key)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+            hidden.has(key) ? "border-line text-subtle bg-transparent" : `${border} ${bg} ${text}`
+          }`}
+        >
+          {label}
+          {price != null && <span className="font-mono">{eur(price)}</span>}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (chartData.length < 2) {
+    return (
+      <div>
+        {Legend}
+        <p className="text-subtle text-sm py-4">
+          Erst ein Datenpunkt — die Verlaufslinie entsteht über die nächsten Tage.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
+      {Legend}
       <ResponsiveContainer width="100%" height={150}>
         <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
           <XAxis dataKey="date" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />
@@ -97,21 +131,6 @@ export default function PriceChart({ data }) {
           )}
         </LineChart>
       </ResponsiveContainer>
-      {legendItems.length > 1 && (
-        <div className="flex items-center gap-4 mt-1.5 text-xs">
-          {legendItems.map(({ key, label, colorClass }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => toggle(key)}
-              className={`flex items-center gap-1.5 ${hidden.has(key) ? "text-subtle opacity-50" : "text-subtle"}`}
-            >
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${colorClass}`} />
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ const eur = (n) => `${Math.abs(Number(n)).toFixed(2)} €`;
 function Row({ m, positive }) {
   return (
     <Link
-      to={`/card/${m.card_id}`}
+      to={`/database/${m.external_id}`}
       className="flex items-center gap-2 py-1.5 text-sm hover:opacity-80"
     >
       <img src={m.image_small} alt="" className="w-6 rounded shrink-0" />
