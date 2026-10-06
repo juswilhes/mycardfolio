@@ -175,14 +175,23 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
             }
           : null;
 
+      // TCGdex liefert für die zweite Preisspalte nur EIN "-holo"-Suffix,
+      // das aber je Karte entweder echtes Holo ODER Reverse Holo meint -
+      // welches davon steht im variants-Feld (Commons/Uncommons haben fast
+      // nie echtes Holo, sondern Reverse Holo). Ohne diese Unterscheidung
+      // würde z.B. bei einer Common fälschlich "Holo" statt "Reverse Holo"
+      // als Variante stehen.
+      const v = full?.variants ?? {};
+      const specialVariant = v.reverse && !v.holo ? "reverse" : "holo";
+
       const cmRows = cm
         ? [
             eur("normal", "trend", cm.trend),
             eur("normal", "low", cm.low),
             eur("normal", "avg30", cm.avg30),
-            eur("holo", "trend", cm["trend-holo"]),
-            eur("holo", "low", cm["low-holo"]),
-            eur("holo", "avg30", cm["avg30-holo"]),
+            eur(specialVariant, "trend", cm["trend-holo"]),
+            eur(specialVariant, "low", cm["low-holo"]),
+            eur(specialVariant, "avg30", cm["avg30-holo"]),
           ].filter(Boolean)
         : [];
 

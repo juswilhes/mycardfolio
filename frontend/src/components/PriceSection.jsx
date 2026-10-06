@@ -4,6 +4,7 @@ const eur = (n) =>
   Number(n).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 
 const LABELS = { avg30: "Ø 30 Tage" };
+const VARIANT_LABEL = { holo: "Holo", reverse: "Reverse Holo" };
 
 // Momentum-Signal: reine Beobachtung ("Preis hat sich seit dem ersten
 // getrackten Tag so verändert"), keine Vorhersage. Bewusst simpel und
@@ -46,7 +47,11 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
       breakdown.filter((b) => (b.variant ?? "normal") === variant).map((b) => [b.price_type, b.price])
     );
   const byType = pick("normal");
-  const holo = pick("holo");
+  // Pro Karte liefert die Quelle nie Holo UND Reverse Holo gleichzeitig,
+  // sondern höchstens eine der beiden (siehe priceProvider.js) - also die
+  // vorhandene Sonder-Variante im Breakdown suchen statt fix "holo".
+  const specialVariant = breakdown.find((b) => b.variant === "reverse") ? "reverse" : "holo";
+  const special = pick(specialVariant);
   const headline = card.latest_price?.price ?? byType.trend ?? null;
   const basis = card.latest_price?.source ?? (breakdown.length ? "cardmarket" : null);
 
@@ -105,10 +110,10 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
         </p>
       )}
 
-      {holo.trend != null && (
+      {special.trend != null && (
         <div className="flex items-baseline gap-4 flex-wrap mt-2 text-sm">
-          <span className="text-subtle text-xs">Holo-Variante:</span>
-          <span className="font-mono">Trend {eur(holo.trend)}</span>
+          <span className="text-subtle text-xs">{VARIANT_LABEL[specialVariant]}-Variante:</span>
+          <span className="font-mono">Trend {eur(special.trend)}</span>
         </div>
       )}
 
@@ -174,9 +179,10 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
             entsprechend gekennzeichnet.
           </p>
           <p>
-            <b>Varianten:</b> Für Holo gibt es einen eigenen Wert, wenn die
-            Quelle ihn liefert. Reverse Holo wird von der kostenlosen Quelle
-            nicht getrennt bepreist – dort greift der Standard-Wert.
+            <b>Varianten:</b> Wenn eine Karte als Holo ODER als Reverse Holo
+            existiert, zeigen wir dafür einen eigenen Wert (zweite Linie im
+            Graphen). Beides gleichzeitig liefert die kostenlose Quelle nicht
+            getrennt – dann greift für die zweite Variante der Standard-Wert.
           </p>
           <p>
             eBay-Verkaufspreise sind hier (noch) nicht dabei: dafür gibt es

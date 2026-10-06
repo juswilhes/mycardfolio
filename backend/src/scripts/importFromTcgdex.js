@@ -190,13 +190,17 @@ function priceRows(c) {
     price != null && price > 0
       ? { source: "cardmarket", variant, price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 }
       : null;
+  // siehe priceProvider.js: das "-holo"-Suffix meint je Karte entweder
+  // echtes Holo oder Reverse Holo - welches davon steht in c.variants.
+  const v = c.variants ?? {};
+  const specialVariant = v.reverse && !v.holo ? "reverse" : "holo";
   return [
     mk("normal", "trend", cm.trend),
     mk("normal", "low", cm.low),
     mk("normal", "avg30", cm.avg30),
-    mk("holo", "trend", cm["trend-holo"]),
-    mk("holo", "low", cm["low-holo"]),
-    mk("holo", "avg30", cm["avg30-holo"]),
+    mk(specialVariant, "trend", cm["trend-holo"]),
+    mk(specialVariant, "low", cm["low-holo"]),
+    mk(specialVariant, "avg30", cm["avg30-holo"]),
   ].filter(Boolean);
 }
 
