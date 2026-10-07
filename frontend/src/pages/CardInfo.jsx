@@ -6,7 +6,6 @@ import {
   updateCardArtist,
   addToCollection,
   getWatchlistIds,
-  refreshCardPrice,
   getListingsForCard,
   getCollection,
   updateCollectionItem,
@@ -52,7 +51,6 @@ export default function CardInfo() {
   const [busy, setBusy] = useState(false);
   const [addError, setAddError] = useState(null);
   const [watched, setWatched] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [listings, setListings] = useState(null);
   const navigate = useNavigate();
 
@@ -77,20 +75,6 @@ export default function CardInfo() {
   useEffect(() => {
     loadEntries();
   }, [loadEntries]);
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    try {
-      await refreshCardPrice(externalId);
-      const [c, h] = await Promise.all([getCardInfo(externalId), getCardPriceHistory(externalId)]);
-      setCard(c);
-      setHistory(h ?? []);
-    } catch {
-      /* z.B. Cooldown - still ignorieren, Preis bleibt wie gehabt */
-    } finally {
-      setRefreshing(false);
-    }
-  }
 
   useEffect(() => {
     if (!user) return setWatched(false);
@@ -296,8 +280,6 @@ export default function CardInfo() {
       <PriceSection
         card={card}
         history={history}
-        onRefresh={user ? handleRefresh : undefined}
-        refreshing={refreshing}
       />
 
       <CardMarketListings listings={listings} />

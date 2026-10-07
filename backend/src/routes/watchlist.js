@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { getCardById } from "../services/pokemonTcgApi.js";
-import { upsertCardRow, recordPrices } from "../services/cardService.js";
+import { upsertCardRow } from "../services/cardService.js";
 import { getCardByExternalIdLocal } from "../services/cardRepository.js";
-import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
+import { cardmarketUrl } from "../services/priceProvider.js";
 import { addToWatchlist, removeFromWatchlist, listWatchlist, watchedExternalIds } from "../services/watchlistService.js";
 
 const router = Router();
@@ -39,12 +39,6 @@ router.post("/", async (req, res) => {
   const cardId = upsertCardRow("pokemon", cardData);
   addToWatchlist(req.user.id, cardId);
   res.status(201).json({ ok: true });
-
-  getCardmarketPrices(externalId)
-    .then(({ prices, meta }) => {
-      if (prices.length) recordPrices(cardId, prices, meta);
-    })
-    .catch(() => {});
 });
 
 // DELETE /api/watchlist/:externalId

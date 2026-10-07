@@ -7,8 +7,6 @@ import {
   cardmarketBreakdownByExternalId,
   cardMetaByExternalId,
   latestPriceByExternalId,
-  upsertCardRow,
-  recordPrices,
 } from "../services/cardService.js";
 import {
   searchCardsLocal,
@@ -16,7 +14,7 @@ import {
   getCardsByArtistLocal,
   bumpCardView,
 } from "../services/cardRepository.js";
-import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
+import { cardmarketUrl } from "../services/priceProvider.js";
 import { authRequired } from "../middleware/auth.js";
 import { isOperatorUser } from "../lib/admin.js";
 
@@ -37,35 +35,24 @@ router.get("/by-artist", (req, res) => {
   res.json(getCardsByArtistLocal(name));
 });
 
-// GET /api/cards/external/:externalId -> Stammdaten (lokal) + aktuelle
-// Cardmarket-Preise (EUR, via TCGdex, 6 h gecacht). Der Abruf ist schnell
-// genug, um ihn hier zu awaiten; schlägt er fehl, kommen die zuletzt
-// gespeicherten Werte zum Zug.
+// GET /api/cards/external/:externalId -> Stammdaten (lokal) + gespeicherte
+// Cardmarket-Preise (EUR). Preise werden NICHT beim Öffnen der Seite
+// abgefragt, sondern nur einmal täglich um 1 Uhr (services/priceFetcher.js) -
+// ein Abruf bei TCGdex pro Seitenaufruf machte die Seiten langsam.
 router.get("/external/:externalId", async (req, res) => {
   const { externalId } = req.params;
   const local = getCardByExternalIdLocal(externalId);
   bumpCardView(externalId); // "Beliebtheit" in der Set-Übersicht
 
   if (local) {
-    let meta = null;
-    try {
-      const { prices, meta: m } = await getCardmarketPrices(externalId);
-      meta = m;
-      if (prices.length) {
-        const cardId = cardMetaByExternalId.get(externalId)?.id ?? upsertCardRow("pokemon", local);
-        recordPrices(cardId, prices, m);
-      }
-    } catch {
-      /* offline -> gespeicherte Werte unten */
-    }
     const breakdown = cardmarketBreakdownByExternalId.all(externalId);
     const dbMeta = cardMetaByExternalId.get(externalId);
     return res.json({
       ...local,
       latest_price: latestPriceByExternalId.get(externalId) ?? null,
       price_breakdown: breakdown,
-      cardmarket_updated: meta?.updated ?? dbMeta?.cardmarket_updated ?? null,
-      cardmarket_url: cardmarketUrl(meta?.productId ?? dbMeta?.cardmarket_product_id ?? null),
+      cardmarket_updated: dbMeta?.cardmarket_updated ?? null,
+      cardmarket_url: cardmarketUrl(dbMeta?.cardmarket_product_id ?? null),
     });
   }
 
@@ -81,41 +68,6 @@ router.get("/external/:externalId", async (req, res) => {
 // GET /api/cards/external/:externalId/prices -> Trend-Verlauf (EUR) für den Graphen
 router.get("/external/:externalId/prices", (req, res) => {
   res.json(priceHistoryByExternalId.all(req.params.externalId));
-});
-
-// Mindestabstand zwischen erzwungenen Aktualisierungen derselben Karte,
-// damit der Button nicht zum Spam gegen TCGdex einlädt.
-const FORCE_REFRESH_COOLDOWN_MS = 60 * 1000;
-const lastForceRefresh = new Map();
-
-// POST /api/cards/external/:externalId/refresh -> erzwingt eine frische
-// Abfrage bei TCGdex (umgeht den 6h-Cache), angemeldet wegen der externen
-// Anfrage, die das auslöst.
-router.post("/external/:externalId/refresh", authRequired, async (req, res) => {
-  const { externalId } = req.params;
-  const local = getCardByExternalIdLocal(externalId);
-  if (!local) return res.status(404).json({ error: "Karte nicht gefunden" });
-
-  const last = lastForceRefresh.get(externalId) ?? 0;
-  if (Date.now() - last < FORCE_REFRESH_COOLDOWN_MS) {
-    return res.status(429).json({ error: "Bitte kurz warten, bevor du erneut aktualisierst." });
-  }
-  lastForceRefresh.set(externalId, Date.now());
-
-  try {
-    const { prices, meta } = await getCardmarketPrices(externalId, { force: true });
-    if (prices.length) {
-      const cardId = cardMetaByExternalId.get(externalId)?.id ?? upsertCardRow("pokemon", local);
-      recordPrices(cardId, prices, meta);
-    }
-    res.json({
-      ok: true,
-      updated: meta?.updated ?? null,
-      latest_price: latestPriceByExternalId.get(externalId) ?? null,
-    });
-  } catch (err) {
-    res.status(502).json({ error: err.message });
-  }
 });
 
 // PATCH /api/cards/external/:externalId/artist  { artist }

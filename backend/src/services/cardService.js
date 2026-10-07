@@ -220,14 +220,14 @@ export const latestPriceByExternalId = { get: (externalId) => latestTrendByExter
 const pricesForSetStmt = db.prepare(`
   SELECT c.external_id,
     COALESCE(
-      a30.price,
+      (SELECT AVG(ps.price) FROM price_snapshots ps
+       WHERE ps.card_id = c.id AND ps.price_type = 'trend' AND ps.variant = 'normal'
+         AND ps.source = 'cardmarket' AND ps.fetched_at >= datetime('now', '-30 days')),
       (SELECT ps2.price FROM price_snapshots ps2
        WHERE ps2.card_id = c.id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
-       ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC
-       LIMIT 1)
+       ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC LIMIT 1)
     ) AS price
   FROM cards c
-  LEFT JOIN card_price_avg30 a30 ON a30.card_id = c.id AND a30.variant = 'normal'
   WHERE c.set_id = ?
 `);
 export function pricesForSet(setId) {

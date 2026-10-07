@@ -52,8 +52,6 @@ export const getCardPriceHistory = (externalId) => request(`/cards/external/${ex
 export const getPriceHistory = (cardId) => request(`/cards/${cardId}/prices`);
 export const updateCardArtist = (externalId, artist) =>
   request(`/cards/external/${externalId}/artist`, { method: "PATCH", body: { artist } });
-export const refreshCardPrice = (externalId) =>
-  request(`/cards/external/${externalId}/refresh`, { method: "POST" });
 
 // --- Sammlung -----------------------------------------------------
 export const getCollection = () => request("/collection");
@@ -112,11 +110,6 @@ export const deleteSealedProduct = (id) => request(`/sealed-products/${id}`, { m
 // --- Markt-Statistik -------------------------------------------------
 export const getMarketMovers = (days = 7, set = null) =>
   request(`/stats/market-movers?days=${days}${set ? `&set=${encodeURIComponent(set)}` : ""}`);
-export const getTrackedSets = () => request("/stats/tracked-sets");
-export const getWatchlistMovers = (days = 7) => request(`/stats/watchlist-movers?days=${days}`);
-export const getSetMomentum = (days = 30) => request(`/stats/set-momentum?days=${days}`);
-export const getThawing = () => request("/stats/thawing");
-export const getSetsOverview = () => request("/stats/sets-overview");
 export const getSetValueAnalysis = () => request("/stats/set-value");
 export const getPullRateOverview = () => request("/stats/pull-rates");
 

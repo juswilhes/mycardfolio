@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
-import MarketMovers from "../components/MarketMovers.jsx";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
@@ -62,10 +61,9 @@ function BarList({ rows, total }) {
 // Weitere Analysen hier einfach als neuen Eintrag ergänzen - die Auswahl
 // oben und die Anzeige darunter richten sich nach dieser Liste.
 const ANALYSES = [
-  { id: "markt", label: "Markt", render: () => <MarketMovers /> },
-  { id: "display", label: "Display & Booster", render: () => <SetValueAnalysis /> },
-  { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
   { id: "sammlung", label: "Meine Sammlung", render: () => <CollectionStats /> },
+  { id: "booster", label: "Booster vs. Top-Karten", render: () => <SetValueAnalysis /> },
+  { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
 ];
 
 // Route: /analyse – Auswahl verschiedener Analysen (marktweit oder auf die

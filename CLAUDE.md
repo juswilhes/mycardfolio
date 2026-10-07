@@ -24,7 +24,7 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - **React-Falle:** nie `useEffect(load, [])`, wenn `load` ein Promise zurückgibt (React hält es für die Cleanup-Funktion → Blank Screen). Immer `useEffect(() => { load(); }, [])`.
 - Nie ein Konto/Passwort für Anmeldungen benutzen oder Zugangsdaten eintragen; Tests, die einen Login brauchen, dem Nutzer überlassen.
 - Sicherheit: Sitzungs-/Reset-Token liegen nur als SHA-256-Hash in der DB (`authService.js`); Kontosperre nach 5 Fehlversuchen.
-- Preise kommen über TCGdex (Cardmarket, EUR, **keine sprachspezifischen Preise**). Neue Sets: `npm run import-tcgdex -- <setId>`.
+- Preise kommen über TCGdex (Cardmarket, EUR, **keine sprachspezifischen Preise**). **Preise werden NUR einmal täglich um 1:00 Uhr (Europe/Berlin) geholt** (`services/priceFetcher.js`: alle Karten, danach Karten ohne Preis) - nie beim Öffnen einer Seite, Hinzufügen oder Import (Seiten lesen nur aus der DB; sonst wird die Seite bei 20.000+ Karten langsam). Kein "Preis jetzt aktualisieren"-Button. Schwere Abfragen über alle Karten: korrelierte Teilabfragen je Karte (`CARD_CURRENT_PRICE_SQL`), nicht die View `card_price_avg30` joinen (blockiert den Server); Preisbewegungen sind 30 Min. gecacht. Neue Sets: `npm run import-tcgdex -- <setId>`.
 - Rechtstexte (`frontend/src/lib/legal.js`, `LEGAL_REVIEWED=false`) sind Entwürfe und noch nicht anwaltlich geprüft – Banner nicht entfernen.
 
 ## Marktplatz (Stand)
@@ -33,9 +33,10 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - Registrierung ist auf dem Server geschlossen (`REGISTRATION_OPEN=false`).
 
 ## Analyse-Seite
+- Der Reiter "Markt" wurde entfernt (Bausteine MarketMovers/SetsOverview/GradingCalculator liegen ungenutzt im Code, falls daraus eigene Analysen werden sollen). Reihenfolge: Meine Sammlung zuerst.
 - Nav-Punkt "Analyse" (`/analyse`, früher "Statistik"): Auswahl verschiedener Analysen. Neue Analyse = neuer Eintrag in `ANALYSES` in `frontend/src/pages/Stats.jsx` (+ Komponente, ggf. Endpunkt unter `/api/stats`). "Meine Sammlung" bleibt in jedem Fall erhalten. Umschalter = `SegmentedToggle` (gleich wie bei "Alle Karten").
 - **Regel (Justus):** Alles, was zu einer Analyse gehört, steht NUR unter "Analyse" - nicht zusätzlich auf Set- oder Kartenseiten. Auch die Pflege der Daten (Betreiber-Ansicht) passiert dort.
-- "Display & Booster": Box-/Boosterpreis pro Set pflegt der Betreiber von Hand in der Analyse (`PATCH /api/sets/:id/prices`); Sondersets ohne Display (30th Celebration, Black Bolt) haben nur einen Boosterpreis. Klick auf ein Set zeigt die 20 teuersten Karten. Verlauf: Tabelle `set_value_snapshots`, ein Stand je Set und Monat, geschrieben per Cron am 1. (4 Uhr), beim Serverstart nachgeholt und bei Preisänderung für den laufenden Monat aktualisiert (`services/setValueSnapshots.js`).
+- "Booster vs. Top-Karten" (früher "Display & Booster"): Box-/Boosterpreis pro Set pflegt der Betreiber von Hand in der Analyse (`PATCH /api/sets/:id/prices`); Sondersets ohne Display (30th Celebration, Black Bolt) haben nur einen Boosterpreis. Klick auf ein Set zeigt die 20 teuersten Karten. Verlauf: Tabelle `set_value_snapshots`, ein Stand je Set und Monat, geschrieben per Cron am 1. (4 Uhr), beim Serverstart nachgeholt und bei Preisänderung für den laufenden Monat aktualisiert (`services/setValueSnapshots.js`).
 - "Pull Rates": Matrix Seltenheit x Set, Daten von Hand (`pull_rates`, `PATCH /api/sets/:id/pull-rates`), Pflege über "Pull Rates pflegen" in der Analyse.
 
 ## Offene Punkte

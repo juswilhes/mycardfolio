@@ -54,10 +54,9 @@ function computeMomentum(history) {
 
 // Einheitliche Preis-Anzeige für Sammlungs- und Datenbank-Detailseite.
 // Alles in EUR. Bevorzugte Quelle: Cardmarket (englische Karte).
-// onRefresh (optional): Callback für den "Jetzt aktualisieren"-Button -
-// stößt eine frische Abfrage bei TCGdex an, statt auf den nächsten
-// automatischen Lauf (alle 4 Stunden) zu warten.
-export default function PriceSection({ card, history, onRefresh, refreshing }) {
+// Preise werden nur einmal täglich um 1 Uhr aktualisiert (kein Abruf beim
+// Öffnen der Seite).
+export default function PriceSection({ card, history }) {
   const momentum = computeMomentum(history);
   const breakdown = card.price_breakdown ?? [];
   const pick = (variant) =>
@@ -156,18 +155,6 @@ export default function PriceSection({ card, history, onRefresh, refreshing }) {
 
       <p className="text-xs text-subtle mt-2">
         {sourceLabel}
-        {onRefresh && (
-          <>
-            {" · "}
-            <button
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="underline hover:text-ink disabled:opacity-50 disabled:no-underline"
-            >
-              {refreshing ? "aktualisiere …" : "🔄 Preis jetzt aktualisieren"}
-            </button>
-          </>
-        )}
       </p>
 
       <details className="mt-3 text-xs text-subtle">

@@ -30,7 +30,7 @@ const METRICS = {
 const monthLabel = (m) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
 
-// Analyse "Display & Booster": lohnt sich der Kauf eines Displays/Boosters im
+// Analyse "Booster vs. Top-Karten": lohnt sich der Kauf eines Displays/Boosters im
 // Verhältnis zu dem, was die 20 teuersten Karten des Sets wert sind? Preise
 // für Box/Booster pflegt der Betreiber von Hand hier in der Analyse (keine
 // freie API-Quelle) - Sondersets ohne Display haben nur einen Boosterpreis.
@@ -84,7 +84,7 @@ export default function SetValueAnalysis() {
       {editorToggle}
       {editing && <PriceEditor onSaved={load} />}
 
-      <h2 className="text-sm font-medium mb-1">📦 Display &amp; Booster im Vergleich</h2>
+      <h2 className="text-sm font-medium mb-1">📦 Booster vs. Top-Karten</h2>
       <p className="text-xs text-subtle mb-3">
         Wie viel sind die 20 teuersten Karten eines Sets wert – im Verhältnis zum Preis eines Displays
         bzw. eines einzelnen Boosters? Kartenwerte sind der 30-Tage-Schnitt. Sondersets ohne Display

@@ -10,21 +10,6 @@ const trackedCardsStmt = db.prepare(`
   JOIN price_snapshots ps ON ps.card_id = c.id
 `);
 
-const trackedSetsStmt = db.prepare(`
-  SELECT DISTINCT c.set_name
-  FROM cards c
-  JOIN price_snapshots ps ON ps.card_id = c.id
-  WHERE c.set_name IS NOT NULL
-  ORDER BY c.set_name
-`);
-
-const watchlistCardsStmt = db.prepare(`
-  SELECT c.id, c.external_id, c.name, c.set_name, c.image_small
-  FROM watchlist_items wi
-  JOIN cards c ON c.id = wi.card_id
-  WHERE wi.user_id = ?
-`);
-
 function moverFor(c, days) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const hist = priceHistoryForCard.all(c.id);
@@ -52,64 +37,36 @@ function moverFor(c, days) {
   };
 }
 
-// Set-Namen, für die wir mindestens eine beobachtete Karte haben - fürs
-// Filter-Dropdown der Marktübersicht.
-export function getTrackedSets() {
-  return trackedSetsStmt.all().map((r) => r.set_name);
-}
-
-// Preis je Karte: selbst berechneter 30-Tage-Schnitt (card_price_avg30,
-// siehe db/index.js), ohne Daten der letzten 30 Tage Fallback auf den
-// letzten bekannten Einzelwert - dieselbe Logik wie cardService.js
-// latestTrend()/pricesForSet(), hier aber für ALLE Karten auf einmal.
-const cardCurrentPriceSubquery = `
-  SELECT ps.card_id,
-    COALESCE(
-      a30.price,
-      (SELECT ps2.price FROM price_snapshots ps2
-       WHERE ps2.card_id = ps.card_id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
-       ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC LIMIT 1)
-    ) AS price
-  FROM (SELECT DISTINCT card_id FROM price_snapshots WHERE price_type = 'trend' AND variant = 'normal') ps
-  LEFT JOIN card_price_avg30 a30 ON a30.card_id = ps.card_id AND a30.variant = 'normal'
+// Aktueller Preis einer Karte (30-Tage-Schnitt, normal), als Ausdruck für eine
+// SQL-Abfrage über "cards c" - dieselbe Logik wie cardService.js latestTrend():
+// ohne Daten der letzten 30 Tage der letzte bekannte Einzelwert.
+// Bewusst als korrelierte Teilabfrage je Karte (nutzt idx_price_card) statt
+// über die View card_price_avg30 zu joinen: der Join würde bei 20.000+
+// Karten die View jedes Mal komplett neu berechnen und den Server minuten-
+// lang blockieren.
+export const CARD_CURRENT_PRICE_SQL = `
+  COALESCE(
+    (SELECT AVG(ps.price) FROM price_snapshots ps
+     WHERE ps.card_id = c.id AND ps.price_type = 'trend' AND ps.variant = 'normal'
+       AND ps.source = 'cardmarket' AND ps.fetched_at >= datetime('now', '-30 days')),
+    (SELECT ps2.price FROM price_snapshots ps2
+     WHERE ps2.card_id = c.id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
+     ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC LIMIT 1)
+  )
 `;
 
-// Allgemeine Set-Übersicht: ALLE Sets aus dem Datensatz (nicht nur die mit
-// zufällig angesehenen Karten), mit Preisdaten der "Chase"-Karten (jenseits
-// von Common/Uncommon/Rare/Rare Holo/Promo) je Set, sofern vorhanden -
-// siehe scripts/seedSetPrices.js für die gezielte Vorab-Befüllung.
-const setsOverviewStmt = db.prepare(`
-  SELECT cs.id, cs.name, cs.series, cs.total, cs.release_date, cs.logo,
-         COUNT(DISTINCT lp.card_id) AS tracked_count,
-         COALESCE(SUM(lp.price), 0) AS sum_price
-  FROM card_sets cs
-  LEFT JOIN cards c ON c.set_id = cs.id
-  LEFT JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
-  GROUP BY cs.id
-  ORDER BY cs.release_date DESC
-`);
-
-const topCardForSetStmt = db.prepare(`
-  SELECT c.name, c.external_id, c.image_small, lp.price
-  FROM cards c
-  JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
-  WHERE c.set_id = ?
-  ORDER BY lp.price DESC
-  LIMIT 1
-`);
-
-// Analyse "Display & Booster": je Set mit hinterlegtem Box- und/oder Booster-
-// preis der Gesamtwert der 20 teuersten Karten (30-Tage-Schnitt je Karte).
-// Die Verhältnisse (Top 20 vs. Box/Booster) rechnet das Frontend.
+// Analyse "Booster vs. Top-Karten": je Set mit hinterlegtem Box- und/oder
+// Boosterpreis der Gesamtwert der 20 teuersten Karten (30-Tage-Schnitt je
+// Karte). Die Verhältnisse (Top 20 vs. Box/Booster) rechnet das Frontend.
 const setValueRowsStmt = db.prepare(`
   SELECT cs.id, cs.name, cs.series, cs.release_date, cs.logo,
          cs.box_price_cents, cs.booster_price_cents, cs.prices_updated_at,
-         c.external_id, c.name AS card_name, c.image_small, lp.price
+         c.external_id, c.name AS card_name, c.image_small,
+         ${CARD_CURRENT_PRICE_SQL} AS price
   FROM card_sets cs
   LEFT JOIN cards c ON c.set_id = cs.id
-  LEFT JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
   WHERE cs.box_price_cents IS NOT NULL OR cs.booster_price_cents IS NOT NULL
-  ORDER BY cs.id, lp.price DESC
+  ORDER BY cs.id, price DESC
 `);
 
 const setValueHistoryStmt = db.prepare(`
@@ -194,21 +151,6 @@ export function getPullRateOverview() {
   return [...bySet.values()];
 }
 
-export function getSetsOverview() {
-  return setsOverviewStmt.all().map((s) => ({
-    id: s.id,
-    name: s.name,
-    series: s.series,
-    total: s.total,
-    release_date: s.release_date,
-    logo: s.logo,
-    trackedCount: s.tracked_count,
-    sumValue: s.sum_price,
-    avgValue: s.tracked_count ? s.sum_price / s.tracked_count : 0,
-    topCard: s.tracked_count ? topCardForSetStmt.get(s.id) : null,
-  }));
-}
-
 // Unter diesem Betrag verzerren schon einzelne Cent den Prozentwert (z.B.
 // 0,02 € -> 0,05 € sieht wie "+150 %" aus, ist aber keine echte Bewegung).
 const MOVER_MIN_PRICE = 0.5;
@@ -227,11 +169,21 @@ function isPlausibleMove(m) {
   return true;
 }
 
+// Die Berechnung geht über alle Karten mit Preishistorie (20.000+) und
+// blockiert den Server dabei knapp eine Sekunde. Die Preise ändern sich nur
+// einmal täglich (Preis-Job um 1 Uhr) - also für alle Besucher kurz
+// zwischenspeichern statt bei jedem Aufruf neu zu rechnen.
+const MOVERS_CACHE_MS = 30 * 60 * 1000;
+const moversCache = new Map();
+
 // Größte Gewinner/Verlierer (Trendpreis, Variante 'normal') über alle
-// jemals angesehenen Karten - unabhängig davon, wer sie besitzt. Wächst mit
-// der Zeit, je mehr Karten Nutzer sich ansehen (siehe priceFetcher.js).
+// Karten mit Preishistorie - unabhängig davon, wer sie besitzt.
 // Optional auf ein Set eingeschränkt.
 export function getMarketMovers({ days = 7, limit = 25, setName = null } = {}) {
+  const key = `${days}|${limit}|${setName ?? ""}`;
+  const hit = moversCache.get(key);
+  if (hit && Date.now() - hit.at < MOVERS_CACHE_MS) return hit.value;
+
   const cards = trackedCardsStmt.all().filter((c) => !setName || c.set_name === setName);
   const movers = cards
     .map((c) => moverFor(c, days))
@@ -240,69 +192,7 @@ export function getMarketMovers({ days = 7, limit = 25, setName = null } = {}) {
 
   const gainers = movers.filter((m) => m.delta > 0).sort((a, b) => b.delta_pct - a.delta_pct).slice(0, limit);
   const losers = movers.filter((m) => m.delta < 0).sort((a, b) => a.delta_pct - b.delta_pct).slice(0, limit);
-  return { gainers, losers, trackedCount: movers.length };
-}
-
-// Preisstatus aller Karten auf der eigenen Watchlist - nicht nur die
-// größten Ausschläge, sondern die ganze Liste, damit man auf einen Blick
-// sieht, was sich bei den beobachteten Karten gerade tut.
-export function getWatchlistMovers(userId, { days = 7 } = {}) {
-  const movers = watchlistCardsStmt
-    .all(userId)
-    .map((c) => moverFor(c, days))
-    .filter(Boolean);
-  movers.sort((a, b) => b.delta_pct - a.delta_pct);
-  return movers;
-}
-
-// Durchschnittliche Bewegung je Set ("welche Sets sind gerade heiß/kalt") -
-// nur Sets mit mindestens minCards beobachteten Karten, damit ein einzelner
-// Ausreißer nicht ein ganzes Set aussehen lässt, als würde es sich bewegen.
-export function getSetMomentum({ days = 30, minCards = 3, limit = 8 } = {}) {
-  const bySet = new Map();
-  for (const c of trackedCardsStmt.all()) {
-    if (!c.set_name) continue;
-    const m = moverFor(c, days);
-    if (!m || m.singlePoint || !m.previous) continue;
-    if (!bySet.has(c.set_name)) bySet.set(c.set_name, []);
-    bySet.get(c.set_name).push(m.delta_pct);
-  }
-
-  const sets = [...bySet.entries()]
-    .filter(([, pcts]) => pcts.length >= minCards)
-    .map(([set_name, pcts]) => ({
-      set_name,
-      avg_pct: pcts.reduce((s, p) => s + p, 0) / pcts.length,
-      cardCount: pcts.length,
-    }));
-
-  const rising = sets.filter((s) => s.avg_pct > 0).sort((a, b) => b.avg_pct - a.avg_pct).slice(0, limit);
-  const falling = sets.filter((s) => s.avg_pct < 0).sort((a, b) => a.avg_pct - b.avg_pct).slice(0, limit);
-  return { rising, falling };
-}
-
-// "Thawing": Karten, die über einen langen Zeitraum deutlich gefallen sind,
-// sich zuletzt (7 Tage) aber wieder nach oben drehen - frühes Signal für
-// eine mögliche Trendwende.
-export function getThawing({ longDays = 120, shortDays = 7, limit = 15 } = {}) {
-  const result = [];
-  for (const c of trackedCardsStmt.all()) {
-    const long = moverFor(c, longDays);
-    const short = moverFor(c, shortDays);
-    if (!long || !short || long.singlePoint || short.singlePoint || !long.previous) continue;
-    if (long.delta_pct <= -10 && short.delta_pct > 0) {
-      result.push({
-        card_id: c.id,
-        external_id: c.external_id,
-        name: c.name,
-        set_name: c.set_name,
-        image_small: c.image_small,
-        current: short.current,
-        longTermPct: long.delta_pct,
-        recentPct: short.delta_pct,
-      });
-    }
-  }
-  result.sort((a, b) => b.recentPct - a.recentPct);
-  return result.slice(0, limit);
+  const value = { gainers, losers, trackedCount: movers.length };
+  moversCache.set(key, { at: Date.now(), value });
+  return value;
 }

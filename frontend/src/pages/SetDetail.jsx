@@ -41,20 +41,11 @@ export default function SetDetail() {
       setWatchedIds(new Set());
     }
 
-    // Fehlende Preise werden serverseitig im Hintergrund nachgeladen (siehe
-    // backfillSetPrices) - ein paar Mal automatisch neu laden, damit sie
-    // ohne manuelles Neuladen der Seite nach und nach auftauchen.
+    // Preise kommen nur noch einmal täglich (1 Uhr) - kein Nachladen mehr nötig.
     let cancelled = false;
-    const delays = [0, 4000, 12000, 25000];
-    const timers = delays.map((ms) =>
-      setTimeout(() => {
-        if (cancelled) return;
-        getCardsForSet(setId).then((data) => !cancelled && setCards(data));
-      }, ms)
-    );
+    getCardsForSet(setId).then((data) => !cancelled && setCards(data));
     return () => {
       cancelled = true;
-      timers.forEach(clearTimeout);
     };
   }, [setId, user]);
 

@@ -3,13 +3,12 @@ import db from "../db/index.js";
 import { getCardById } from "../services/pokemonTcgApi.js";
 import {
   upsertCardRow,
-  recordPrices,
   listCollection,
   latestTrend,
   cardmarketBreakdown,
 } from "../services/cardService.js";
 import { getCardByExternalIdLocal, matchCardForImport } from "../services/cardRepository.js";
-import { getCardmarketPrices, cardmarketUrl } from "../services/priceProvider.js";
+import { cardmarketUrl } from "../services/priceProvider.js";
 import { recordPortfolioSnapshot, sellCollectionItem } from "../services/portfolioService.js";
 
 const router = Router();
@@ -67,15 +66,6 @@ const gradingFrom = (body) => {
     grade: company ? gradeOrNull(body.grade) : null,
   };
 };
-
-// Cardmarket-Preis im Hintergrund nachziehen (blockiert die Antwort nie).
-function refreshPriceInBackground(cardId, externalId) {
-  getCardmarketPrices(externalId)
-    .then(({ prices, meta }) => {
-      if (prices.length) recordPrices(cardId, prices, meta);
-    })
-    .catch(() => {});
-}
 
 // GET /api/collection -> Sammlung inkl. aktuellem Cardmarket-Preis (EUR)
 router.get("/", (req, res) => {
@@ -135,7 +125,6 @@ router.post("/", async (req, res) => {
   }
 
   res.status(201).json({ cardId });
-  refreshPriceInBackground(cardId, externalId);
   recordPortfolioSnapshot(req.user.id);
 });
 
@@ -161,7 +150,6 @@ router.post("/import/commit", (req, res) => {
   if (!items.length) return res.status(400).json({ error: "keine Karten" });
 
   let added = 0;
-  const externalIds = new Set();
   const userId = req.user.id;
   const tx = db.transaction(() => {
     for (const it of items) {
@@ -181,7 +169,6 @@ router.post("/import/commit", (req, res) => {
         variant: variantOrNull(it.variant) ?? "normal",
         ...gradingFrom(it),
       });
-      externalIds.add(it.externalId);
       added++;
     }
   });
@@ -189,21 +176,6 @@ router.post("/import/commit", (req, res) => {
 
   res.json({ ok: true, added });
   recordPortfolioSnapshot(userId);
-
-  // Preise nacheinander im Hintergrund nachziehen (TCGdex schonen)
-  (async () => {
-    for (const ext of externalIds) {
-      try {
-        const { prices, meta } = await getCardmarketPrices(ext);
-        const local = getCardByExternalIdLocal(ext);
-        if (prices.length && local) recordPrices(upsertCardRow("pokemon", local), prices, meta);
-      } catch {
-        /* ignore */
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    recordPortfolioSnapshot(userId);
-  })();
 });
 
 // PATCH /api/collection/:id

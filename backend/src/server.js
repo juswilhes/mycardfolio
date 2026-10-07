@@ -21,9 +21,9 @@ import statsRouter from "./routes/stats.js";
 import marketplaceRouter from "./routes/marketplace.js";
 import { handleStripeWebhook } from "./routes/marketplaceWebhook.js";
 import { authRequired } from "./middleware/auth.js";
+import { isOperatorUser } from "./lib/admin.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
-import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
-import { scheduleMissingPriceBackfill, backfillAllMissingPrices } from "./services/setPriceBackfill.js";
+import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { scheduleSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
@@ -120,10 +120,10 @@ app.use("/api/sealed-products", authRequired, sealedProductsRouter);
 app.use("/api/stats", statsRouter);
 
 // Manueller Trigger, praktisch zum Testen (normalerweise übernimmt der Cron-Job das)
-app.post("/api/refresh-prices", authRequired, async (_req, res) => {
-  await refreshAllPrices();
-  recordAllPortfolioSnapshots();
-  res.json({ ok: true });
+app.post("/api/refresh-prices", authRequired, (req, res) => {
+  if (!isOperatorUser(req.user)) return res.status(403).json({ error: "Nur der Betreiber." });
+  runDailyPriceJob().catch((e) => console.error("[priceFetcher] manueller Lauf fehlgeschlagen:", e));
+  res.json({ ok: true, started: true });
 });
 
 // Unbekannte API-Routen sauber beantworten statt HTML-Fehlerseite.
@@ -164,13 +164,7 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
-  scheduleMissingPriceBackfill();
   scheduleSetValueSnapshots();
-  // auch sofort beim Start einmal laufen lassen, nicht nur um 3 Uhr nachts -
-  // sonst müsste man nach jedem Deploy bis zu 24h auf den nächsten Lauf
-  // warten. Im Dauerbetrieb ist das ein No-Op (keine Karte ohne Preis mehr),
-  // nur direkt nach einem Deploy oder einem neu importierten Set tut sich was.
-  backfillAllMissingPrices().catch((e) => console.error("[priceBackfill] Start-Sweep fehlgeschlagen:", e));
   // beim Start je Nutzer einen aktuellen Portfolio-Punkt sichern
   try {
     recordAllPortfolioSnapshots();
