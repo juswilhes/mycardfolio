@@ -1,0 +1,243 @@
+// Import einzelner Sets aus der TCGdex-API (Sets/Karten, die im
+// pokemon-tcg-data-Datensatz noch fehlen, z.B. Mega-Evolution-Promos oder das
+// 30th-Celebration-Set). Wird vom Skript (npm run import-tcgdex) und vom
+// nächtlichen Job (services/newCardsSync.js) gemeinsam genutzt.
+// Illustratoren, die per Backfill/manuell gesetzt wurden, bleiben erhalten.
+
+import db from "../db/index.js";
+import { recordPrices } from "./cardService.js";
+
+const API = "https://api.tcgdex.net/v2/en";
+const gameId = db.prepare(`SELECT id FROM games WHERE slug = 'pokemon'`).get().id;
+const j = (v) => (v == null ? null : JSON.stringify(v));
+
+async function fetchJson(url, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(url, { headers: { "User-Agent": "MyCardfolio/1.0" } });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (i === tries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+}
+
+const upsertSet = db.prepare(`
+  INSERT INTO card_sets (id, game_id, name, series, printed_total, total, release_date, logo, symbol)
+  VALUES (@id, @game_id, @name, @series, @printed_total, @total, @release_date, @logo, @symbol)
+  ON CONFLICT(id) DO UPDATE SET
+    name=excluded.name, series=excluded.series, printed_total=excluded.printed_total,
+    total=excluded.total, release_date=excluded.release_date, logo=excluded.logo, symbol=excluded.symbol
+`);
+
+const upsertCard = db.prepare(`
+  INSERT INTO cards (
+    game_id, external_id, name, set_name, set_id, number, rarity, image_small, image_large,
+    supertype, subtypes, types, hp, artist, artist_source, flavor_text, national_pokedex, evolves_from,
+    abilities, attacks, weaknesses, resistances, retreat_cost, rules, legalities, regulation_mark,
+    cardmarket_product_id, raw_json
+  ) VALUES (
+    @game_id, @external_id, @name, @set_name, @set_id, @number, @rarity, @image_small, @image_large,
+    @supertype, @subtypes, @types, @hp, @artist, @artist_source, @flavor_text, @national_pokedex, @evolves_from,
+    @abilities, @attacks, @weaknesses, @resistances, @retreat_cost, @rules, @legalities, @regulation_mark,
+    @cardmarket_product_id, @raw_json
+  )
+  ON CONFLICT(game_id, external_id) DO UPDATE SET
+    name=excluded.name, set_name=excluded.set_name, set_id=excluded.set_id, number=excluded.number,
+    rarity=excluded.rarity, image_small=excluded.image_small, image_large=excluded.image_large,
+    supertype=excluded.supertype, subtypes=excluded.subtypes, types=excluded.types, hp=excluded.hp,
+    flavor_text=excluded.flavor_text, national_pokedex=excluded.national_pokedex,
+    evolves_from=excluded.evolves_from, abilities=excluded.abilities, attacks=excluded.attacks,
+    weaknesses=excluded.weaknesses, resistances=excluded.resistances, retreat_cost=excluded.retreat_cost,
+    rules=excluded.rules, legalities=excluded.legalities, regulation_mark=excluded.regulation_mark,
+    cardmarket_product_id=excluded.cardmarket_product_id, raw_json=excluded.raw_json,
+    artist = CASE
+      WHEN cards.artist_manual = 1 THEN cards.artist
+      WHEN excluded.artist IS NOT NULL AND excluded.artist <> '' THEN excluded.artist
+      ELSE cards.artist
+    END,
+    artist_source = CASE
+      WHEN cards.artist_manual = 1 THEN cards.artist_source
+      WHEN excluded.artist IS NOT NULL AND excluded.artist <> '' THEN 'tcgdex'
+      ELSE cards.artist_source
+    END
+`);
+
+const cardIdByExt = db.prepare(
+  `SELECT id FROM cards WHERE external_id = ? AND game_id = ${gameId}`
+);
+const existingSetRow = db.prepare(`SELECT logo, symbol FROM card_sets WHERE id = ?`);
+
+async function urlExists(url) {
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Alle "XY/SM/SWSH/... Black Star Promos"-Sets bei pokemontcg.io tragen
+// bit-identisch dasselbe generische "PROMO"-Stern-Logo (kein Set-eigenes
+// Artwork) - das ist offenbar der offizielle Platzhalter für die ganze
+// Produktlinie, jede Ära neu erfunden. Für ein zu neues Promo-Set, das dort
+// noch gar nicht gelistet ist (z.B. mep), ist dasselbe generische Logo also
+// die richtige Wahl statt gar keins.
+const GENERIC_PROMO_LOGO = "https://images.pokemontcg.io/basep/logo.png";
+
+// TCGdex verlinkt bei druckfrischen Sets (wie einem gerade erst erschienenen
+// Jubiläums-Set) oft noch kein logo/symbol-Feld, obwohl die Grafik längst auf
+// dem CDN liegt - nur eben (noch) nicht als .webp, sondern als .png. Deshalb
+// vor dem Aufgeben beide Endungen und zusätzlich images.pokemontcg.io
+// probieren (deckt ältere Sets ab, die TCGdex nie bebildert hat, z.B. svp).
+async function resolveSetAsset(kind, apiValue, serieId, setId, existing, isPromo) {
+  if (apiValue) return `${apiValue}.webp`;
+  const candidates = [];
+  if (serieId) {
+    candidates.push(`https://assets.tcgdex.net/en/${serieId}/${setId}/${kind}.webp`);
+    candidates.push(`https://assets.tcgdex.net/en/${serieId}/${setId}/${kind}.png`);
+  }
+  candidates.push(`https://images.pokemontcg.io/${setId}/${kind}.png`);
+  for (const url of candidates) {
+    if (await urlExists(url)) return url;
+  }
+  if (kind === "logo" && isPromo) return GENERIC_PROMO_LOGO;
+  return existing ?? null; // eigenes Fixup nicht durch einen erneuten Import verlieren
+}
+
+const STAGE = { basic: "Basic", stage1: "Stage 1", stage2: "Stage 2" };
+const SUPERTYPE = { pokemon: "Pokémon", trainer: "Trainer", energy: "Energy" };
+const img = (base, q) => (base ? `${base}/${q}.webp` : null);
+
+// TCGdex liefert bei sehr neuen Sets kein image-Feld, die Bilder liegen aber
+// unter assets.tcgdex.net/en/<serie>/<set>/<localId>/{low|high}.webp.
+function imageBase(c, serieId) {
+  if (c.image) return c.image;
+  if (serieId && c.set?.id && c.localId && /\d/.test(c.localId)) {
+    return `https://assets.tcgdex.net/en/${serieId}/${c.set.id}/${c.localId}`;
+  }
+  return null;
+}
+
+function mapCard(c, setName, serieId) {
+  const base = imageBase(c, serieId);
+  const cat = (c.category ?? "").toLowerCase();
+  const subtypes = [];
+  if (cat === "pokemon" && c.stage) subtypes.push(STAGE[c.stage.toLowerCase()] ?? c.stage);
+  if (cat === "trainer" && c.trainerType) subtypes.push(c.trainerType);
+  if (cat === "energy" && c.energyType) subtypes.push(c.energyType);
+
+  const legal = {};
+  if (c.legal?.standard) legal.standard = "Legal";
+  if (c.legal?.expanded) legal.expanded = "Legal";
+
+  const cm = c.pricing?.cardmarket;
+
+  return {
+    game_id: gameId,
+    external_id: c.id,
+    name: c.name,
+    set_name: c.set?.name ?? setName ?? null,
+    set_id: c.set?.id ?? null,
+    number: c.localId ?? null,
+    rarity: c.rarity ?? null,
+    image_small: img(base, "low"),
+    image_large: img(base, "high"),
+    supertype: SUPERTYPE[cat] ?? c.category ?? null,
+    subtypes: j(subtypes.length ? subtypes : null),
+    types: j(c.types ?? null),
+    hp: c.hp != null ? String(c.hp) : null,
+    artist: c.illustrator ?? null,
+    artist_source: c.illustrator ? "tcgdex" : null,
+    flavor_text: c.description ?? null,
+    national_pokedex: j(c.dexId ?? null),
+    evolves_from: c.evolveFrom ?? null,
+    abilities: j(
+      (c.abilities ?? []).map((a) => ({ name: a.name, text: a.effect, type: a.type })) || null
+    ),
+    attacks: j(
+      (c.attacks ?? []).map((a) => ({
+        name: a.name,
+        cost: a.cost ?? [],
+        damage: a.damage != null ? String(a.damage) : "",
+        text: a.effect ?? "",
+      }))
+    ),
+    weaknesses: j(c.weaknesses ?? null),
+    resistances: j(c.resistances ?? null),
+    retreat_cost: j(c.retreat ? Array(c.retreat).fill("Colorless") : null),
+    rules: j(c.rules ?? null),
+    legalities: j(Object.keys(legal).length ? legal : null),
+    regulation_mark: c.regulationMark ?? null,
+    cardmarket_product_id:
+      cm?.idProduct ?? c.variants_detailed?.[0]?.thirdParty?.cardmarket ?? null,
+    raw_json: JSON.stringify(c),
+  };
+}
+
+function priceRows(c) {
+  const cm = c.pricing?.cardmarket;
+  if (!cm) return [];
+  const mk = (variant, priceType, price) =>
+    price != null && price > 0
+      ? { source: "cardmarket", variant, price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 }
+      : null;
+  // siehe priceProvider.js: das "-holo"-Suffix meint je Karte entweder
+  // echtes Holo oder Reverse Holo - welches davon steht in c.variants.
+  const v = c.variants ?? {};
+  const specialVariant = v.reverse && !v.holo ? "reverse" : "holo";
+  return [
+    mk("normal", "trend", cm.trend),
+    mk("normal", "low", cm.low),
+    mk("normal", "avg30", cm.avg30),
+    mk(specialVariant, "trend", cm["trend-holo"]),
+    mk(specialVariant, "low", cm["low-holo"]),
+    mk(specialVariant, "avg30", cm["avg30-holo"]),
+  ].filter(Boolean);
+}
+
+export async function importTcgdexSet(sid, { onlyMissingCards = false } = {}) {
+  const set = await fetchJson(`${API}/sets/${sid}`);
+  if (!set) {
+    console.log(`  ${sid}: nicht gefunden - übersprungen`);
+    return null;
+  }
+  const serieId = set.serie?.id ?? null;
+  const existing = existingSetRow.get(set.id);
+  const isPromo = /promo/i.test(set.name);
+  upsertSet.run({
+    id: set.id,
+    game_id: gameId,
+    name: set.name,
+    series: set.serie?.name ?? null,
+    printed_total: set.cardCount?.official ?? null,
+    total: set.cardCount?.total ?? set.cards?.length ?? null,
+    release_date: set.releaseDate ? set.releaseDate.replace(/-/g, "/") : null,
+    logo: await resolveSetAsset("logo", set.logo, serieId, set.id, existing?.logo, isPromo),
+    symbol: await resolveSetAsset("symbol", set.symbol, serieId, set.id, existing?.symbol, isPromo),
+  });
+
+  const brief = set.cards ?? [];
+  console.log(`  ${set.name} (${sid}): ${brief.length} Karten ...`);
+  let n = 0;
+  for (const b of brief) {
+    if (onlyMissingCards && cardIdByExt.get(b.id)) continue;
+    try {
+      const full = await fetchJson(`${API}/cards/${b.id}`);
+      if (!full) continue;
+      upsertCard.run(mapCard(full, set.name, serieId));
+      const row = cardIdByExt.get(b.id);
+      if (row) recordPrices(row.id, priceRows(full));
+      n++;
+      if (n % 25 === 0) console.log(`    ... ${n}/${brief.length}`);
+    } catch (err) {
+      console.error(`    Fehler bei ${b.id}: ${err.message}`);
+    }
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  console.log(`  ${set.name}: ${n} Karten importiert.`);
+  return { id: set.id, name: set.name, imported: n };
+}

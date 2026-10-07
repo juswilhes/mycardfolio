@@ -25,6 +25,7 @@ import { isOperatorUser } from "./lib/admin.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { scheduleSetValueSnapshots } from "./services/setValueSnapshots.js";
+import { scheduleImageRepair } from "./services/imageRepair.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
 import db from "./db/index.js";
@@ -165,6 +166,7 @@ app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
   scheduleSetValueSnapshots();
+  scheduleImageRepair();
   // beim Start je Nutzer einen aktuellen Portfolio-Punkt sichern
   try {
     recordAllPortfolioSnapshots();

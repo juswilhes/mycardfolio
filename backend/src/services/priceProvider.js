@@ -116,6 +116,19 @@ function candidateSetIds(ourId) {
   return [...ids];
 }
 
+// Setzt die zwischengespeicherten TCGdex-Listen (alle Sets + Kartenlisten je
+// Set) zurück und lädt die Set-Liste frisch. Ohne das blieben neue Sets und
+// neue Karten bestehender Sets (z.B. fortlaufende Promos) für immer
+// unsichtbar - die Caches wurden sonst nie erneuert. Läuft jede Nacht im
+// Neu-Check (newCardsSync.js).
+export async function refreshTcgdexSets() {
+  cache.sets = null;
+  cache.setCards = {};
+  cache.sets = await fetchJson(`${API}/sets`);
+  persistCache();
+  return cache.sets ?? [];
+}
+
 export async function tcgdexSetId(setName, ourSetId) {
   if (!cache.sets) {
     cache.sets = await fetchJson(`${API}/sets`);

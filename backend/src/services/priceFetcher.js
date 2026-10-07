@@ -3,6 +3,8 @@ import { recordPrices } from "./cardService.js";
 import { getCardmarketPrices } from "./priceProvider.js";
 import { recordAllPortfolioSnapshots } from "./portfolioService.js";
 import { backfillAllMissingPrices } from "./setPriceBackfill.js";
+import { syncNewCards } from "./newCardsSync.js";
+import { repairImages } from "./imageRepair.js";
 import db from "../db/index.js";
 
 // ALLE Preise werden nur noch hier geholt: einmal täglich um 1 Uhr nachts
@@ -55,9 +57,15 @@ export async function refreshAllPrices() {
   console.log(`[priceFetcher] Fertig - ${ok}/${cards.length} mit Preis.`);
 }
 
-// Der komplette Tageslauf: alle Preise aktualisieren, danach Karten ohne
-// jeden Preis nachholen (z.B. frisch importierte Sets), danach den
-// Tagespunkt je Nutzer für den Portfolio-Graphen.
+// Der komplette Nachtlauf um 1 Uhr:
+//  1. neue Sets/Karten bei TCGdex suchen und importieren (damit sie gleich
+//     mit Preisen und Bildern versorgt werden)
+//  2. alle Preise aktualisieren
+//  3. Karten ohne jeden Preis nachholen
+//  4. fehlende/kaputte Kartenbilder reparieren
+//  5. Tagespunkt je Nutzer für den Portfolio-Graphen
+// Jeder Schritt einzeln abgesichert - ein Fehler (z.B. TCGdex kurz down)
+// soll die übrigen nicht verhindern.
 export async function runDailyPriceJob() {
   if (running) {
     console.log("[priceFetcher] Läuft schon - übersprungen.");
@@ -65,9 +73,20 @@ export async function runDailyPriceJob() {
   }
   running = true;
   try {
-    await refreshAllPrices();
-    await backfillAllMissingPrices();
-    recordAllPortfolioSnapshots();
+    const steps = [
+      ["Neu-Check", syncNewCards],
+      ["Preise", refreshAllPrices],
+      ["Preise nachholen", backfillAllMissingPrices],
+      ["Bilder", () => repairImages()],
+      ["Portfolio", async () => recordAllPortfolioSnapshots()],
+    ];
+    for (const [name, fn] of steps) {
+      try {
+        await fn();
+      } catch (e) {
+        console.error(`[nachtlauf] Schritt "${name}" fehlgeschlagen:`, e);
+      }
+    }
   } finally {
     running = false;
   }
