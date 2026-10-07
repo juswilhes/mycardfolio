@@ -85,8 +85,8 @@ export const getSet = (setId) => request(`/sets/${setId}`);
 export const getCardsForSet = (setId) => request(`/sets/${setId}/cards`);
 export const getSetProgress = () => request("/sets/progress");
 export const getOwnedInSet = (setId) => request(`/sets/${setId}/owned`);
-export const updateSetBoxPrice = (setId, eur) =>
-  request(`/sets/${setId}/box-price`, { method: "PATCH", body: { eur } });
+export const updateSetPrices = (setId, { boxEur, boosterEur }) =>
+  request(`/sets/${setId}/prices`, { method: "PATCH", body: { boxEur, boosterEur } });
 export const getPullRates = (setId) => request(`/sets/${setId}/pull-rates`);
 export const updatePullRates = (setId, payload) =>
   request(`/sets/${setId}/pull-rates`, { method: "PATCH", body: payload });
@@ -117,6 +117,7 @@ export const getWatchlistMovers = (days = 7) => request(`/stats/watchlist-movers
 export const getSetMomentum = (days = 30) => request(`/stats/set-momentum?days=${days}`);
 export const getThawing = () => request("/stats/thawing");
 export const getSetsOverview = () => request("/stats/sets-overview");
+export const getSetValueAnalysis = () => request("/stats/set-value");
 
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");

@@ -77,7 +77,7 @@ export default function App() {
             {user && (
               <>
                 <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
-                <NavLink to="/statistik" className={navCls}>Statistik</NavLink>
+                <NavLink to="/analyse" className={navCls}>Analyse</NavLink>
                 <NavLink to="/watchlist" className={navCls}>❤️ Watchlist</NavLink>
                 <NavLink to="/orden" id="nav-orden" className={navCls}>🏅 Orden</NavLink>
               </>
@@ -151,7 +151,8 @@ export default function App() {
             {/* Nur mit Login */}
             <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />
             <Route path="/verkauft" element={<RequireAuth><Sales /></RequireAuth>} />
-            <Route path="/statistik" element={<RequireAuth><Stats /></RequireAuth>} />
+            <Route path="/analyse" element={<RequireAuth><Stats /></RequireAuth>} />
+            <Route path="/statistik" element={<Navigate to="/analyse" replace />} />
             <Route path="/konto" element={<RequireAuth><Account /></RequireAuth>} />
             <Route path="/orden" element={<RequireAuth><Orden /></RequireAuth>} />
             <Route path="/watchlist" element={<RequireAuth><Watchlist /></RequireAuth>} />

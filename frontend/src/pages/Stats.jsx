@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import MarketMovers from "../components/MarketMovers.jsx";
 import Movers from "../components/Movers.jsx";
+import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const eur0 = (n) =>
@@ -56,36 +57,40 @@ function BarList({ rows, total }) {
   );
 }
 
-// Route: /statistik – zwei Auswahlen: "Markt" (marktweite Bewegungen, alle
-// jemals angesehenen Karten) und "Meine Sammlung" (die bisherige,
-// personenbezogene Auswertung). Markt ist die erste/voreingestellte Ansicht.
+// Weitere Analysen hier einfach als neuen Eintrag ergänzen - die Auswahl
+// oben und die Anzeige darunter richten sich nach dieser Liste.
+const ANALYSES = [
+  { id: "markt", label: "Markt", render: () => <MarketMovers /> },
+  { id: "display", label: "Display & Booster", render: () => <SetValueAnalysis /> },
+  { id: "sammlung", label: "Meine Sammlung", render: () => <CollectionStats /> },
+];
+
+// Route: /analyse – Auswahl verschiedener Analysen (marktweit oder auf die
+// eigene Sammlung bezogen). Die gewählte Analyse steht in der URL, damit
+// "Zurück" vom Kartendetail wieder bei derselben Analyse landet.
 export default function Stats() {
-  const [tab, setTab] = useState("markt");
+  const [params, setParams] = useSearchParams();
+  const current = ANALYSES.find((a) => a.id === params.get("a")) ?? ANALYSES[0];
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-4">Statistik</h1>
+      <h1 className="text-xl font-semibold mb-4">Analyse</h1>
 
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab("markt")}
-          className={`text-sm px-4 py-2 rounded-full border ${
-            tab === "markt" ? "border-ink text-ink font-medium" : "border-line text-subtle hover:border-ink"
-          }`}
-        >
-          Markt
-        </button>
-        <button
-          onClick={() => setTab("sammlung")}
-          className={`text-sm px-4 py-2 rounded-full border ${
-            tab === "sammlung" ? "border-ink text-ink font-medium" : "border-line text-subtle hover:border-ink"
-          }`}
-        >
-          Meine Sammlung
-        </button>
+      <div className="flex flex-wrap gap-2 mb-6">
+        {ANALYSES.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => setParams({ a: a.id }, { replace: true })}
+            className={`text-sm px-4 py-2 rounded-full border ${
+              current.id === a.id ? "border-ink text-ink font-medium" : "border-line text-subtle hover:border-ink"
+            }`}
+          >
+            {a.label}
+          </button>
+        ))}
       </div>
 
-      {tab === "markt" ? <MarketMovers /> : <CollectionStats />}
+      {current.render()}
     </div>
   );
 }
@@ -131,7 +136,7 @@ function CollectionStats() {
       .slice(0, 6);
   }, [setDefs, setOwned]);
 
-  if (!items) return <p className="text-subtle text-sm">Lade Statistik …</p>;
+  if (!items) return <p className="text-subtle text-sm">Lade Auswertung …</p>;
   if (items.length === 0) {
     return (
       <div className="py-16 text-center">

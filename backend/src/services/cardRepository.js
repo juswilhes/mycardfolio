@@ -521,7 +521,7 @@ export function getCardsByArtistLocal(artist) {
 }
 
 const setsStmt = db.prepare(`
-  SELECT id, name, series, printed_total, total, release_date, logo, symbol, box_price_cents
+  SELECT id, name, series, printed_total, total, release_date, logo, symbol, box_price_cents, booster_price_cents, prices_updated_at
   FROM card_sets
   WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')
   ORDER BY release_date DESC
@@ -558,6 +558,8 @@ function mapSetRow(s) {
     logo: s.logo,
     symbol: s.symbol,
     box_price_cents: s.box_price_cents ?? null,
+    booster_price_cents: s.booster_price_cents ?? null,
+    prices_updated_at: s.prices_updated_at ?? null,
     chase_hit_rate_pct: s.chase_hit_rate_pct ?? null,
   };
 }

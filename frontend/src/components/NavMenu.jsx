@@ -29,7 +29,7 @@ export default function NavMenu({ user, loading }) {
     ...(user
       ? [
           { to: "/", label: "Sammlung", end: true },
-          { to: "/statistik", label: "Statistik" },
+          { to: "/analyse", label: "Analyse" },
           { to: "/watchlist", label: "❤️ Watchlist" },
           { to: "/orden", label: "🏅 Orden" },
         ]

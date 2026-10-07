@@ -43,7 +43,7 @@ const normalize = (path) =>
 const STATIC_PATHS = new Set([
   "/", "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen",
   "/verify", "/impressum", "/datenschutz", "/marktplatz-agb", "/sets", "/add", "/import",
-  "/verkauft", "/statistik", "/konto", "/orden", "/watchlist", "/marktplatz",
+  "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/marktplatz",
 ]);
 const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/marktplatz/", "/verkaeufer/"];
 export const isKnownRoute = (path) =>

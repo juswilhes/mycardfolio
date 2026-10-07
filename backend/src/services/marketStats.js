@@ -98,6 +98,49 @@ const topCardForSetStmt = db.prepare(`
   LIMIT 1
 `);
 
+// Analyse "Display & Booster": je Set mit hinterlegtem Box- und/oder Booster-
+// preis der Gesamtwert der 20 teuersten Karten (30-Tage-Schnitt je Karte).
+// Die Verhältnisse (Top 20 vs. Box/Booster) rechnet das Frontend.
+const setValueRowsStmt = db.prepare(`
+  SELECT cs.id, cs.name, cs.series, cs.release_date, cs.logo,
+         cs.box_price_cents, cs.booster_price_cents, cs.prices_updated_at, lp.price
+  FROM card_sets cs
+  LEFT JOIN cards c ON c.set_id = cs.id
+  LEFT JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
+  WHERE cs.box_price_cents IS NOT NULL OR cs.booster_price_cents IS NOT NULL
+  ORDER BY cs.id, lp.price DESC
+`);
+
+export function getSetValueAnalysis() {
+  const bySet = new Map();
+  for (const r of setValueRowsStmt.all()) {
+    let s = bySet.get(r.id);
+    if (!s) {
+      s = {
+        id: r.id,
+        name: r.name,
+        series: r.series,
+        release_date: r.release_date,
+        logo: r.logo,
+        boxPriceCents: r.box_price_cents,
+        boosterPriceCents: r.booster_price_cents,
+        pricesUpdatedAt: r.prices_updated_at,
+        top20Value: 0,
+        top20Count: 0,
+        pricedCards: 0,
+      };
+      bySet.set(r.id, s);
+    }
+    if (r.price == null) continue;
+    s.pricedCards++;
+    if (s.top20Count < 20) {
+      s.top20Value += r.price;
+      s.top20Count++;
+    }
+  }
+  return [...bySet.values()].map((s) => ({ ...s, top20Value: Math.round(s.top20Value * 100) / 100 }));
+}
+
 export function getSetsOverview() {
   return setsOverviewStmt.all().map((s) => ({
     id: s.id,

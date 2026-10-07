@@ -32,5 +32,9 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - Bezahlung (Stripe Connect) ist gebaut, schaltet sich mit `STRIPE_SECRET_KEY` ein. **Vor Livegang umbauen:** Verkäufer soll die Stripe-Gebühren tragen (Direct Charges, Konten mit `fees.payer=account`), sonst zahlt die Plattform 2 €/Verkäufer/Monat drauf.
 - Registrierung ist auf dem Server geschlossen (`REGISTRATION_OPEN=false`).
 
+## Analyse-Seite
+- Nav-Punkt "Analyse" (`/analyse`, früher "Statistik"): Auswahl verschiedener Analysen. Neue Analyse = neuer Eintrag in `ANALYSES` in `frontend/src/pages/Stats.jsx` (+ Komponente, ggf. Endpunkt unter `/api/stats`). "Meine Sammlung" bleibt in jedem Fall erhalten.
+- "Display & Booster": Box-/Boosterpreis pro Set trägt der Betreiber von Hand auf der Set-Seite ein (`PATCH /api/sets/:id/prices`); Sondersets ohne Display (30th Celebration, Black Bolt) haben nur einen Boosterpreis.
+
 ## Offene Punkte
 Meta-Tags/Canonical pro Seite (SEO), DSGVO-Export um Marktplatzdaten erweitern, Wunschliste + Watchlist zusammenlegen, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.

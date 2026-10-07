@@ -8,7 +8,9 @@ import db from "../db/index.js";
 
 const router = Router();
 
-const setBoxPriceStmt = db.prepare(`UPDATE card_sets SET box_price_cents = ? WHERE id = ?`);
+const setPricesStmt = db.prepare(
+  `UPDATE card_sets SET box_price_cents = ?, booster_price_cents = ?, prices_updated_at = ? WHERE id = ?`
+);
 const setChaseHitRateStmt = db.prepare(`UPDATE card_sets SET chase_hit_rate_pct = ? WHERE id = ?`);
 const pullRatesForSetStmt = db.prepare(`SELECT rarity, any_denominator, specific_denominator FROM pull_rates WHERE set_id = ? ORDER BY rarity`);
 const upsertPullRateStmt = db.prepare(`
@@ -55,27 +57,32 @@ router.get("/:setId/owned", authRequired, (req, res) => {
   res.json(ownedInSet.all(req.params.setId, req.user.id).map((r) => r.external_id));
 });
 
-// PATCH /api/sets/:setId/box-price -> Booster-Box-Preis setzen/ändern (nur
+// "45.90" -> 4590, ""/null -> null, Ungültiges -> undefined
+function eurToCents(v) {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return Math.round(n * 100);
+}
+
+// PATCH /api/sets/:setId/prices -> Box- und Boosterpreis setzen/ändern (nur
 // Betreiber - es gibt keine freie API-Quelle dafür, das trägt Justus von
-// Hand ein). { eur: 45.90 } oder { eur: null } zum Löschen.
-router.patch("/:setId/box-price", authRequired, (req, res) => {
+// Hand ein). { boxEur, boosterEur }, jeweils null zum Löschen. Sondersets
+// ohne Display haben nur einen Boosterpreis.
+router.patch("/:setId/prices", authRequired, (req, res) => {
   if (!isOperatorUser(req.user)) {
     return res.status(403).json({ error: "Nur der Betreiber darf das ändern." });
   }
   const set = getSetLocal(req.params.setId);
   if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
 
-  const { eur } = req.body ?? {};
-  let cents = null;
-  if (eur != null && eur !== "") {
-    const n = Number(eur);
-    if (!Number.isFinite(n) || n < 0) {
-      return res.status(400).json({ error: "Ungültiger Preis" });
-    }
-    cents = Math.round(n * 100);
+  const box = eurToCents(req.body?.boxEur);
+  const booster = eurToCents(req.body?.boosterEur);
+  if (box === undefined || booster === undefined) {
+    return res.status(400).json({ error: "Ungültiger Preis" });
   }
-  setBoxPriceStmt.run(cents, req.params.setId);
-  res.json({ box_price_cents: cents });
+  setPricesStmt.run(box, booster, new Date().toISOString(), req.params.setId);
+  res.json({ box_price_cents: box, booster_price_cents: booster });
 });
 
 // GET /api/sets/:setId/pull-rates -> öffentlich. { chaseHitRatePct, rarities: [...] }

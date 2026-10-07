@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct, updateSetBoxPrice, getPullRates, updatePullRates } from "../api.js";
+import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct, updateSetPrices, getPullRates, updatePullRates } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
@@ -160,7 +160,7 @@ export default function SetDetail() {
           top20Value={top20Value}
           top20Count={top20.length}
           canEdit={!!user?.is_operator}
-          onSaved={(cents) => setSet((s) => ({ ...s, box_price_cents: cents }))}
+          onSaved={(prices) => setSet((s) => ({ ...s, ...prices }))}
         />
       )}
 
@@ -299,72 +299,98 @@ export default function SetDetail() {
   );
 }
 
-// Booster-Box-Preis (nur Betreiber editierbar, keine freie API-Quelle dafür)
-// + Vergleich mit dem Wert der 20 teuersten Karten im Set.
+// Box- und Boosterpreis (nur Betreiber editierbar, keine freie API-Quelle
+// dafür) + Vergleich mit dem Wert der 20 teuersten Karten im Set. Sondersets
+// ohne Display (30th Celebration, Black Bolt, ...) haben nur einen Booster-
+// preis - deshalb beides optional.
 function BoxValueSection({ set, top20Value, top20Count, canEdit, onSaved }) {
+  const centsToInput = (c) => (c != null ? (c / 100).toFixed(2) : "");
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(
-    set.box_price_cents != null ? (set.box_price_cents / 100).toFixed(2) : ""
-  );
+  const [box, setBox] = useState(centsToInput(set.box_price_cents));
+  const [booster, setBooster] = useState(centsToInput(set.booster_price_cents));
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
     try {
-      const { box_price_cents } = await updateSetBoxPrice(set.id, value.trim() ? value.trim() : null);
-      onSaved(box_price_cents);
+      const res = await updateSetPrices(set.id, {
+        boxEur: box.trim() || null,
+        boosterEur: booster.trim() || null,
+      });
+      onSaved({ box_price_cents: res.box_price_cents, booster_price_cents: res.booster_price_cents });
       setEditing(false);
     } finally {
       setSaving(false);
     }
   }
 
-  const boxPriceEur = set.box_price_cents != null ? set.box_price_cents / 100 : null;
-  const ratioPct = boxPriceEur && top20Count ? (top20Value / boxPriceEur) * 100 : null;
+  const boxEur = set.box_price_cents != null ? set.box_price_cents / 100 : null;
+  const boosterEur = set.booster_price_cents != null ? set.booster_price_cents / 100 : null;
+  const boxRatio = boxEur && top20Count ? (top20Value / boxEur) * 100 : null;
+  const boosterRatio = boosterEur && top20Count ? top20Value / boosterEur : null;
 
-  if (!canEdit && boxPriceEur == null) return null;
+  if (!canEdit && boxEur == null && boosterEur == null) return null;
+
+  const field = (label, value, setValue, placeholder) => (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="text-subtle w-24">{label}</span>
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && save()}
+        placeholder={placeholder}
+        className="border border-line rounded-full px-3 py-1 text-sm bg-canvas w-28 focus:outline-none focus:border-ink"
+      />
+      <span className="text-subtle">€</span>
+    </label>
+  );
 
   return (
     <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
-      <p className="text-sm font-medium mb-2">📦 Booster Box</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-medium">📦 Display &amp; Booster</p>
+        {canEdit && !editing && (
+          <button onClick={() => setEditing(true)} className="text-xs text-subtle hover:text-ink underline">
+            {boxEur != null || boosterEur != null ? "ändern" : "eintragen"}
+          </button>
+        )}
+      </div>
       {editing ? (
-        <div className="flex items-center gap-2">
-          <input
-            autoFocus
-            type="number"
-            step="0.01"
-            min="0"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && save()}
-            placeholder="z. B. 109.90"
-            className="border border-line rounded-full px-3 py-1 text-sm bg-canvas w-28 focus:outline-none focus:border-ink"
-          />
-          <span className="text-sm text-subtle">€</span>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="text-sm bg-yellow text-yellowInk px-3 py-1 rounded-full disabled:opacity-60"
-          >
-            {saving ? "…" : "Speichern"}
-          </button>
-          <button onClick={() => setEditing(false)} className="text-sm text-subtle">
-            Abbrechen
-          </button>
+        <div className="space-y-2">
+          {field("Boxpreis", box, setBox, "leer bei Sets ohne Display")}
+          {field("Boosterpreis", booster, setBooster, "z. B. 4.90")}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={save}
+              disabled={saving}
+              className="text-sm bg-yellow text-yellowInk px-3 py-1 rounded-full disabled:opacity-60"
+            >
+              {saving ? "…" : "Speichern"}
+            </button>
+            <button onClick={() => setEditing(false)} className="text-sm text-subtle">
+              Abbrechen
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
           <p>
             <span className="text-subtle">Boxpreis: </span>
-            {boxPriceEur != null ? (
-              <span className="font-mono">{eur(boxPriceEur)}</span>
+            {boxEur != null ? (
+              <span className="font-mono">{eur(boxEur)}</span>
+            ) : (
+              <span className="text-subtle">kein Display</span>
+            )}
+          </p>
+          <p>
+            <span className="text-subtle">Boosterpreis: </span>
+            {boosterEur != null ? (
+              <span className="font-mono">{eur(boosterEur)}</span>
             ) : (
               <span className="text-subtle">nicht hinterlegt</span>
-            )}
-            {canEdit && (
-              <button onClick={() => setEditing(true)} className="ml-2 text-xs text-subtle hover:text-ink underline">
-                {boxPriceEur != null ? "ändern" : "eintragen"}
-              </button>
             )}
           </p>
           {top20Count > 0 && (
@@ -373,11 +399,17 @@ function BoxValueSection({ set, top20Value, top20Count, canEdit, onSaved }) {
               <span className="font-mono">{eur(top20Value)}</span>
             </p>
           )}
-          {ratioPct != null && (
+          {boxRatio != null && (
             <p>
-              <span className="text-subtle">Verhältnis: </span>
-              <span className="font-mono">{ratioPct.toFixed(0)} %</span>
+              <span className="font-mono">{boxRatio.toFixed(0)} %</span>
               <span className="text-subtle"> des Boxpreises</span>
+            </p>
+          )}
+          {boosterRatio != null && (
+            <p>
+              <span className="text-subtle">entspricht </span>
+              <span className="font-mono">{boosterRatio.toFixed(1)}</span>
+              <span className="text-subtle"> Boostern</span>
             </p>
           )}
         </div>

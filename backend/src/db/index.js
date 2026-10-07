@@ -389,6 +389,17 @@ if (!csColumns.has("box_price_cents")) {
   db.exec(`ALTER TABLE card_sets ADD COLUMN box_price_cents INTEGER`);
 }
 
+// Sondersets (30th Celebration, Black Bolt, ...) gibt es ohne Display - dort
+// ist der Preis eines einzelnen Boosters die vergleichbare Größe.
+// prices_updated_at: wann der Betreiber Box-/Boosterpreis zuletzt gepflegt
+// hat - für die wöchentliche Erinnerung ("veraltet").
+if (!csColumns.has("booster_price_cents")) {
+  db.exec(`ALTER TABLE card_sets ADD COLUMN booster_price_cents INTEGER`);
+}
+if (!csColumns.has("prices_updated_at")) {
+  db.exec(`ALTER TABLE card_sets ADD COLUMN prices_updated_at TEXT`);
+}
+
 // card_sets.chase_hit_rate_pct: "Chance auf mind. 1 Chase-Karte pro Pack"
 // in Prozent, von Hand gepflegt - gehört inhaltlich zu den Pull Rates
 // (pull_rates-Tabelle), aber ist ein Wert pro SET statt pro Seltenheit.
