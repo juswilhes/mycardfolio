@@ -118,6 +118,7 @@ export const getSetMomentum = (days = 30) => request(`/stats/set-momentum?days=$
 export const getThawing = () => request("/stats/thawing");
 export const getSetsOverview = () => request("/stats/sets-overview");
 export const getSetValueAnalysis = () => request("/stats/set-value");
+export const getPullRateOverview = () => request("/stats/pull-rates");
 
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");

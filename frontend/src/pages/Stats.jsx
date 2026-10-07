@@ -5,6 +5,7 @@ import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import MarketMovers from "../components/MarketMovers.jsx";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
+import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const eur0 = (n) =>
@@ -62,6 +63,7 @@ function BarList({ rows, total }) {
 const ANALYSES = [
   { id: "markt", label: "Markt", render: () => <MarketMovers /> },
   { id: "display", label: "Display & Booster", render: () => <SetValueAnalysis /> },
+  { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
   { id: "sammlung", label: "Meine Sammlung", render: () => <CollectionStats /> },
 ];
 

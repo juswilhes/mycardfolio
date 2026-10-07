@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing, getSetsOverview, getSetValueAnalysis } from "../services/marketStats.js";
+import { getMarketMovers, getTrackedSets, getWatchlistMovers, getSetMomentum, getThawing, getSetsOverview, getSetValueAnalysis, getPullRateOverview } from "../services/marketStats.js";
 import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
@@ -40,6 +40,11 @@ router.get("/thawing", (_req, res) => {
 // zufällig angesehene Karten
 router.get("/sets-overview", (_req, res) => {
   res.json(getSetsOverview());
+});
+
+// GET /api/stats/pull-rates -> Pull Rates aller Sets, bei denen welche hinterlegt sind
+router.get("/pull-rates", (_req, res) => {
+  res.json(getPullRateOverview());
 });
 
 // GET /api/stats/set-value -> Box-/Boosterpreis vs. Top-20-Kartenwert je Set

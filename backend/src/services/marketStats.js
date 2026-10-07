@@ -141,6 +141,33 @@ export function getSetValueAnalysis() {
   return [...bySet.values()].map((s) => ({ ...s, top20Value: Math.round(s.top20Value * 100) / 100 }));
 }
 
+// Analyse "Pull Rates": alle Sets mit hinterlegten Pull Rates (von Hand
+// gepflegt, siehe routes/sets.js) - das Frontend baut daraus die Matrix
+// Seltenheit x Set.
+const pullRateRowsStmt = db.prepare(`
+  SELECT cs.id, cs.name, cs.series, cs.release_date, cs.chase_hit_rate_pct,
+         pr.rarity, pr.any_denominator, pr.specific_denominator
+  FROM card_sets cs
+  LEFT JOIN pull_rates pr ON pr.set_id = cs.id
+  WHERE cs.chase_hit_rate_pct IS NOT NULL OR pr.id IS NOT NULL
+  ORDER BY cs.release_date DESC, cs.id
+`);
+
+export function getPullRateOverview() {
+  const bySet = new Map();
+  for (const r of pullRateRowsStmt.all()) {
+    let s = bySet.get(r.id);
+    if (!s) {
+      s = { id: r.id, name: r.name, series: r.series, release_date: r.release_date, chaseHitRatePct: r.chase_hit_rate_pct, rarities: [] };
+      bySet.set(r.id, s);
+    }
+    if (r.rarity) {
+      s.rarities.push({ rarity: r.rarity, anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator });
+    }
+  }
+  return [...bySet.values()];
+}
+
 export function getSetsOverview() {
   return setsOverviewStmt.all().map((s) => ({
     id: s.id,
