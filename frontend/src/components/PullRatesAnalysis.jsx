@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getPullRateOverview } from "../api.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import PullRateEditor from "./PullRateEditor.jsx";
 
 // Die Schreibweise der Seltenheiten ist je Set uneinheitlich ("Illustration
 // rare" / "Illustration Rare") - für die Zeilen der Matrix zählt die
@@ -30,10 +32,14 @@ const median = (arr) => {
 // keine offizielle Quelle. "1/205" = im Schnitt jedes 205. Pack enthält
 // genau diese eine Karte; "jede" = irgendeine Karte dieser Seltenheit.
 export default function PullRatesAnalysis() {
+  const { user } = useAuth();
+  const canEdit = !!user?.is_operator;
   const [sets, setSets] = useState(null);
+  const [editing, setEditing] = useState(false);
 
+  const load = () => getPullRateOverview().then(setSets).catch(() => setSets([]));
   useEffect(() => {
-    getPullRateOverview().then(setSets).catch(() => setSets([]));
+    load();
   }, []);
 
   const matrix = useMemo(() => {
@@ -63,11 +69,24 @@ export default function PullRatesAnalysis() {
 
   if (sets === null) return <p className="text-subtle text-sm">Lade Pull Rates …</p>;
 
+  const editorToggle = canEdit && (
+    <div className="mb-4">
+      <button
+        onClick={() => setEditing((v) => !v)}
+        className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink"
+      >
+        {editing ? "Pflege schließen" : "✏️ Pull Rates pflegen"}
+      </button>
+    </div>
+  );
+
   if (sets.length === 0) {
     return (
-      <p className="text-subtle text-sm">
-        Noch keine Pull Rates hinterlegt. Du trägst sie auf der jeweiligen Set-Seite ein (Block „Pull Rates").
-      </p>
+      <div>
+        {editorToggle}
+        {editing && <PullRateEditor onSaved={load} />}
+        <p className="text-subtle text-sm">Noch keine Pull Rates hinterlegt.</p>
+      </div>
     );
   }
 
@@ -75,6 +94,9 @@ export default function PullRatesAnalysis() {
 
   return (
     <div className="mb-10">
+      {editorToggle}
+      {editing && <PullRateEditor onSaved={load} />}
+
       <h2 className="text-sm font-medium mb-1">🎯 Pull Rates im Vergleich</h2>
       <p className="text-xs text-subtle mb-3">
         Wie wahrscheinlich ist eine bestimmte Karte einer Seltenheit pro Pack? <b>1/205</b> heißt: im Schnitt

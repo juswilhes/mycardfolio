@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
+import SegmentedToggle from "../components/SegmentedToggle.jsx";
 
 // "Alle Karten": oben die Kartensuche – funktioniert auch ohne Konto.
 // Darunter, solange nichts gesucht wird, die Set-Übersicht. Zur Sammlung
@@ -152,24 +153,14 @@ export default function AllCards() {
       </form>
 
       {!isSearching && (
-        <div className="inline-flex rounded-full border border-line p-0.5 mb-6 text-sm">
-          <button
-            onClick={() => setView("sets")}
-            className={`px-3 py-1.5 rounded-full ${
-              view === "sets" ? "bg-yellow text-yellowInk font-medium" : "text-subtle hover:text-ink"
-            }`}
-          >
-            Alle Sets
-          </button>
-          <button
-            onClick={() => setView("movers")}
-            className={`px-3 py-1.5 rounded-full ${
-              view === "movers" ? "bg-yellow text-yellowInk font-medium" : "text-subtle hover:text-ink"
-            }`}
-          >
-            📈 Preisbewegungen
-          </button>
-        </div>
+        <SegmentedToggle
+          options={[
+            { id: "sets", label: "Alle Sets" },
+            { id: "movers", label: "📈 Preisbewegungen" },
+          ]}
+          value={view}
+          onChange={setView}
+        />
       )}
 
       {isSearching ? (

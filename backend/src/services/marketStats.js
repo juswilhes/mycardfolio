@@ -103,7 +103,8 @@ const topCardForSetStmt = db.prepare(`
 // Die Verhältnisse (Top 20 vs. Box/Booster) rechnet das Frontend.
 const setValueRowsStmt = db.prepare(`
   SELECT cs.id, cs.name, cs.series, cs.release_date, cs.logo,
-         cs.box_price_cents, cs.booster_price_cents, cs.prices_updated_at, lp.price
+         cs.box_price_cents, cs.booster_price_cents, cs.prices_updated_at,
+         c.external_id, c.name AS card_name, c.image_small, lp.price
   FROM card_sets cs
   LEFT JOIN cards c ON c.set_id = cs.id
   LEFT JOIN (${cardCurrentPriceSubquery}) lp ON lp.card_id = c.id
@@ -111,7 +112,24 @@ const setValueRowsStmt = db.prepare(`
   ORDER BY cs.id, lp.price DESC
 `);
 
+const setValueHistoryStmt = db.prepare(`
+  SELECT set_id, month, box_price_cents, booster_price_cents, top20_value, top20_count
+  FROM set_value_snapshots ORDER BY month
+`);
+
 export function getSetValueAnalysis() {
+  const history = new Map();
+  for (const h of setValueHistoryStmt.all()) {
+    if (!history.has(h.set_id)) history.set(h.set_id, []);
+    history.get(h.set_id).push({
+      month: h.month,
+      boxPriceCents: h.box_price_cents,
+      boosterPriceCents: h.booster_price_cents,
+      top20Value: h.top20_value,
+      top20Count: h.top20_count,
+    });
+  }
+
   const bySet = new Map();
   for (const r of setValueRowsStmt.all()) {
     let s = bySet.get(r.id);
@@ -128,6 +146,8 @@ export function getSetValueAnalysis() {
         top20Value: 0,
         top20Count: 0,
         pricedCards: 0,
+        topCards: [],
+        history: history.get(r.id) ?? [],
       };
       bySet.set(r.id, s);
     }
@@ -136,6 +156,12 @@ export function getSetValueAnalysis() {
     if (s.top20Count < 20) {
       s.top20Value += r.price;
       s.top20Count++;
+      s.topCards.push({
+        external_id: r.external_id,
+        name: r.card_name,
+        image_small: r.image_small,
+        price: Math.round(r.price * 100) / 100,
+      });
     }
   }
   return [...bySet.values()].map((s) => ({ ...s, top20Value: Math.round(s.top20Value * 100) / 100 }));

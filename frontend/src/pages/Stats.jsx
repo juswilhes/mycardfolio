@@ -6,6 +6,7 @@ import MarketMovers from "../components/MarketMovers.jsx";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
+import SegmentedToggle from "../components/SegmentedToggle.jsx";
 
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const eur0 = (n) =>
@@ -78,19 +79,11 @@ export default function Stats() {
     <div>
       <h1 className="text-xl font-semibold mb-4">Analyse</h1>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {ANALYSES.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setParams({ a: a.id }, { replace: true })}
-            className={`text-sm px-4 py-2 rounded-full border ${
-              current.id === a.id ? "border-ink text-ink font-medium" : "border-line text-subtle hover:border-ink"
-            }`}
-          >
-            {a.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedToggle
+        options={ANALYSES.map(({ id, label }) => ({ id, label }))}
+        value={current.id}
+        onChange={(id) => setParams({ a: id }, { replace: true })}
+      />
 
       {current.render()}
     </div>

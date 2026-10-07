@@ -9,7 +9,6 @@ import {
   latestPriceByExternalId,
   upsertCardRow,
   recordPrices,
-  pullRateForExternalId,
 } from "../services/cardService.js";
 import {
   searchCardsLocal,
@@ -67,7 +66,6 @@ router.get("/external/:externalId", async (req, res) => {
       price_breakdown: breakdown,
       cardmarket_updated: meta?.updated ?? dbMeta?.cardmarket_updated ?? null,
       cardmarket_url: cardmarketUrl(meta?.productId ?? dbMeta?.cardmarket_product_id ?? null),
-      pull_rate: pullRateForExternalId(externalId),
     });
   }
 

@@ -24,6 +24,7 @@ import { authRequired } from "./middleware/auth.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, refreshAllPrices } from "./services/priceFetcher.js";
 import { scheduleMissingPriceBackfill, backfillAllMissingPrices } from "./services/setPriceBackfill.js";
+import { scheduleSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
 import db from "./db/index.js";
@@ -164,6 +165,7 @@ app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
   scheduleMissingPriceBackfill();
+  scheduleSetValueSnapshots();
   // auch sofort beim Start einmal laufen lassen, nicht nur um 3 Uhr nachts -
   // sonst müsste man nach jedem Deploy bis zu 24h auf den nächsten Lauf
   // warten. Im Dauerbetrieb ist das ein No-Op (keine Karte ohne Preis mehr),

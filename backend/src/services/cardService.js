@@ -207,20 +207,6 @@ export const cardMetaByExternalId = db.prepare(`
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
 
-// Pull Rate für GENAU DIE Seltenheit dieser Karte in ihrem Set (von Hand
-// gepflegt, siehe routes/sets.js PATCH .../pull-rates). null, wenn für
-// diese Seltenheit/dieses Set noch nichts hinterlegt ist.
-const pullRateForCardStmt = db.prepare(`
-  SELECT pr.any_denominator, pr.specific_denominator
-  FROM cards c
-  JOIN pull_rates pr ON pr.set_id = c.set_id AND pr.rarity = c.rarity
-  WHERE c.external_id = ?
-`);
-export function pullRateForExternalId(externalId) {
-  const r = pullRateForCardStmt.get(externalId);
-  return r ? { anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator } : null;
-}
-
 export function latestTrendByExternal(externalId, variant = "normal") {
   const row = cardIdForExternal.get(externalId);
   return row ? latestTrend(row.id, variant) : null;

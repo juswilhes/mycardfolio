@@ -208,16 +208,6 @@ export default function CardInfo() {
 
   const kartentyp = [card.supertype, (card.types ?? []).join("/")].filter(Boolean).join(" · ");
 
-  const pullRate = card.pull_rate;
-  const pullRateText = pullRate
-    ? [
-        pullRate.specificDenominator != null ? `1 von ${pullRate.specificDenominator} Packs` : null,
-        pullRate.anyDenominator != null ? `jede ${card.rarity}: 1 von ${pullRate.anyDenominator}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : null;
-
   const facts = [
     ["Seltenheit", card.rarity],
     ["Kartennummer", card.number ? `#${card.number}` : null],
@@ -225,7 +215,6 @@ export default function CardInfo() {
     ["Erscheinungsjahr", card.year],
     ["Set", card.set_name],
     ["Pokédex-Nr.", (card.national_pokedex ?? []).join(", ")],
-    ["🎯 Pull Rate", pullRateText],
   ].filter(([, v]) => v);
 
   const price = card.latest_price?.price ?? null;

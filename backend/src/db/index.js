@@ -319,6 +319,22 @@ CREATE TABLE IF NOT EXISTS pull_rates (
   created_at         TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(set_id, rarity)
 );
+
+-- Verlauf "Booster/Box vs. Top-20-Karten": je Set und Monat ein Stand (Preise
+-- zum Zeitpunkt + Wert der 20 teuersten Karten). Wird am 1. jedes Monats
+-- geschrieben (siehe services/setValueSnapshots.js) - die Karten- und
+-- Boosterpreise ändern sich, ohne Snapshots gäbe es keinen Verlauf.
+CREATE TABLE IF NOT EXISTS set_value_snapshots (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id              TEXT NOT NULL REFERENCES card_sets(id),
+  month               TEXT NOT NULL,           -- YYYY-MM
+  captured_on         TEXT NOT NULL,           -- YYYY-MM-DD
+  box_price_cents     INTEGER,
+  booster_price_cents INTEGER,
+  top20_value         REAL NOT NULL,
+  top20_count         INTEGER NOT NULL,
+  UNIQUE(set_id, month)
+);
 `);
 
 // --- Migrationen --------------------------------------------------------

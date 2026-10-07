@@ -33,8 +33,10 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - Registrierung ist auf dem Server geschlossen (`REGISTRATION_OPEN=false`).
 
 ## Analyse-Seite
-- Nav-Punkt "Analyse" (`/analyse`, früher "Statistik"): Auswahl verschiedener Analysen. Neue Analyse = neuer Eintrag in `ANALYSES` in `frontend/src/pages/Stats.jsx` (+ Komponente, ggf. Endpunkt unter `/api/stats`). "Meine Sammlung" bleibt in jedem Fall erhalten.
-- "Display & Booster": Box-/Boosterpreis pro Set trägt der Betreiber von Hand auf der Set-Seite ein (`PATCH /api/sets/:id/prices`); Sondersets ohne Display (30th Celebration, Black Bolt) haben nur einen Boosterpreis.
+- Nav-Punkt "Analyse" (`/analyse`, früher "Statistik"): Auswahl verschiedener Analysen. Neue Analyse = neuer Eintrag in `ANALYSES` in `frontend/src/pages/Stats.jsx` (+ Komponente, ggf. Endpunkt unter `/api/stats`). "Meine Sammlung" bleibt in jedem Fall erhalten. Umschalter = `SegmentedToggle` (gleich wie bei "Alle Karten").
+- **Regel (Justus):** Alles, was zu einer Analyse gehört, steht NUR unter "Analyse" - nicht zusätzlich auf Set- oder Kartenseiten. Auch die Pflege der Daten (Betreiber-Ansicht) passiert dort.
+- "Display & Booster": Box-/Boosterpreis pro Set pflegt der Betreiber von Hand in der Analyse (`PATCH /api/sets/:id/prices`); Sondersets ohne Display (30th Celebration, Black Bolt) haben nur einen Boosterpreis. Klick auf ein Set zeigt die 20 teuersten Karten. Verlauf: Tabelle `set_value_snapshots`, ein Stand je Set und Monat, geschrieben per Cron am 1. (4 Uhr), beim Serverstart nachgeholt und bei Preisänderung für den laufenden Monat aktualisiert (`services/setValueSnapshots.js`).
+- "Pull Rates": Matrix Seltenheit x Set, Daten von Hand (`pull_rates`, `PATCH /api/sets/:id/pull-rates`), Pflege über "Pull Rates pflegen" in der Analyse.
 
 ## Offene Punkte
 Meta-Tags/Canonical pro Seite (SEO), DSGVO-Export um Marktplatzdaten erweitern, Wunschliste + Watchlist zusammenlegen, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.
