@@ -112,6 +112,7 @@ export const getSetValueAnalysis = () => request("/stats/set-value");
 export const getPullRateOverview = () => request("/stats/pull-rates");
 export const getPackValueAnalysis = () => request("/stats/pack-value");
 export const getPullOrBuy = () => request("/stats/pull-or-buy");
+export const getSetRanking = () => request("/stats/set-ranking");
 
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");

@@ -277,6 +277,34 @@ export function getPackValueAnalysis() {
   });
 }
 
+// Analyse "Set-Rangliste": Hit Rate, Wert pro Pack und Top-20-Wert je Set in
+// einer Zeile - setzt nur die drei fertigen Auswertungen zusammen. Das
+// Verhältnis zum Boosterpreis rechnet das Frontend.
+export function buildSetRanking(setValue, pullRates, packValue) {
+  const sets = new Map();
+  const get = (id, base) => {
+    if (!sets.has(id)) {
+      sets.set(id, { id, name: base.name, release_date: base.release_date, hitRatePct: null, packValue: null, boosterPriceCents: null, top20Value: null, top20Count: 0, topCard: null });
+    }
+    return sets.get(id);
+  };
+  for (const s of pullRates) {
+    Object.assign(get(s.id, s), { hitRatePct: s.hitRatePct, hitRateComplete: s.hitRateComplete });
+  }
+  for (const s of packValue) {
+    Object.assign(get(s.id, s), { packValue: s.packValue, packComplete: s.complete, boosterPriceCents: s.boosterPriceCents });
+  }
+  for (const s of setValue) {
+    const row = get(s.id, s);
+    row.boosterPriceCents = s.boosterPriceCents ?? row.boosterPriceCents;
+    Object.assign(row, { top20Value: s.top20Value, top20Count: s.top20Count });
+    const top = s.topCards[0];
+    row.topCard = top ? { external_id: top.external_id, name: top.name, price: top.price } : null;
+  }
+  // Nur Sets, für die die Pull Rates vorliegen - ohne sie ist kein fairer Vergleich möglich
+  return [...sets.values()].filter((r) => r.hitRatePct != null || r.packValue != null);
+}
+
 // Analyse "Ziehen oder kaufen": je Set die Chase-Karten (Seltenheiten mit
 // hinterlegter Quote pro Karte, ohne NO_HIT_RARITIES) mit aktuellem Preis. Wie
 // viele Packs im Schnitt nötig sind und was das kostet, rechnet das Frontend

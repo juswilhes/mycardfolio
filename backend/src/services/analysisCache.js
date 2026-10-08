@@ -5,6 +5,7 @@ import {
   getPullOrBuy,
   getMarketMovers,
   resetMoversCache,
+  buildSetRanking,
 } from "./marketStats.js";
 
 // Die Auswertungen der Analyse werden nicht bei jedem Seitenaufruf neu
@@ -19,12 +20,23 @@ const BUILDERS = {
   packValue: getPackValueAnalysis,
   pullOrBuy: getPullOrBuy,
 };
+// Setzt sich aus den Auswertungen oben zusammen (wird danach gerechnet).
+const DERIVED = {
+  setRanking: () => buildSetRanking(analysis("setValue"), analysis("pullRates"), analysis("packValue")),
+};
 const MOVER_DAYS = [7, 30, 120];
 
 const cache = new Map();
 
 export function rebuildAnalysisCache() {
   for (const [name, build] of Object.entries(BUILDERS)) {
+    try {
+      cache.set(name, build());
+    } catch (e) {
+      console.error(`[analyse] ${name} konnte nicht berechnet werden:`, e);
+    }
+  }
+  for (const [name, build] of Object.entries(DERIVED)) {
     try {
       cache.set(name, build());
     } catch (e) {
@@ -45,6 +57,6 @@ export function rebuildAnalysisCache() {
 // Liefert die gespeicherte Auswertung (beim ersten Zugriff ohne Stand wird sie
 // einmal berechnet).
 export function analysis(name) {
-  if (!cache.has(name)) cache.set(name, BUILDERS[name]());
+  if (!cache.has(name)) cache.set(name, (BUILDERS[name] ?? DERIVED[name])());
   return cache.get(name);
 }

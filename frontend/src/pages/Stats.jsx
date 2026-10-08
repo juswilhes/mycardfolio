@@ -7,6 +7,7 @@ import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
 import PackValueAnalysis from "../components/PackValueAnalysis.jsx";
 import PullOrBuyAnalysis from "../components/PullOrBuyAnalysis.jsx";
+import SetRanking from "../components/SetRanking.jsx";
 import SegmentedToggle from "../components/SegmentedToggle.jsx";
 import { eur, eur0 } from "../lib/format.js";
 
@@ -65,6 +66,7 @@ const ANALYSES = [
   { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
   { id: "packwert", label: "Wert pro Pack", render: () => <PackValueAnalysis /> },
   { id: "ziehenkaufen", label: "Ziehen oder kaufen", render: () => <PullOrBuyAnalysis /> },
+  { id: "rangliste", label: "Set-Rangliste", render: () => <SetRanking /> },
 ];
 
 // Route: /analyse – Auswahl verschiedener Analysen (marktweit oder auf die

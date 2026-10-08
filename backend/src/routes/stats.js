@@ -29,6 +29,11 @@ router.get("/pull-or-buy", (_req, res) => {
   res.json(analysis("pullOrBuy"));
 });
 
+// GET /api/stats/set-ranking -> Hit Rate, Wert pro Pack, Top 20 je Set (Set-Rangliste)
+router.get("/set-ranking", (_req, res) => {
+  res.json(analysis("setRanking"));
+});
+
 // GET /api/stats/set-value -> Box-/Boosterpreis vs. Top-20-Kartenwert je Set
 router.get("/set-value", (_req, res) => {
   res.json(analysis("setValue"));
