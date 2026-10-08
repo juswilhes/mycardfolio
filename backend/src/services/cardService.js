@@ -83,6 +83,33 @@ export const listCollection = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const round2 = (x) => Math.round(x * 100) / 100;
 
+// Ausreißer-Filter: Der Cardmarket-Trend springt bei dünnem Handel gelegentlich
+// für einen einzelnen Tag weit weg (z. B. 36 € -> 85 € -> 36 €), obwohl sich
+// der Marktpreis nicht so bewegt hat. Ein Punkt gilt als Ausreißer, wenn er
+// sich gegenüber dem Vortag um mehr als SPIKE_FACTOR verändert UND der nächste
+// Tag wieder näher am alten Niveau liegt. Er wird dann durch den Vortagswert
+// ersetzt. Hält das neue Niveau (nächster Tag ähnlich), ist es ein echter
+// Sprung und bleibt. Der jüngste Punkt kann noch nicht bestätigt werden: bei
+// einem solchen Sprung zeigen wir bis zur nächsten Nacht den Vortagswert.
+// Gespeichert bleiben immer die Rohdaten. Preise unter SPIKE_MIN_PRICE sind
+// zu klein für sinnvolle Prozentwerte.
+const SPIKE_FACTOR = 1.4;
+const SPIKE_MIN_PRICE = 2;
+const ratio = (a, b) => Math.max(a / b, b / a);
+
+function despike(points) {
+  const out = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const prev = out[out.length - 1]; // schon bereinigter Vortag
+    const next = points[i + 1];
+    const jumped = prev && Math.max(p.price, prev.price) >= SPIKE_MIN_PRICE && ratio(p.price, prev.price) > SPIKE_FACTOR;
+    const reverts = !next || ratio(next.price, prev?.price ?? next.price) < ratio(next.price, p.price);
+    out.push(jumped && reverts ? { ...p, price: prev.price } : p);
+  }
+  return out;
+}
+
 // Preisreihe einer Karte = die echten Tageswerte (Cardmarket-Trend). Der
 // Graph zeigt genau diese Reihe, und der "Aktuelle Preis" ist ihr letzter
 // Punkt - deshalb stimmen beide immer überein. Der 30-Tage-Schnitt (avg30)
@@ -98,7 +125,7 @@ function priceSeriesFrom(rows) {
   const series = [];
   for (const [variant, list] of byVariant) {
     const cm = list.filter((r) => r.source === "cardmarket");
-    series.push({ variant, points: cm.length ? cm : list });
+    series.push({ variant, points: despike(cm.length ? cm : list) });
   }
   return series;
 }
@@ -152,13 +179,15 @@ export function cardmarketBreakdown(cardId) {
 }
 
 // Tagespunkte (Variante 'normal', ohne Quellen-Vorrang) für Preisbewegungen
-// (marketStats.js) und Portfolio-Bewegung.
-export const priceHistoryForCard = db.prepare(`
+// (marketStats.js) und Portfolio-Bewegung - ebenfalls ohne Ausreißer, damit
+// überall dieselben Preise gelten.
+const normalTrendStmt = db.prepare(`
   SELECT price, currency, price_type, source, fetched_at
   FROM price_snapshots
   WHERE card_id = ? AND price_type = 'trend' AND variant = 'normal'
   ORDER BY fetched_at ASC
 `);
+export const priceHistoryForCard = { all: (cardId) => despike(normalTrendStmt.all(cardId)) };
 
 // Illustrator manuell setzen. artist_manual = 1 schützt den Wert davor,
 // beim nächsten `npm run import` überschrieben zu werden.
