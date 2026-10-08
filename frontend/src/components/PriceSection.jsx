@@ -3,7 +3,7 @@ import { eur } from "../lib/format.js";
 
 const VARIANT_LABEL = { holo: "Holo", reverse: "Reverse Holo" };
 
-// Aktueller Preis einer Variante = letzter Punkt ihrer Preisreihe (der Graph
+// Aktueller Preis einer Variante = letzter Tageswert ihrer Reihe (der Graph
 // zeigt dieselbe Reihe, deshalb stimmen beide immer überein). Für "normal"
 // kommt er schon vom Server (card.latest_price) - hier für die Sonder-Variante.
 function lastPrice(history, variant) {
@@ -56,9 +56,10 @@ export default function PriceSection({ card, history }) {
   // vorhandene Sonder-Variante im Breakdown suchen statt fix "holo".
   const specialVariant = breakdown.find((b) => b.variant === "reverse") ? "reverse" : "holo";
   const specialPrice = lastPrice(history, specialVariant);
-  // card.latest_price = letzter Punkt der Preisreihe (cardService.js latestTrend)
-  // - byType.trend nur als letzter Notnagel, falls der Server mal nichts liefert.
+  // card.latest_price = letzter Tageswert (cardService.js latestTrend), avg30 =
+  // Zusatzinfo. byType.trend nur als Notnagel, falls der Server mal nichts liefert.
   const headline = card.latest_price?.price ?? byType.trend ?? null;
+  const avg30 = card.latest_price?.avg30 ?? null;
   const basis = card.latest_price?.source ?? (breakdown.length ? "cardmarket" : null);
 
   const updated = card.cardmarket_updated
@@ -84,6 +85,9 @@ export default function PriceSection({ card, history }) {
           <p className="text-3xl font-semibold font-mono">
             {headline != null ? eur(headline) : "—"}
           </p>
+          {avg30 != null && (
+            <p className="text-subtle text-xs mt-0.5">Ø 30 Tage: <span className="font-mono">{eur(avg30)}</span></p>
+          )}
         </div>
       </div>
 
@@ -147,15 +151,11 @@ export default function PriceSection({ card, history }) {
         <summary className="cursor-pointer hover:text-ink">Wie kommt der Preis zustande?</summary>
         <div className="mt-2 space-y-1.5 leading-relaxed">
           <p>
-            Der <b>Aktuelle Preis</b> ist NICHT Cardmarkts einzelner
-            Tageswert ("Trend"), sondern unser eigener Durchschnitt aus allen
-            Tagespreisen, die wir in den letzten 30 Tagen selbst gesammelt
-            haben. Das macht den Preis robuster: ein einzelner schlecht
-            getroffener Tag (z.B. eine kurzzeitig falsch zugeordnete Karte)
-            verzerrt dann nicht mehr den angezeigten Wert. Der Graph darunter
-            zeigt genau diese Reihe – sein letzter Punkt ist der aktuelle
-            Preis. (Den „Tiefstpreis" zeigen wir bewusst nicht an – der ist
-            oft nur ein einzelnes Schnäppchen-Angebot.)
+            Der <b>Aktuelle Preis</b> ist der neueste Cardmarkt-Tageswert
+            („Trend") – der letzte Punkt im Graphen. Darunter steht als
+            Zusatzinfo der <b>Durchschnitt der letzten 30 Tage</b>, er glättet
+            einzelne Ausreißer. (Den „Tiefstpreis" zeigen wir bewusst nicht
+            an – der ist oft nur ein einzelnes Schnäppchen-Angebot.)
           </p>
           <p>
             Es ist der Preis der <b>englischen</b> Karte. Für die deutsche

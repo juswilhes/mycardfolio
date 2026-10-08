@@ -64,8 +64,8 @@ router.get("/external/:externalId", async (req, res) => {
   }
 });
 
-// GET /api/cards/external/:externalId/prices -> Preisreihe (gleitender 30-Tage-
-// Schnitt, EUR) für den Graphen; ihr letzter Punkt ist der "Aktuelle Preis".
+// GET /api/cards/external/:externalId/prices -> Preisreihe (Tageswerte, EUR)
+// für den Graphen; ihr letzter Punkt ist der "Aktuelle Preis".
 router.get("/external/:externalId/prices", (req, res) => {
   res.json(priceHistoryByExternal(req.params.externalId));
 });

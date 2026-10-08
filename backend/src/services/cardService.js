@@ -83,29 +83,12 @@ export const listCollection = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const round2 = (x) => Math.round(x * 100) / 100;
 
-// DIE Preisreihe einer Karte: gleitender 30-Tage-Durchschnitt. Zu jedem
-// Tagespunkt der Schnitt aller Punkte der 30 Tage bis einschließlich dieses
-// Punktes - NICHT Cardmarkets einzelner Trend- oder avg30-Wert. Ein einzelner
-// schlecht getroffener Tag (z.B. eine kurz falsch zugeordnete Karte) fällt so
-// weniger ins Gewicht. Der Graph auf der Kartenseite zeigt diese Reihe, und
-// der "Aktuelle Preis" ist ihr letzter Punkt - deshalb stimmen beide immer
-// überein. Zeilen: EINE Karte + Variante, älteste zuerst.
-export function rollingAvg30(rows) {
-  const out = [];
-  let start = 0;
-  for (let i = 0; i < rows.length; i++) {
-    const t = Date.parse(rows[i].fetched_at);
-    while (Date.parse(rows[start].fetched_at) <= t - 30 * DAY_MS) start++;
-    let sum = 0;
-    for (let j = start; j <= i; j++) sum += rows[j].price;
-    out.push({ ...rows[i], price: round2(sum / (i - start + 1)) });
-  }
-  return out;
-}
-
-// Alle Reihen einer Karte (je Variante), älteste zuerst. Cardmarket-Punkte
-// haben Vorrang; nur wenn es für eine Variante keine gibt, zählen die
-// TCGplayer-Ersatzwerte (in EUR umgerechnet).
+// Preisreihe einer Karte = die echten Tageswerte (Cardmarket-Trend). Der
+// Graph zeigt genau diese Reihe, und der "Aktuelle Preis" ist ihr letzter
+// Punkt - deshalb stimmen beide immer überein. Der 30-Tage-Schnitt (avg30)
+// ist nur eine Zusatzinfo. Cardmarket-Punkte haben Vorrang; nur wenn es für
+// eine Variante keine gibt, zählen die TCGplayer-Ersatzwerte (in EUR).
+// Zeilen: EINE Karte, älteste zuerst.
 function priceSeriesFrom(rows) {
   const byVariant = new Map();
   for (const r of rows) {
@@ -115,9 +98,17 @@ function priceSeriesFrom(rows) {
   const series = [];
   for (const [variant, list] of byVariant) {
     const cm = list.filter((r) => r.source === "cardmarket");
-    series.push({ variant, points: rollingAvg30(cm.length ? cm : list) });
+    series.push({ variant, points: cm.length ? cm : list });
   }
   return series;
+}
+
+// Schnitt der Punkte in den 30 Tagen bis einschließlich des letzten Punktes.
+function avg30Of(points) {
+  const last = points[points.length - 1];
+  const from = Date.parse(last.fetched_at) - 30 * DAY_MS;
+  const win = points.filter((p) => Date.parse(p.fetched_at) > from);
+  return round2(win.reduce((sum, p) => sum + p.price, 0) / win.length);
 }
 
 const trendNewestStmt = db.prepare(`
@@ -139,16 +130,15 @@ function priceHistory(cardId) {
     .sort((a, b) => a.fetched_at.localeCompare(b.fetched_at));
 }
 
-// Aktueller Preis einer Karte + Variante = letzter Punkt der Reihe oben.
-// Fällt auf 'normal' zurück, wenn es für die Variante keinen eigenen Preis
-// gibt, und dann auf irgendeine vorhandene Reihe. Es reichen die neuesten
-// Zeilen (30 Tage Fenster + Reserve) - das Ergebnis ist identisch zum
-// letzten Punkt der vollen Reihe.
+// Aktueller Preis einer Karte + Variante = letzter Punkt der Reihe oben (plus
+// avg30 als Zusatzinfo). Fällt auf 'normal' zurück, wenn es für die Variante
+// keinen eigenen Preis gibt, und dann auf irgendeine vorhandene Reihe. Es
+// reichen die neuesten Zeilen (30-Tage-Fenster + Reserve).
 export function latestTrend(cardId, variant = "normal") {
   const rows = trendNewestStmt.all(cardId).reverse();
   const series = priceSeriesFrom(rows);
   const pick = series.find((s) => s.variant === variant) ?? series.find((s) => s.variant === "normal") ?? series[0];
-  return pick ? pick.points[pick.points.length - 1] : null;
+  return pick ? { ...pick.points[pick.points.length - 1], avg30: avg30Of(pick.points) } : null;
 }
 
 const cmBreakdownRows = db.prepare(`
@@ -161,9 +151,8 @@ export function cardmarketBreakdown(cardId) {
   return cmBreakdownRows.all(cardId);
 }
 
-// ROHE Tagespunkte (Variante 'normal') - für Preisbewegungen (marketStats.js)
-// und Portfolio-Bewegung: dort zählt die tatsächliche Tagesveränderung, nicht
-// der geglättete Schnitt.
+// Tagespunkte (Variante 'normal', ohne Quellen-Vorrang) für Preisbewegungen
+// (marketStats.js) und Portfolio-Bewegung.
 export const priceHistoryForCard = db.prepare(`
   SELECT price, currency, price_type, source, fetched_at
   FROM price_snapshots

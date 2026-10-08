@@ -532,7 +532,7 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
 
 // Die frühere View card_price_avg30 wird nicht mehr gebraucht (der aktuelle
-// Preis kommt aus services/cardService.js rollingAvg30) - auf bestehenden
+// Preis kommt aus services/cardService.js latestTrend) - auf bestehenden
 // Datenbanken entfernen.
 db.exec(`DROP VIEW IF EXISTS card_price_avg30`);
 

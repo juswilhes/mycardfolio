@@ -86,7 +86,7 @@ export default function SetValueAnalysis() {
       <h2 className="text-sm font-medium mb-1">📦 Booster vs. Top-Karten</h2>
       <p className="text-xs text-subtle mb-3">
         Wie viel sind die 20 teuersten Karten eines Sets wert – im Verhältnis zum Preis eines Displays
-        bzw. eines einzelnen Boosters? Kartenwerte sind der 30-Tage-Schnitt. Sondersets ohne Display
+        bzw. eines einzelnen Boosters? Kartenwerte sind die aktuellen Preise. Sondersets ohne Display
         (z. B. 30th Celebration) haben nur einen Boosterpreis. Klick auf ein Set zeigt die 20 Karten.
       </p>
 
