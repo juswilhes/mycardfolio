@@ -394,20 +394,31 @@ export const resetMoversCache = () => moversCache.clear();
 // Größte Gewinner/Verlierer (Trendpreis, Variante 'normal') über alle
 // Karten mit Preishistorie - unabhängig davon, wer sie besitzt.
 // Optional auf ein Set eingeschränkt.
+// Mehrere Karten desselben Sets mit exakt gleichem Vorher/Nachher-Preis zeigen
+// auf dasselbe Cardmarket-Produkt (z. B. vier Varianten einer Karte) - das
+// würde einen Eintrag mehrfach in die Liste bringen, deshalb nur einmal.
+// Der Speicher hält die vollständigen Listen; `limit` kürzt erst beim Abruf
+// (limit: Infinity = alle, z. B. für die Startseite mit eigenen Filtern).
 export function getMarketMovers({ days = 7, limit = 25, setName = null } = {}) {
-  const key = `${days}|${limit}|${setName ?? ""}`;
-  const hit = moversCache.get(key);
-  if (hit) return hit.value;
-
-  const cards = trackedCardsStmt.all().filter((c) => !setName || c.set_name === setName);
-  const movers = cards
-    .map((c) => moverFor(c, days))
-    .filter((m) => m && !m.singlePoint && Math.abs(m.delta) >= 0.01 && m.previous)
-    .filter(isPlausibleMove);
-
-  const gainers = movers.filter((m) => m.delta > 0).sort((a, b) => b.delta_pct - a.delta_pct).slice(0, limit);
-  const losers = movers.filter((m) => m.delta < 0).sort((a, b) => a.delta_pct - b.delta_pct).slice(0, limit);
-  const value = { gainers, losers, trackedCount: movers.length };
-  moversCache.set(key, { value });
-  return value;
+  const key = `${days}|${setName ?? ""}`;
+  let all = moversCache.get(key);
+  if (!all) {
+    const cards = trackedCardsStmt.all().filter((c) => !setName || c.set_name === setName);
+    const seen = new Set();
+    const movers = cards
+      .map((c) => moverFor(c, days))
+      .filter((m) => m && !m.singlePoint && Math.abs(m.delta) >= 0.01 && m.previous)
+      .filter(isPlausibleMove)
+      .filter((m) => {
+        const same = `${m.set_name}|${m.previous}|${m.current}`;
+        return seen.has(same) ? false : (seen.add(same), true);
+      });
+    all = {
+      gainers: movers.filter((m) => m.delta > 0).sort((a, b) => b.delta_pct - a.delta_pct),
+      losers: movers.filter((m) => m.delta < 0).sort((a, b) => a.delta_pct - b.delta_pct),
+      trackedCount: movers.length,
+    };
+    moversCache.set(key, all);
+  }
+  return { gainers: all.gainers.slice(0, limit), losers: all.losers.slice(0, limit), trackedCount: all.trackedCount };
 }

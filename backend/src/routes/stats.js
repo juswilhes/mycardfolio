@@ -40,6 +40,11 @@ const moverFields = (m) => ({
   current: m.current,
   delta_pct: m.delta_pct,
 });
+// Auf der Startseite nur Bewegungen, die glaubwürdig wirken: ab 5 € und höchstens
+// +/-100 % (bei Alt-Karten mit dünnem Handel sind größere Sprünge meist Datenrauschen).
+const landingMovers = (list) =>
+  list.filter((m) => m.current >= 5 && m.previous >= 5 && Math.abs(m.delta_pct) <= 100).slice(0, 3).map(moverFields);
+
 router.get("/landing", (_req, res) => {
   const boosters = analysis("setRanking")
     .filter((s) => s.boosterPriceCents && s.packValue != null)
@@ -55,12 +60,12 @@ router.get("/landing", (_req, res) => {
     }))
     .sort((a, b) => b.ratio - a.ratio)
     .slice(0, 3);
-  const movers = getMarketMovers({ days: 7 });
+  const movers = getMarketMovers({ days: 7, limit: Infinity });
   res.json({
     counts: analysis("siteCounts"),
     boosters,
-    gainers: movers.gainers.slice(0, 3).map(moverFields),
-    losers: movers.losers.slice(0, 3).map(moverFields),
+    gainers: landingMovers(movers.gainers),
+    losers: landingMovers(movers.losers),
   });
 });
 

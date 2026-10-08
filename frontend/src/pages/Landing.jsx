@@ -130,14 +130,18 @@ export default function Landing() {
           action={<Link to="/sets" className="text-xs text-subtle hover:text-ink underline shrink-0">Alle Karten →</Link>}
         >
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-surface border border-line rounded-2xl px-4 py-2 shadow-sm">
-              <p className="text-xs text-mint font-medium pt-2">Steigt</p>
-              {data.gainers.map((m) => <MoverRow key={m.external_id} m={m} />)}
-            </div>
-            <div className="bg-surface border border-line rounded-2xl px-4 py-2 shadow-sm">
-              <p className="text-xs text-rose font-medium pt-2">Fällt</p>
-              {data.losers.map((m) => <MoverRow key={m.external_id} m={m} />)}
-            </div>
+            {data.gainers.length > 0 && (
+              <div className="bg-surface border border-line rounded-2xl px-4 py-2 shadow-sm">
+                <p className="text-xs text-mint font-medium pt-2">Steigt</p>
+                {data.gainers.map((m) => <MoverRow key={m.external_id} m={m} />)}
+              </div>
+            )}
+            {data.losers.length > 0 && (
+              <div className="bg-surface border border-line rounded-2xl px-4 py-2 shadow-sm">
+                <p className="text-xs text-rose font-medium pt-2">Fällt</p>
+                {data.losers.map((m) => <MoverRow key={m.external_id} m={m} />)}
+              </div>
+            )}
           </div>
         </Section>
       )}
