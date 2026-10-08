@@ -53,7 +53,7 @@ export const langLabel = (v) => {
 };
 
 // Bekannte Grading-Firmen. Wert = Kürzel (so gespeichert), Label = Anzeige.
-export const GRADERS = [
+const GRADERS = [
   ["PSA", "PSA"],
   ["BGS", "BGS (Beckett)"],
   ["CGC", "CGC"],

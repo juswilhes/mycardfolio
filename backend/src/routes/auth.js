@@ -11,7 +11,6 @@ import {
   resetFailedLogins,
   createSession,
   endSession,
-  endAllSessions,
   confirmEmail,
   newVerifyToken,
   startPasswordReset,

@@ -31,7 +31,7 @@ db.transaction(() => {
   }
   db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(new Date().toISOString());
 })();
-export const normEmail = (e) => String(e ?? "").trim().toLowerCase();
+const normEmail = (e) => String(e ?? "").trim().toLowerCase();
 
 // --- Statements ----------------------------------------------------------
 const sUserByEmail = db.prepare(`SELECT * FROM users WHERE email = ?`);
@@ -164,7 +164,6 @@ export function userForSession(t) {
 }
 
 export const endSession = (t) => t && sDeleteSession.run(hashToken(t));
-export const endAllSessions = (userId) => sDeleteUserSessions.run(userId);
 
 // --- E-Mail-Bestätigung --------------------------------------------
 export function confirmEmail(verifyToken) {

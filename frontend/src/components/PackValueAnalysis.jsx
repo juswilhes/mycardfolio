@@ -166,7 +166,7 @@ export default function PackValueAnalysis() {
                             </p>
                           )}
                           <p className="text-[11px] mt-2">
-                            <Link to={`/sets/${s.id}`} className="text-subtle underline hover:text-ink">
+                            <Link to={`/sets/${s.slug ?? s.id}`} className="text-subtle underline hover:text-ink">
                               zum Set →
                             </Link>
                           </p>

@@ -120,7 +120,7 @@ export default function SetRanking() {
                 <tr key={s.id} className="border-b border-line">
                   <td className="py-2 pr-3 text-subtle">{i + 1}</td>
                   <td className="py-2 pr-3">
-                    <Link to={`/sets/${s.id}`} className="font-medium hover:underline">
+                    <Link to={`/sets/${s.slug ?? s.id}`} className="font-medium hover:underline">
                       {s.name}
                     </Link>
                     <span className="text-subtle text-xs"> · {s.release_date ? s.release_date.slice(0, 4) : "–"}</span>

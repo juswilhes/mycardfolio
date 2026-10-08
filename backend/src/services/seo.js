@@ -8,7 +8,7 @@ import { slugOfSet, resolveSetParam, rebuildSetSlugs } from "./setSlugs.js";
 // Startseite) - Suchmaschinen und Link-Vorschauen (WhatsApp, Discord)
 // sehen nur das HTML vom Server, nicht das, was React danach anzeigt.
 
-export const SITE_URL = "https://mycardfolio.de";
+const SITE_URL = "https://mycardfolio.de";
 const SITE_NAME = "mycardfolio";
 const DEFAULT_IMAGE = `${SITE_URL}/logo.png`;
 const DEFAULT_TITLE = "mycardfolio – Pokémon-Sammlung & Portfolio-Wert im Blick";

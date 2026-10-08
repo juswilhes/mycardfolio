@@ -150,7 +150,7 @@ export default function SetValueAnalysis() {
                         <td colSpan={6} className="py-4">
                           <div className="flex items-center justify-between mb-3">
                             <p className="text-xs text-subtle">💎 Die {s.topCards.length} teuersten Karten</p>
-                            <Link to={`/sets/${s.id}`} className="text-xs text-subtle underline hover:text-ink">
+                            <Link to={`/sets/${s.slug ?? s.id}`} className="text-xs text-subtle underline hover:text-ink">
                               zum Set →
                             </Link>
                           </div>

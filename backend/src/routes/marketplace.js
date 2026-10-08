@@ -193,19 +193,6 @@ router.post("/listings", authRequired, (req, res) => {
   });
 });
 
-// POST /api/marketplace/listings/:id/photo  (multipart, Feld "photo")
-// Echtes Foto des Exemplars statt nur des generischen Kartenbilds - für
-// Vertrauen/Echtheit besonders bei teureren Karten wichtig.
-router.post("/listings/:id/photo", authRequired, (req, res) => {
-  uploadListingPhoto(req, res, (err) => {
-    if (err) return res.status(400).json({ error: "Foto konnte nicht hochgeladen werden (max. 8 MB, JPG/PNG/WebP)." });
-    if (!req.file) return res.status(400).json({ error: "Keine Datei erhalten." });
-    const info = setListingPhoto(Number(req.params.id), req.user.id, listingPhotoUrl(req.file.filename));
-    if (!info.changes) return res.status(404).json({ error: "Angebot nicht gefunden" });
-    res.json({ photoUrl: listingPhotoUrl(req.file.filename) });
-  });
-});
-
 // GET /api/marketplace/listings/:id -> Detailseite (öffentlich): Angebot +
 // Verkäufer-Bewertungsschnitt + Fragen/Kommentare.
 router.get("/listings/:id", (req, res) => {

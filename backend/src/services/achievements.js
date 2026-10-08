@@ -8,7 +8,7 @@ import { listSales } from "./portfolioService.js";
 // Ordenreise von "gut dabei" bis "Legende". Die IDs bleiben stabil: bereits
 // verdiente Orden bleiben verdient, auch wenn die Bedingung später
 // verschärft wird (Freischaltungen liegen in user_achievements).
-export const ACHIEVEMENTS = [
+const ACHIEVEMENTS = [
   { id: "erster_fang", icon: "🪨", title: "Kieselorden", desc: "Baue eine Sammlung von 100 verschiedenen Karten auf" },
   { id: "pokedex_forscher", icon: "🔎", title: "Forscherorden", desc: "Sammle 300 verschiedene Pokémon-Arten" },
   { id: "weltenbummler", icon: "🧭", title: "Kompassorden", desc: "Karten aus 50 verschiedenen Sets" },

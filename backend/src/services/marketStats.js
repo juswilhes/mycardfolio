@@ -1,5 +1,6 @@
 import db from "../db/index.js";
 import { priceHistoryForCard, latestTrend } from "./cardService.js";
+import { slugOfSet } from "./setSlugs.js";
 
 // Sets, deren Karten aus den Boostern eines anderen Sets gezogen werden: die
 // Classic Collection steckt in den Boostern des 30th Celebration. In den
@@ -82,6 +83,7 @@ export function getSetValueAnalysis() {
     const top = cards.slice(0, 20);
     return {
       id: r.id,
+      slug: slugOfSet(r.id),
       name: r.name,
       series: r.series,
       release_date: r.release_date,
@@ -163,7 +165,7 @@ export function getPullRateOverview() {
     byBooster.get(b).rows.push(r);
     let s = bySet.get(b);
     if (!s) {
-      s = { id: b, name: r.name, series: r.series, release_date: r.release_date, rarities: [] };
+      s = { id: b, slug: slugOfSet(b), name: r.name, series: r.series, release_date: r.release_date, rarities: [] };
       bySet.set(b, s);
     }
     const own = r.id === b;
@@ -263,6 +265,7 @@ export function getPackValueAnalysis() {
     const prices = setPricesStmt.get(g.id) ?? {};
     return {
       id: g.id,
+      slug: slugOfSet(g.id),
       name: g.name,
       series: g.series,
       release_date: g.release_date,
@@ -284,7 +287,7 @@ export function buildSetRanking(setValue, pullRates, packValue) {
   const sets = new Map();
   const get = (id, base) => {
     if (!sets.has(id)) {
-      sets.set(id, { id, name: base.name, release_date: base.release_date, hitRatePct: null, packValue: null, boosterPriceCents: null, top20Value: null, top20Count: 0, topCard: null });
+      sets.set(id, { id, slug: slugOfSet(id), name: base.name, release_date: base.release_date, hitRatePct: null, packValue: null, boosterPriceCents: null, top20Value: null, top20Count: 0, topCard: null });
     }
     return sets.get(id);
   };

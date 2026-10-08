@@ -108,7 +108,7 @@ export default function PullRatesAnalysis() {
               <th className="py-2 pr-4 font-normal sticky left-0 bg-canvas">Seltenheit</th>
               {sets.map((s) => (
                 <th key={s.id} className="py-2 px-3 font-normal text-right whitespace-nowrap">
-                  <Link to={`/sets/${s.id}`} className="hover:underline text-ink">
+                  <Link to={`/sets/${s.slug ?? s.id}`} className="hover:underline text-ink">
                     {s.name}
                   </Link>
                   <div className="text-[11px]">{s.release_date ? s.release_date.slice(0, 4) : ""}</div>
