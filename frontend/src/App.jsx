@@ -21,6 +21,8 @@ import Account from "./pages/Account.jsx";
 import Orden from "./pages/Orden.jsx";
 import Watchlist from "./pages/Watchlist.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import News from "./pages/News.jsx";
+import Article from "./pages/Article.jsx";
 import ArtistCards from "./pages/ArtistCards.jsx";
 import Marketplace from "./pages/Marketplace.jsx";
 import MarketplaceTerms from "./pages/MarketplaceTerms.jsx";
@@ -50,6 +52,7 @@ function RequireAuth({ children }) {
 const PAGE_TITLES = {
   "/sets": "Alle Karten & Sets",
   "/marktplatz": "Marktplatz",
+  "/news": "News & Artikel",
   "/marktplatz-agb": "Marktplatz-Bedingungen",
   "/impressum": "Impressum",
   "/datenschutz": "Datenschutzerklärung",
@@ -98,6 +101,7 @@ export default function App() {
           <nav className="hidden sm:flex gap-6 text-sm">
             <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
             <NavLink to="/marktplatz" className={navCls}>🛒 Marktplatz</NavLink>
+            <NavLink to="/news" className={navCls}>📰 News</NavLink>
             {user && (
               <>
                 <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
@@ -156,6 +160,8 @@ export default function App() {
 
             {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
             <Route path="/sets" element={<AllCards />} />
+            <Route path="/news" element={<News />} />
+            <Route path="/news/:slug" element={<Article />} />
             <Route path="/marktplatz" element={<Marketplace />} />
             <Route path="/marktplatz-agb" element={<MarketplaceTerms />} />
             <Route path="/marktplatz/angebot/:id" element={<ListingDetail />} />

@@ -18,6 +18,7 @@ import watchlistRouter from "./routes/watchlist.js";
 import sealedProductsRouter from "./routes/sealedProducts.js";
 import clientErrorsRouter from "./routes/clientErrors.js";
 import statsRouter from "./routes/stats.js";
+import articlesRouter from "./routes/articles.js";
 import marketplaceRouter from "./routes/marketplace.js";
 import { handleStripeWebhook } from "./routes/marketplaceWebhook.js";
 import { authRequired } from "./middleware/auth.js";
@@ -25,6 +26,7 @@ import { isOperatorUser } from "./lib/admin.js";
 import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
+import { seedStarterArticles } from "./services/articles.js";
 import { rebuildAnalysisCache } from "./services/analysisCache.js";
 import { metaFor, renderIndex, sitemap, redirectFor } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
@@ -121,6 +123,8 @@ app.use("/api/sealed-products", authRequired, sealedProductsRouter);
 // stats: marktweite Routen (market-movers etc.) sind bewusst öffentlich,
 // siehe routes/stats.js - nur die Watchlist-Route braucht req.user.
 app.use("/api/stats", statsRouter);
+// News & Artikel: Lesen öffentlich, Schreiben nur Betreiber (routes/articles.js)
+app.use("/api/articles", articlesRouter);
 
 // Manueller Trigger, praktisch zum Testen (normalerweise übernimmt der Cron-Job das)
 app.post("/api/refresh-prices", authRequired, (req, res) => {
@@ -180,6 +184,7 @@ app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
   catchUpSetValueSnapshots();
+  seedStarterArticles();
   // Auswertungen der Analyse einmal vorrechnen, ohne den Start zu verzögern
   setTimeout(rebuildAnalysisCache, 2000);
   scheduleImageRepair();

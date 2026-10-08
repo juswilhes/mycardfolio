@@ -114,6 +114,14 @@ export const getPackValueAnalysis = () => request("/stats/pack-value");
 export const getPullOrBuy = () => request("/stats/pull-or-buy");
 export const getSetRanking = () => request("/stats/set-ranking");
 
+// --- News & Artikel ----------------------------------------------------
+export const getLanding = () => request("/stats/landing");
+export const getArticles = () => request("/articles");
+export const getArticle = (slug) => request(`/articles/${encodeURIComponent(slug)}`);
+export const createArticle = (payload) => request("/articles", { method: "POST", body: payload });
+export const updateArticle = (id, payload) => request(`/articles/${id}`, { method: "PATCH", body: payload });
+export const deleteArticle = (id) => request(`/articles/${id}`, { method: "DELETE" });
+
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");
 export const getMarketplaceListings = () => request("/marketplace/listings");

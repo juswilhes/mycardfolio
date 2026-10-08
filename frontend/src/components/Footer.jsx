@@ -8,6 +8,7 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p>© {new Date().getFullYear()} mycardfolio</p>
         <nav className="flex flex-wrap gap-x-5 gap-y-1">
+          <Link to="/news" className="hover:text-ink">News</Link>
           <Link to="/impressum" className="hover:text-ink">Impressum</Link>
           <Link to="/datenschutz" className="hover:text-ink">Datenschutz</Link>
           <Link to="/marktplatz-agb" className="hover:text-ink">Marktplatz-AGB</Link>

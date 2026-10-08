@@ -35,6 +35,10 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - Bezahlung (Stripe Connect) ist gebaut, schaltet sich mit `STRIPE_SECRET_KEY` ein. **Vor Livegang umbauen:** Verkäufer soll die Stripe-Gebühren tragen (Direct Charges, Konten mit `fees.payer=account`), sonst zahlt die Plattform 2 €/Verkäufer/Monat drauf.
 - Registrierung ist auf dem Server geschlossen (`REGISTRATION_OPEN=false`).
 
+## Startseite & News
+- `/` zeigt abgemeldeten Besuchern die Landing-Page (`pages/Landing.jsx`): Zahlen, Preisbewegungen der Woche, Booster-Check (Top 3), Funktionen, neueste Artikel, FAQ. Die Daten kommen aus `GET /api/stats/landing` (nur aus den Nacht-Auswertungen) und `/api/articles`. Tonfall: locker, mit wenigen Pokémon-Anspielungen (nicht übertreiben, die Seite soll seriös bleiben).
+- **News & Artikel** (`/news`, `/news/:slug`): nur eigene Texte des Betreibers, keine Fremdinhalte (Lizenzfrage von PokeBeach & Co. umgangen). Tabelle `articles`, Schreiben/Bearbeiten/Löschen nur Betreiber direkt auf der Seite (`ArticleEditor`), Entwürfe nur für ihn sichtbar. Textformat: `##` Überschrift, `-` Liste, `>` Zitat, `**fett**`, `[Text](Ziel)` (`components/Prose.jsx`). Drei Startartikel legt `seedStarterArticles` einmalig an (Marker `articles_seeded_v1`). Artikel stehen in der Sitemap und haben eigene Meta-Tags (`seo.js`).
+
 ## Suchmaschinen (SEO)
 - Die App ist eine SPA: Titel, Beschreibung, canonical, noindex und Vorschaubild setzt der **Server** pro Seite ein (`backend/src/services/seo.js`, der Block zwischen `<!--seo:start-->` und `<!--seo:end-->` in `frontend/index.html` wird ersetzt - Markierungen nicht entfernen). Neue öffentliche Seite = Eintrag in `PUBLIC_PAGES`/`metaFor`; Seiten nur für Angemeldete stehen in `PRIVATE_PAGES` (noindex).
 - **Set-Adressen sind lesbar** (`/sets/mega-evolution` statt `/sets/me1`): Slug aus dem Set-Namen (`services/setSlugs.js`, bei gleichem Namen mit angehängter ID). Die API und die Seite nehmen Slug ODER ID; alte ID-Adressen leitet der Server per 301 um. Links auf Sets: `set.slug ?? set.id`.

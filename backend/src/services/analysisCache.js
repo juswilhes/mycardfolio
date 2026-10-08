@@ -6,6 +6,7 @@ import {
   getMarketMovers,
   resetMoversCache,
   buildSetRanking,
+  getSiteCounts,
 } from "./marketStats.js";
 
 // Die Auswertungen der Analyse werden nicht bei jedem Seitenaufruf neu
@@ -19,6 +20,7 @@ const BUILDERS = {
   pullRates: getPullRateOverview,
   packValue: getPackValueAnalysis,
   pullOrBuy: getPullOrBuy,
+  siteCounts: getSiteCounts,
 };
 // Setzt sich aus den Auswertungen oben zusammen (wird danach gerechnet).
 const DERIVED = {

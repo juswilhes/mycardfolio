@@ -1,23 +1,11 @@
 import db from "../db/index.js";
+import { slugify } from "../lib/slug.js";
 
 // Lesbare Set-Adressen: /sets/mega-evolution statt /sets/me1. Der Slug wird
 // aus dem Set-Namen gebildet; bei gleichem Namen (oder wenn er einer anderen
 // Set-ID entspräche) hängt die ID hinten dran. Die alten ID-Adressen leitet
 // der Server per 301 auf die lesbare weiter (siehe seo.js redirectFor).
 const allSetsStmt = db.prepare(`SELECT id, name FROM card_sets ORDER BY release_date ASC, id ASC`);
-
-const slugify = (name) =>
-  name
-    .toLowerCase()
-    .replace(/ä/g, "ae")
-    .replace(/ö/g, "oe")
-    .replace(/ü/g, "ue")
-    .replace(/ß/g, "ss")
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/&/g, " ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 let slugById = null;
 let idBySlug = null;

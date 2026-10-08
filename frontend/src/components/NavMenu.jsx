@@ -26,6 +26,7 @@ export default function NavMenu({ user, loading }) {
   const items = [
     { to: "/sets", label: "Alle Karten" },
     { to: "/marktplatz", label: "🛒 Marktplatz" },
+    { to: "/news", label: "📰 News" },
     ...(user
       ? [
           { to: "/", label: "Sammlung", end: true },

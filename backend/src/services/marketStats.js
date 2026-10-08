@@ -280,6 +280,16 @@ export function getPackValueAnalysis() {
   });
 }
 
+// Zahlen für die öffentliche Startseite: so viele Karten/Sets gibt es, wann
+// zuletzt Preise geholt wurden.
+const countCardsStmt = db.prepare(`SELECT COUNT(*) AS n FROM cards`);
+const countSetsStmt = db.prepare(`SELECT COUNT(*) AS n FROM card_sets`);
+const lastPriceStmt = db.prepare(`SELECT MAX(fetched_at) AS at FROM price_snapshots`);
+
+export function getSiteCounts() {
+  return { cards: countCardsStmt.get().n, sets: countSetsStmt.get().n, pricesAt: lastPriceStmt.get().at };
+}
+
 // Analyse "Set-Rangliste": Hit Rate, Wert pro Pack und Top-20-Wert je Set in
 // einer Zeile - setzt nur die drei fertigen Auswertungen zusammen. Das
 // Verhältnis zum Boosterpreis rechnet das Frontend.

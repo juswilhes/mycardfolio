@@ -32,6 +32,7 @@ const normalize = (path) =>
   path
     .replace(/\/card\/[^/]+/, "/card/:id")
     .replace(/\/sets\/[^/]+/, "/sets/:id")
+    .replace(/\/news\/[^/]+/, "/news/:slug")
     .replace(/\/database\/[^/]+/, "/database/:id")
     .slice(0, 120);
 
@@ -43,9 +44,9 @@ const normalize = (path) =>
 const STATIC_PATHS = new Set([
   "/", "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen",
   "/verify", "/impressum", "/datenschutz", "/marktplatz-agb", "/sets", "/add", "/import",
-  "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/marktplatz",
+  "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/marktplatz", "/news",
 ]);
-const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/marktplatz/", "/verkaeufer/"];
+const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/marktplatz/", "/verkaeufer/", "/news/"];
 export const isKnownRoute = (path) =>
   STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
 

@@ -551,6 +551,22 @@ for (const u of db.prepare(`SELECT id, email FROM users WHERE password_hash = ''
   );
 }
 
+// News & Artikel (services/articles.js)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS articles (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug         TEXT NOT NULL UNIQUE,
+    title        TEXT NOT NULL,
+    summary      TEXT NOT NULL,
+    body         TEXT NOT NULL,
+    category     TEXT NOT NULL DEFAULT 'News',
+    published    INTEGER NOT NULL DEFAULT 0,
+    published_at TEXT NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(
   `INSERT OR IGNORE INTO games (slug, name) VALUES ('pokemon', 'Pokémon TCG')`

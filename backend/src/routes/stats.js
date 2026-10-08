@@ -29,6 +29,41 @@ router.get("/pull-or-buy", (_req, res) => {
   res.json(analysis("pullOrBuy"));
 });
 
+// GET /api/stats/landing -> Zahlen für die öffentliche Startseite: Anzahl Karten/Sets,
+// die 3 Sets mit dem besten Verhältnis Kartenwert pro Pack zu Boosterpreis und die
+// größten Preisbewegungen der Woche (alles aus den Nacht-Auswertungen).
+const moverFields = (m) => ({
+  external_id: m.external_id,
+  name: m.name,
+  set_name: m.set_name,
+  image_small: m.image_small,
+  current: m.current,
+  delta_pct: m.delta_pct,
+});
+router.get("/landing", (_req, res) => {
+  const boosters = analysis("setRanking")
+    .filter((s) => s.boosterPriceCents && s.packValue != null)
+    .map((s) => ({
+      id: s.id,
+      slug: s.slug,
+      name: s.name,
+      hitRatePct: s.hitRatePct,
+      hitRateComplete: s.hitRateComplete,
+      packValue: s.packValue,
+      boosterPriceCents: s.boosterPriceCents,
+      ratio: (s.packValue / (s.boosterPriceCents / 100)) * 100,
+    }))
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 3);
+  const movers = getMarketMovers({ days: 7 });
+  res.json({
+    counts: analysis("siteCounts"),
+    boosters,
+    gainers: movers.gainers.slice(0, 3).map(moverFields),
+    losers: movers.losers.slice(0, 3).map(moverFields),
+  });
+});
+
 // GET /api/stats/set-ranking -> Hit Rate, Wert pro Pack, Top 20 je Set (Set-Rangliste)
 router.get("/set-ranking", (_req, res) => {
   res.json(analysis("setRanking"));

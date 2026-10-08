@@ -1,6 +1,7 @@
 import db from "../db/index.js";
 import { latestTrendByExternal } from "./cardService.js";
 import { slugOfSet, resolveSetParam, rebuildSetSlugs } from "./setSlugs.js";
+import { getArticleBySlug, listPublishedArticles } from "./articles.js";
 
 // Meta-Tags pro Seite (Titel, Beschreibung, canonical, Vorschaubild) und die
 // Sitemap. Die App ist eine Single-Page-App: ohne dieses Einsetzen auf dem
@@ -27,6 +28,11 @@ const PUBLIC_PAGES = {
     title: "Alle Pokémon-Karten & Sets – Preise und Suche | mycardfolio",
     description:
       "Alle Pokémon-Sets und Karten durchsuchen: aktuelle Cardmarket-Preise in Euro, Seltenheiten, Illustratoren und Preisverlauf – kostenlos und ohne Anmeldung.",
+  },
+  "/news": {
+    title: "News & Artikel für Pokémon-Sammler | mycardfolio",
+    description:
+      "Artikel rund ums Sammeln: Hit Rates, Pull Rates, Kartenpreise und Auswertungen von mycardfolio – verständlich erklärt.",
   },
   "/marktplatz": {
     title: "Marktplatz für Pokémon-Karten | mycardfolio",
@@ -76,6 +82,17 @@ export function metaFor(rawPath) {
       title: shorten(`${label} Preis – ${c.set_name} ${c.number} | ${SITE_NAME}`, 70),
       description: shorten(parts.join(" "), 200),
       image: c.image_large || c.image_small || DEFAULT_IMAGE,
+      type: "article",
+    };
+  }
+  if ((m = path.match(/^\/news\/([^/]+)$/))) {
+    const a = getArticleBySlug(decodeURIComponent(m[1]));
+    if (!a || !a.published) return { ...base, robots: false, missing: true };
+    return {
+      ...base,
+      // Markenzusatz nur, wenn der Titel dann nicht zu lang für die Suchergebnisse wird
+      title: a.title.length + SITE_NAME.length + 3 <= 70 ? `${a.title} | ${SITE_NAME}` : shorten(a.title, 70),
+      description: shorten(a.summary, 200),
       type: "article",
     };
   }
@@ -159,6 +176,7 @@ export function rebuildSitemap() {
   rebuildSetSlugs(); // neue Sets seit dem letzten Nachtlauf bekommen ihren Slug
   const urls = Object.keys(PUBLIC_PAGES).map((p) => p);
   for (const s of allSetsStmt.all()) urls.push(`/sets/${encodeURIComponent(slugOfSet(s.id))}`);
+  for (const a of listPublishedArticles(500)) urls.push(`/news/${encodeURIComponent(a.slug)}`);
   for (const a of allArtistsStmt.all()) urls.push(`/illustrator/${encodeURIComponent(a.artist)}`);
   for (const c of allCardsStmt.all()) urls.push(`/database/${encodeURIComponent(c.external_id)}`);
   const body = urls.map((u) => `  <url><loc>${esc(SITE_URL + u)}</loc></url>`).join("\n");
