@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import db from "../db/index.js";
+import { slugOfSet } from "./setSlugs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -550,6 +551,7 @@ function mapSetRow(s) {
   if (!s) return null;
   return {
     id: s.id,
+    slug: slugOfSet(s.id),
     name: s.name,
     series: s.series,
     release_date: s.release_date,

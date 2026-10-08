@@ -416,7 +416,7 @@ export default function Collection() {
           ) : (
             <div className="space-y-2.5">
               {topSets.map((s) => (
-                <Link key={s.id} to={`/sets/${s.id}`} className="block group">
+                <Link key={s.id} to={`/sets/${s.slug ?? s.id}`} className="block group">
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="truncate group-hover:text-ink">{s.name}</span>
                     <span className="text-subtle shrink-0 ml-2">

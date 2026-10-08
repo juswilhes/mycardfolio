@@ -37,6 +37,7 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 
 ## Suchmaschinen (SEO)
 - Die App ist eine SPA: Titel, Beschreibung, canonical, noindex und Vorschaubild setzt der **Server** pro Seite ein (`backend/src/services/seo.js`, der Block zwischen `<!--seo:start-->` und `<!--seo:end-->` in `frontend/index.html` wird ersetzt - Markierungen nicht entfernen). Neue öffentliche Seite = Eintrag in `PUBLIC_PAGES`/`metaFor`; Seiten nur für Angemeldete stehen in `PRIVATE_PAGES` (noindex).
+- **Set-Adressen sind lesbar** (`/sets/mega-evolution` statt `/sets/me1`): Slug aus dem Set-Namen (`services/setSlugs.js`, bei gleichem Namen mit angehängter ID). Die API und die Seite nehmen Slug ODER ID; alte ID-Adressen leitet der Server per 301 um. Links auf Sets: `set.slug ?? set.id`.
 - `/sitemap.xml` wird dynamisch gebaut (feste Seiten, alle Sets, Karten, Illustratoren) und nachts im Nachtlauf neu erzeugt. Nicht gefundene Karten/Sets liefern echten 404.
 - **`/api` nie in der robots.txt sperren:** Google rendert die Seiten und holt die Daten von dort.
 - Google-Anmeldung (Search Console, Sitemap einreichen) kann nur Justus mit seinem Google-Konto machen.

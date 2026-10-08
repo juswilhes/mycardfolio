@@ -26,7 +26,7 @@ import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "./services/analysisCache.js";
-import { metaFor, renderIndex, sitemap } from "./services/seo.js";
+import { metaFor, renderIndex, sitemap, redirectFor } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
@@ -156,6 +156,8 @@ if (fs.existsSync(path.join(frontendDist, "index.html"))) {
   // Titel, Beschreibung, canonical und Vorschaubild werden pro Seite eingesetzt
   // (services/seo.js) - Suchmaschinen und Link-Vorschauen sehen nur dieses HTML.
   app.get(/^(?!\/api).*/, (req, res) => {
+    const to = redirectFor(req.path);
+    if (to) return res.redirect(301, to);
     const meta = metaFor(req.path);
     const known = isKnownRoute(req.path) && !meta.missing;
     res.status(known ? 200 : 404).type("html").send(renderIndex(indexHtml, known ? meta : { ...meta, robots: false }));

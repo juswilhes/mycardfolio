@@ -239,7 +239,7 @@ export default function AllCards() {
                 return (
                   <Link
                     key={set.id}
-                    to={`/sets/${set.id}`}
+                    to={`/sets/${set.slug ?? set.id}`}
                     className="border border-line rounded-2xl p-4 flex flex-col items-start gap-2 hover:border-ink shadow-sm"
                   >
                     <div className="flex items-center gap-2 min-w-0">

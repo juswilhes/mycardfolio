@@ -6,6 +6,7 @@ import { isOperatorUser } from "../lib/admin.js";
 import db from "../db/index.js";
 import { recordSetValueSnapshots } from "../services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "../services/analysisCache.js";
+import { resolveSetParam } from "../services/setSlugs.js";
 
 const router = Router();
 
@@ -21,6 +22,12 @@ const upsertPullRateStmt = db.prepare(`
     specific_denominator = excluded.specific_denominator
 `);
 const deletePullRateStmt = db.prepare(`DELETE FROM pull_rates WHERE set_id = ? AND rarity = ?`);
+
+// :setId darf der lesbare Slug (mega-evolution) oder die ID (me1) sein
+router.param("setId", (req, _res, next, value) => {
+  req.params.setId = resolveSetParam(value);
+  next();
+});
 
 // GET /api/sets -> alle Sets, für die "Alle Karten"-Übersichtsseite (öffentlich)
 router.get("/", (_req, res) => {

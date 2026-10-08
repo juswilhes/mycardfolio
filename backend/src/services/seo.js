@@ -1,5 +1,6 @@
 import db from "../db/index.js";
 import { latestTrendByExternal } from "./cardService.js";
+import { slugOfSet, resolveSetParam, rebuildSetSlugs } from "./setSlugs.js";
 
 // Meta-Tags pro Seite (Titel, Beschreibung, canonical, Vorschaubild) und die
 // Sitemap. Die App ist eine Single-Page-App: ohne dieses Einsetzen auf dem
@@ -79,8 +80,9 @@ export function metaFor(rawPath) {
     };
   }
   if ((m = path.match(/^\/sets\/([^/]+)$/))) {
-    const s = setStmt.get(decodeURIComponent(m[1]));
+    const s = setStmt.get(resolveSetParam(decodeURIComponent(m[1])));
     if (!s) return { ...base, robots: false, missing: true };
+    base.canonical = `${SITE_URL}/sets/${slugOfSet(s.id)}`;
     const year = s.release_date ? ` (${s.release_date.slice(0, 4)})` : "";
     const total = s.total || s.printed_total;
     return {
@@ -105,6 +107,17 @@ export function metaFor(rawPath) {
   }
   // Marktplatz-Angebote und Verkäuferprofile sind kurzlebig und persönlich -> nicht indexieren
   return { ...base, robots: false };
+}
+
+// Alte Adressen (/sets/me1) auf die lesbaren (/sets/mega-evolution) umleiten.
+export function redirectFor(rawPath) {
+  const m = rawPath.match(/^\/sets\/([^/]+)\/?$/);
+  if (!m) return null;
+  const param = decodeURIComponent(m[1]);
+  const id = resolveSetParam(param);
+  if (!setStmt.get(id)) return null;
+  const slug = slugOfSet(id);
+  return param === slug && !rawPath.endsWith("/") ? null : `/sets/${encodeURIComponent(slug)}`;
 }
 
 // Der Block zwischen den Markierungen in frontend/index.html wird ersetzt.
@@ -143,8 +156,9 @@ const allArtistsStmt = db.prepare(`SELECT DISTINCT artist FROM cards WHERE artis
 let sitemapXml = null;
 
 export function rebuildSitemap() {
+  rebuildSetSlugs(); // neue Sets seit dem letzten Nachtlauf bekommen ihren Slug
   const urls = Object.keys(PUBLIC_PAGES).map((p) => p);
-  for (const s of allSetsStmt.all()) urls.push(`/sets/${encodeURIComponent(s.id)}`);
+  for (const s of allSetsStmt.all()) urls.push(`/sets/${encodeURIComponent(slugOfSet(s.id))}`);
   for (const a of allArtistsStmt.all()) urls.push(`/illustrator/${encodeURIComponent(a.artist)}`);
   for (const c of allCardsStmt.all()) urls.push(`/database/${encodeURIComponent(c.external_id)}`);
   const body = urls.map((u) => `  <url><loc>${esc(SITE_URL + u)}</loc></url>`).join("\n");

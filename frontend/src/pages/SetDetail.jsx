@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePageTitle } from "../hooks/usePageTitle.js";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
@@ -20,6 +20,7 @@ const SORTS = {
 export default function SetDetail() {
   const { user } = useAuth();
   const { setId } = useParams();
+  const navigate = useNavigate();
   const [set, setSet] = useState(null);
   const [cards, setCards] = useState(null);
   usePageTitle(set ? `${set.name} – Kartenliste & Preise | mycardfolio` : null);
@@ -31,6 +32,11 @@ export default function SetDetail() {
   const [sealedBusy, setSealedBusy] = useState(false);
   const [sealedError, setSealedError] = useState(null);
   const [sealedAdded, setSealedAdded] = useState(false);
+
+  // alte ID-Adresse (/sets/me1) -> lesbare Adresse (/sets/mega-evolution)
+  useEffect(() => {
+    if (set?.slug && setId !== set.slug) navigate(`/sets/${set.slug}`, { replace: true });
+  }, [set, setId, navigate]);
 
   useEffect(() => {
     getSet(setId).then(setSet);
@@ -77,7 +83,7 @@ export default function SetDetail() {
     setSealedBusy(true);
     setSealedError(null);
     try {
-      await addSealedProduct({ ...values, setId, setName: set?.name });
+      await addSealedProduct({ ...values, setId: set?.id ?? setId, setName: set?.name });
       setSealedOpen(false);
       setSealedAdded(true);
       setTimeout(() => setSealedAdded(false), 3000);
