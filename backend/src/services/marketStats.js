@@ -92,29 +92,71 @@ export function getSetValueAnalysis() {
 
 // Analyse "Pull Rates": alle Sets mit hinterlegten Pull Rates (von Hand
 // gepflegt, siehe routes/sets.js) - das Frontend baut daraus die Matrix
-// Seltenheit x Set.
+// Seltenheit x Set. Dazu je Set die berechnete Hit Rate.
 const pullRateRowsStmt = db.prepare(`
-  SELECT cs.id, cs.name, cs.series, cs.release_date, cs.chase_hit_rate_pct,
+  SELECT cs.id, cs.name, cs.series, cs.release_date,
          pr.rarity, pr.any_denominator, pr.specific_denominator
   FROM card_sets cs
-  LEFT JOIN pull_rates pr ON pr.set_id = cs.id
-  WHERE cs.chase_hit_rate_pct IS NOT NULL OR pr.id IS NOT NULL
+  JOIN pull_rates pr ON pr.set_id = cs.id
   ORDER BY cs.release_date DESC, cs.id
 `);
+const rarityCountsStmt = db.prepare(`
+  SELECT set_id, rarity, COUNT(*) AS n FROM cards
+  WHERE set_id IN (SELECT DISTINCT set_id FROM pull_rates) AND rarity IS NOT NULL
+  GROUP BY set_id, rarity
+`);
+
+const normRarity = (r) => r.trim().toLowerCase().replace(/_/g, " ").replace(/s+/g, " ");
+// Keine "Treffer": alles, was in jedem Pack ohnehin zu erwarten ist.
+const NO_HIT_RARITIES = new Set(["common", "uncommon", "rare", "double rare", "pikachu rare"]);
+
+// Hit Rate = Chance, dass ein Pack mindestens eine besondere Karte enthält
+// (jede Seltenheit außer NO_HIT_RARITIES). Pro Seltenheit zählt die Chance,
+// dass das Pack IRGENDEINE Karte davon enthält: "jede 1/X" direkt, sonst
+// Kartenanzahl der Seltenheit / "diese 1/Y". Die Seltenheiten werden als
+// voneinander unabhängig behandelt (1 - Produkt der Gegenchancen) - eine
+// Näherung, die nie über 100 % kommt. complete=false: für mindestens eine
+// Seltenheit fehlten die Angaben, der Wert ist dann nur eine Untergrenze.
+function hitRateFor(rows, counts) {
+  let miss = 1;
+  let used = 0;
+  let complete = true;
+  for (const r of rows) {
+    const key = normRarity(r.rarity);
+    if (NO_HIT_RARITIES.has(key)) continue;
+    const n = counts.get(key) ?? 0;
+    const p = r.any_denominator ? 1 / r.any_denominator : r.specific_denominator && n ? Math.min(1, n / r.specific_denominator) : null;
+    if (p == null) {
+      complete = false;
+      continue;
+    }
+    miss *= 1 - p;
+    used++;
+  }
+  if (!used) return { hitRatePct: null, hitRateComplete: false };
+  return { hitRatePct: Math.round((1 - miss) * 1000) / 10, hitRateComplete: complete };
+}
 
 export function getPullRateOverview() {
+  const counts = new Map();
+  for (const c of rarityCountsStmt.all()) {
+    if (!counts.has(c.set_id)) counts.set(c.set_id, new Map());
+    const m = counts.get(c.set_id);
+    const key = normRarity(c.rarity);
+    m.set(key, (m.get(key) ?? 0) + c.n);
+  }
+
   const bySet = new Map();
   for (const r of pullRateRowsStmt.all()) {
     let s = bySet.get(r.id);
     if (!s) {
-      s = { id: r.id, name: r.name, series: r.series, release_date: r.release_date, chaseHitRatePct: r.chase_hit_rate_pct, rarities: [] };
+      s = { id: r.id, name: r.name, series: r.series, release_date: r.release_date, rarities: [], rows: [] };
       bySet.set(r.id, s);
     }
-    if (r.rarity) {
-      s.rarities.push({ rarity: r.rarity, anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator });
-    }
+    s.rows.push(r);
+    s.rarities.push({ rarity: r.rarity, anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator });
   }
-  return [...bySet.values()];
+  return [...bySet.values()].map(({ rows, ...s }) => ({ ...s, ...hitRateFor(rows, counts.get(s.id) ?? new Map()) }));
 }
 
 // Unter diesem Betrag verzerren schon einzelne Cent den Prozentwert (z.B.

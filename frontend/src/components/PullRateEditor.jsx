@@ -39,7 +39,6 @@ export default function PullRateEditor({ onSaved }) {
         const byRarity = Object.fromEntries(rates.rarities.map((r) => [r.rarity, r]));
         setRarities(list);
         setForm({
-          chaseHitRatePct: rates.chaseHitRatePct != null ? String(rates.chaseHitRatePct) : "",
           byRarity: Object.fromEntries(
             list.map((r) => [
               r,
@@ -66,7 +65,6 @@ export default function PullRateEditor({ onSaved }) {
     setSaving(true);
     try {
       await updatePullRates(setId, {
-        chaseHitRatePct: form.chaseHitRatePct.trim() || null,
         rarities: Object.entries(form.byRarity).map(([rarity, v]) => ({
           rarity,
           anyDenominator: v.any.trim() || null,
@@ -105,21 +103,6 @@ export default function PullRateEditor({ onSaved }) {
 
       {form && (
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-xs text-subtle w-56 shrink-0">Chance auf mind. 1 Treffer (%)</span>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="100"
-              value={form.chaseHitRatePct}
-              onChange={(e) => {
-                setSaved(false);
-                setForm((f) => ({ ...f, chaseHitRatePct: e.target.value }));
-              }}
-              className={input}
-            />
-          </label>
           {rarities.map((r) => (
             <div key={r} className="flex flex-wrap items-center gap-2">
               <span className="text-xs w-56 shrink-0 truncate" title={r}>

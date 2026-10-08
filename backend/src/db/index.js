@@ -416,9 +416,9 @@ if (!csColumns.has("prices_updated_at")) {
   db.exec(`ALTER TABLE card_sets ADD COLUMN prices_updated_at TEXT`);
 }
 
-// card_sets.chase_hit_rate_pct: "Chance auf mind. 1 Chase-Karte pro Pack"
-// in Prozent, von Hand gepflegt - gehört inhaltlich zu den Pull Rates
-// (pull_rates-Tabelle), aber ist ein Wert pro SET statt pro Seltenheit.
+// card_sets.chase_hit_rate_pct wird nicht mehr genutzt (die Hit Rate wird
+// aus den Pull Rates berechnet, siehe services/marketStats.js) - die Spalte
+// bleibt in bestehenden Datenbanken einfach ungenutzt liegen.
 if (!csColumns.has("chase_hit_rate_pct")) {
   db.exec(`ALTER TABLE card_sets ADD COLUMN chase_hit_rate_pct REAL`);
 }

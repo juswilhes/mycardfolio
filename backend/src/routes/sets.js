@@ -11,7 +11,6 @@ const router = Router();
 const setPricesStmt = db.prepare(
   `UPDATE card_sets SET box_price_cents = ?, booster_price_cents = ?, prices_updated_at = ? WHERE id = ?`
 );
-const setChaseHitRateStmt = db.prepare(`UPDATE card_sets SET chase_hit_rate_pct = ? WHERE id = ?`);
 const pullRatesForSetStmt = db.prepare(`SELECT rarity, any_denominator, specific_denominator FROM pull_rates WHERE set_id = ? ORDER BY rarity`);
 const upsertPullRateStmt = db.prepare(`
   INSERT INTO pull_rates (set_id, rarity, any_denominator, specific_denominator)
@@ -84,12 +83,11 @@ router.patch("/:setId/prices", authRequired, (req, res) => {
   res.json({ box_price_cents: box, booster_price_cents: booster });
 });
 
-// GET /api/sets/:setId/pull-rates -> öffentlich. { chaseHitRatePct, rarities: [...] }
+// GET /api/sets/:setId/pull-rates -> öffentlich. { rarities: [...] }
 router.get("/:setId/pull-rates", (req, res) => {
   const set = getSetLocal(req.params.setId);
   if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
   res.json({
-    chaseHitRatePct: set.chase_hit_rate_pct ?? null,
     rarities: pullRatesForSetStmt.all(req.params.setId).map((r) => ({
       rarity: r.rarity,
       anyDenominator: r.any_denominator,
@@ -100,7 +98,7 @@ router.get("/:setId/pull-rates", (req, res) => {
 
 // PATCH /api/sets/:setId/pull-rates -> nur Betreiber, keine freie API-Quelle
 // dafür (Hand-Eingabe aus Booster-Auswertungen wie TCGplayer/PikaPika).
-// Body: { chaseHitRatePct: 34 | null, rarities: [{ rarity, anyDenominator, specificDenominator }] }
+// Body: { rarities: [{ rarity, anyDenominator, specificDenominator }] }
 // Ein rarity-Eintrag ohne beide Werte (null/leer) löscht die Zeile wieder.
 router.patch("/:setId/pull-rates", authRequired, (req, res) => {
   if (!isOperatorUser(req.user)) {
@@ -109,17 +107,7 @@ router.patch("/:setId/pull-rates", authRequired, (req, res) => {
   const set = getSetLocal(req.params.setId);
   if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
 
-  const { chaseHitRatePct, rarities } = req.body ?? {};
-
-  let hitRate = null;
-  if (chaseHitRatePct != null && chaseHitRatePct !== "") {
-    const n = Number(chaseHitRatePct);
-    if (!Number.isFinite(n) || n < 0 || n > 100) {
-      return res.status(400).json({ error: "Ungültige Trefferquote (0-100)" });
-    }
-    hitRate = n;
-  }
-  setChaseHitRateStmt.run(hitRate, req.params.setId);
+  const { rarities } = req.body ?? {};
 
   for (const r of rarities ?? []) {
     if (!r.rarity) continue;
@@ -141,7 +129,6 @@ router.patch("/:setId/pull-rates", authRequired, (req, res) => {
   }
 
   res.json({
-    chaseHitRatePct: hitRate,
     rarities: pullRatesForSetStmt.all(req.params.setId).map((r) => ({
       rarity: r.rarity,
       anyDenominator: r.any_denominator,

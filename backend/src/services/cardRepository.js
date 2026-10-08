@@ -560,6 +560,5 @@ function mapSetRow(s) {
     box_price_cents: s.box_price_cents ?? null,
     booster_price_cents: s.booster_price_cents ?? null,
     prices_updated_at: s.prices_updated_at ?? null,
-    chase_hit_rate_pct: s.chase_hit_rate_pct ?? null,
   };
 }

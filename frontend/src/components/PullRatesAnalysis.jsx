@@ -90,8 +90,6 @@ export default function PullRatesAnalysis() {
     );
   }
 
-  const hasHitRate = sets.some((s) => s.chaseHitRatePct != null);
-
   return (
     <div className="mb-10">
       {editorToggle}
@@ -103,6 +101,12 @@ export default function PullRatesAnalysis() {
         jedes 205. Pack enthält genau diese Karte. Darunter in klein: die Quote für <i>irgendeine</i> Karte dieser
         Seltenheit. Grün markiert ist das Set, in dem die Karte am leichtesten zu ziehen ist. Quelle sind
         Auswertungen geöffneter Booster, von Hand gepflegt – keine offiziellen Zahlen.
+      </p>
+      <p className="text-xs text-subtle mb-3">
+        <b>Hit Rate</b> = Chance, dass ein Pack mindestens eine besondere Karte enthält, also alles außer Common,
+        Uncommon, Rare, Double Rare und Pikachu Rare. Sie wird aus den Pull Rates berechnet (Kartenanzahl der
+        Seltenheit ÷ Quote pro Karte, die Seltenheiten als voneinander unabhängig gerechnet) und ist daher eine
+        Näherung. „≥" heißt: für eine Seltenheit fehlten Angaben, die echte Chance ist höher.
       </p>
 
       <div className="overflow-x-auto">
@@ -121,18 +125,26 @@ export default function PullRatesAnalysis() {
             </tr>
           </thead>
           <tbody>
-            {hasHitRate && (
-              <tr className="border-b border-line">
-                <td className="py-2 pr-4 sticky left-0 bg-canvas text-subtle whitespace-nowrap">
-                  Mind. 1 Treffer pro Pack
+            <tr className="border-b border-line">
+              <td className="py-2 pr-4 sticky left-0 bg-canvas whitespace-nowrap font-medium">Hit Rate pro Pack</td>
+              {sets.map((s) => (
+                <td key={s.id} className="py-2 px-3 text-right">
+                  {s.hitRatePct != null ? (
+                    <>
+                      <div className="font-mono font-medium">
+                        {s.hitRateComplete ? "" : "≥ "}
+                        {s.hitRatePct.toLocaleString("de-DE", { minimumFractionDigits: 1 })} %
+                      </div>
+                      <div className="text-[11px] text-subtle">
+                        jedes {(100 / s.hitRatePct).toLocaleString("de-DE", { maximumFractionDigits: 1 })}. Pack
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-subtle">–</span>
+                  )}
                 </td>
-                {sets.map((s) => (
-                  <td key={s.id} className="py-2 px-3 text-right font-mono">
-                    {s.chaseHitRatePct != null ? `${s.chaseHitRatePct} %` : <span className="text-subtle">–</span>}
-                  </td>
-                ))}
-              </tr>
-            )}
+              ))}
+            </tr>
             {matrix.map((row) => (
               <tr key={row.key} className="border-b border-line">
                 <td className="py-2 pr-4 sticky left-0 bg-canvas whitespace-nowrap">{row.label}</td>
