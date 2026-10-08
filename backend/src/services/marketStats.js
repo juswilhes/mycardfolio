@@ -345,10 +345,10 @@ function isPlausibleMove(m) {
 
 // Die Berechnung geht über alle Karten mit Preishistorie (20.000+) und
 // blockiert den Server dabei knapp eine Sekunde. Die Preise ändern sich nur
-// einmal täglich (Preis-Job um 1 Uhr) - also für alle Besucher kurz
-// zwischenspeichern statt bei jedem Aufruf neu zu rechnen.
-const MOVERS_CACHE_MS = 30 * 60 * 1000;
+// einmal täglich (Nachtlauf um 1 Uhr) - also bis zum nächsten Nachtlauf
+// zwischenspeichern (analysisCache.js leert und füllt den Speicher neu).
 const moversCache = new Map();
+export const resetMoversCache = () => moversCache.clear();
 
 // Größte Gewinner/Verlierer (Trendpreis, Variante 'normal') über alle
 // Karten mit Preishistorie - unabhängig davon, wer sie besitzt.
@@ -356,7 +356,7 @@ const moversCache = new Map();
 export function getMarketMovers({ days = 7, limit = 25, setName = null } = {}) {
   const key = `${days}|${limit}|${setName ?? ""}`;
   const hit = moversCache.get(key);
-  if (hit && Date.now() - hit.at < MOVERS_CACHE_MS) return hit.value;
+  if (hit) return hit.value;
 
   const cards = trackedCardsStmt.all().filter((c) => !setName || c.set_name === setName);
   const movers = cards
@@ -367,6 +367,6 @@ export function getMarketMovers({ days = 7, limit = 25, setName = null } = {}) {
   const gainers = movers.filter((m) => m.delta > 0).sort((a, b) => b.delta_pct - a.delta_pct).slice(0, limit);
   const losers = movers.filter((m) => m.delta < 0).sort((a, b) => a.delta_pct - b.delta_pct).slice(0, limit);
   const value = { gainers, losers, trackedCount: movers.length };
-  moversCache.set(key, { at: Date.now(), value });
+  moversCache.set(key, { value });
   return value;
 }

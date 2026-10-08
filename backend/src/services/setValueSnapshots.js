@@ -1,4 +1,3 @@
-import cron from "node-cron";
 import db from "../db/index.js";
 import { getSetValueAnalysis } from "./marketStats.js";
 
@@ -46,24 +45,16 @@ export function recordSetValueSnapshots({ onlyMissing = false, setId = null } = 
   return n;
 }
 
-// Am 1. jedes Monats um 4 Uhr (nach dem nächtlichen Preis-Sweep um 3 Uhr).
-// Zusätzlich beim Start nachholen, was in diesem Monat noch fehlt - sonst
-// fehlt ein Monat, wenn der Server genau am 1. nicht lief, und der erste
-// Stand entsteht direkt nach dem Deploy statt erst zum nächsten Monatsersten.
-export function scheduleSetValueSnapshots() {
-  cron.schedule("0 4 1 * *", () => {
-    try {
-      const n = recordSetValueSnapshots();
-      console.log(`[setValue] Monatsstand gespeichert (${n} Sets).`);
-    } catch (e) {
-      console.error("[setValue] Monatsstand fehlgeschlagen:", e);
-    }
-  });
+// Den Monatsstand schreibt der Nachtlauf um 1 Uhr (priceFetcher.js, nur wenn
+// für diesen Monat noch keiner da ist - also am Monatsersten). Zusätzlich beim
+// Start nachholen, was in diesem Monat noch fehlt - sonst fehlt ein Monat,
+// wenn der Server genau in dieser Nacht nicht lief, und der erste Stand
+// entsteht direkt nach dem Deploy statt erst zum nächsten Monatsersten.
+export function catchUpSetValueSnapshots() {
   try {
     const n = recordSetValueSnapshots({ onlyMissing: true });
     if (n) console.log(`[setValue] Fehlenden Monatsstand nachgeholt (${n} Sets).`);
   } catch (e) {
     console.error("[setValue] Nachholen fehlgeschlagen:", e);
   }
-  console.log("[setValue] Monatsstand am 1. um 4 Uhr eingeplant.");
 }

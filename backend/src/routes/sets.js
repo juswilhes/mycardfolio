@@ -5,6 +5,7 @@ import { authRequired } from "../middleware/auth.js";
 import { isOperatorUser } from "../lib/admin.js";
 import db from "../db/index.js";
 import { recordSetValueSnapshots } from "../services/setValueSnapshots.js";
+import { rebuildAnalysisCache } from "../services/analysisCache.js";
 
 const router = Router();
 
@@ -78,6 +79,8 @@ router.patch("/:setId/prices", authRequired, (req, res) => {
     return res.status(400).json({ error: "Ungültiger Preis" });
   }
   setPricesStmt.run(box, booster, new Date().toISOString(), req.params.setId);
+  // Eingaben des Betreibers gelten sofort (nicht erst im Nachtlauf)
+  rebuildAnalysisCache();
   // Stand dieses Monats im Analyse-Verlauf gleich mit den neuen Preisen aktualisieren
   recordSetValueSnapshots({ setId: req.params.setId });
   res.json({ box_price_cents: box, booster_price_cents: booster });
@@ -128,6 +131,7 @@ router.patch("/:setId/pull-rates", authRequired, (req, res) => {
     });
   }
 
+  rebuildAnalysisCache();
   res.json({
     rarities: pullRatesForSetStmt.all(req.params.setId).map((r) => ({
       rarity: r.rarity,
