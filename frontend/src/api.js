@@ -111,6 +111,7 @@ export const getMarketMovers = (days = 7, set = null) =>
 export const getSetValueAnalysis = () => request("/stats/set-value");
 export const getPullRateOverview = () => request("/stats/pull-rates");
 export const getPackValueAnalysis = () => request("/stats/pack-value");
+export const getPullOrBuy = () => request("/stats/pull-or-buy");
 
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");

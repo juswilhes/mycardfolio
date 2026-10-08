@@ -6,6 +6,7 @@ import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
 import PackValueAnalysis from "../components/PackValueAnalysis.jsx";
+import PullOrBuyAnalysis from "../components/PullOrBuyAnalysis.jsx";
 import SegmentedToggle from "../components/SegmentedToggle.jsx";
 import { eur, eur0 } from "../lib/format.js";
 
@@ -63,6 +64,7 @@ const ANALYSES = [
   { id: "booster", label: "Booster vs. Top-Karten", render: () => <SetValueAnalysis /> },
   { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
   { id: "packwert", label: "Wert pro Pack", render: () => <PackValueAnalysis /> },
+  { id: "ziehenkaufen", label: "Ziehen oder kaufen", render: () => <PullOrBuyAnalysis /> },
 ];
 
 // Route: /analyse – Auswahl verschiedener Analysen (marktweit oder auf die

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMarketMovers, getSetValueAnalysis, getPullRateOverview, getPackValueAnalysis } from "../services/marketStats.js";
+import { getMarketMovers, getSetValueAnalysis, getPullRateOverview, getPackValueAnalysis, getPullOrBuy } from "../services/marketStats.js";
 
 const router = Router();
 
@@ -21,6 +21,11 @@ router.get("/pull-rates", (_req, res) => {
 // GET /api/stats/pack-value -> erwarteter Wert pro Pack je Set (Pull Rates x Kartenpreise)
 router.get("/pack-value", (_req, res) => {
   res.json(getPackValueAnalysis());
+});
+
+// GET /api/stats/pull-or-buy -> Chase-Karten je Set mit Preis und Quote (Ziehen oder kaufen)
+router.get("/pull-or-buy", (_req, res) => {
+  res.json(getPullOrBuy());
 });
 
 // GET /api/stats/set-value -> Box-/Boosterpreis vs. Top-20-Kartenwert je Set

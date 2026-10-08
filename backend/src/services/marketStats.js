@@ -195,7 +195,8 @@ const round2 = (x) => Math.round(x * 100) / 100;
 const cardsWithRarityStmt = db.prepare(`SELECT id, rarity FROM cards WHERE set_id = ? AND rarity IS NOT NULL`);
 const setPricesStmt = db.prepare(`SELECT box_price_cents, booster_price_cents FROM card_sets WHERE id = ?`);
 
-export function getPackValueAnalysis() {
+// Pull-Rate-Zeilen je Booster (Sets in Fremd-Boostern zählen zum Booster-Set).
+function boosterGroups() {
   const groups = new Map();
   for (const r of pullRateRowsStmt.all()) {
     const b = boosterOf(r.id);
@@ -207,8 +208,11 @@ export function getPackValueAnalysis() {
     if (r.id === b) Object.assign(g, { name: r.name, series: r.series, release_date: r.release_date });
     g.rows.push(r);
   }
+  return [...groups.values()];
+}
 
-  return [...groups.values()].map((g) => {
+export function getPackValueAnalysis() {
+  return boosterGroups().map((g) => {
     // Kartenpreise je Seltenheit (inkl. Karten aus Fremd-Boostern, z. B. Classic Collection)
     const byRarity = new Map();
     for (const setId of setsInBooster(g.id)) {
@@ -269,6 +273,54 @@ export function getPackValueAnalysis() {
       boxPriceCents: prices.box_price_cents ?? null,
       rarities,
       notIncluded: [...byRarity.entries()].filter(([k]) => !listed.has(k)).map(([, e]) => e.label),
+    };
+  });
+}
+
+// Analyse "Ziehen oder kaufen": je Set die Chase-Karten (Seltenheiten mit
+// hinterlegter Quote pro Karte, ohne NO_HIT_RARITIES) mit aktuellem Preis. Wie
+// viele Packs im Schnitt nötig sind und was das kostet, rechnet das Frontend
+// (Quote x Boosterpreis), weil es vom Boosterpreis abhängt.
+const cardsOfRarityStmt = db.prepare(
+  `SELECT id, external_id, name, number, rarity, image_small FROM cards WHERE set_id = ? AND rarity IS NOT NULL`
+);
+
+export function getPullOrBuy() {
+  return boosterGroups().map((g) => {
+    const quotes = new Map();
+    for (const r of g.rows) {
+      const key = normRarity(r.rarity);
+      if (NO_HIT_RARITIES.has(key) || !r.specific_denominator) continue;
+      quotes.set(key, { denominator: r.specific_denominator, label: r.id === g.id || r.rarity !== "None" ? r.rarity : "Classic Collection" });
+    }
+
+    const cards = [];
+    for (const setId of setsInBooster(g.id)) {
+      for (const c of cardsOfRarityStmt.all(setId)) {
+        const q = quotes.get(normRarity(c.rarity));
+        const price = q ? latestTrend(c.id)?.price : null;
+        if (price == null) continue;
+        cards.push({
+          external_id: c.external_id,
+          name: c.name,
+          number: c.number,
+          image_small: c.image_small,
+          rarity: q.label,
+          price,
+          specificDenominator: q.denominator,
+        });
+      }
+    }
+    cards.sort((a, b) => b.price - a.price);
+
+    const prices = setPricesStmt.get(g.id) ?? {};
+    return {
+      id: g.id,
+      name: g.name,
+      release_date: g.release_date,
+      boosterPriceCents: prices.booster_price_cents ?? null,
+      packsPerBox: PACKS_PER_BOX,
+      cards,
     };
   });
 }
