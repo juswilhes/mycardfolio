@@ -182,66 +182,115 @@ export default function SetValueAnalysis() {
   );
 }
 
-// Verlauf der Monatsstände eines Sets. Der erste Stand entsteht beim ersten
-// Aufruf nach dem Deploy bzw. sobald Preise eingetragen sind, danach
-// automatisch am 1. jedes Monats.
-function HistoryChart({ rows }) {
-  const withHistory = rows.filter((s) => s.history.length > 0);
-  const [setId, setSetId] = useState(null);
-  const [metric, setMetric] = useState("booster");
+// Farben für die übereinandergelegten Sets (wie in der Statistik).
+const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f2994a", "#56ccf2", "#b0a08a"];
 
-  const current = withHistory.find((s) => s.id === setId) ?? withHistory[0];
+// Verlauf der Monatsstände - beliebig viele Sets übereinandergelegt, je Set
+// eine Linie in eigener Farbe; per Klick auf den Set-Namen ein-/ausblendbar.
+// Der erste Stand entsteht beim ersten Aufruf nach dem Deploy bzw. sobald
+// Preise eingetragen sind, danach automatisch am 1. jedes Monats.
+function HistoryChart({ rows }) {
+  const withHistory = useMemo(() => rows.filter((s) => s.history.length > 0), [rows]);
+  const [metric, setMetric] = useState("booster");
+  const [hidden, setHidden] = useState(() => new Set());
   const m = METRICS[metric];
 
+  // Je Set die Werte der gewählten Kennzahl (Sets ohne passenden Preis, z. B.
+  // ohne Boosterpreis bei "in Boostern", haben keine Werte)
+  const series = useMemo(
+    () =>
+      withHistory.map((s, i) => ({
+        id: s.id,
+        name: s.name,
+        color: SET_COLORS[i % SET_COLORS.length],
+        points: s.history.map((h) => ({ month: h.month, value: m.value(h) })).filter((p) => p.value != null),
+      })),
+    [withHistory, m]
+  );
+
+  const visible = series.filter((s) => s.points.length > 0 && !hidden.has(s.id));
+
   const data = useMemo(() => {
-    if (!current) return [];
-    return current.history
-      .map((h) => ({ month: monthLabel(h.month), value: m.value(h) }))
-      .filter((d) => d.value != null);
-  }, [current, m]);
+    const byMonth = new Map();
+    for (const s of visible) {
+      for (const p of s.points) {
+        if (!byMonth.has(p.month)) byMonth.set(p.month, { month: p.month });
+        byMonth.get(p.month)[s.id] = p.value;
+      }
+    }
+    return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
+  }, [visible]);
+
+  const toggle = (id) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   return (
     <div className="mt-10">
       <h2 className="text-sm font-medium mb-1">📈 Verlauf</h2>
       <p className="text-xs text-subtle mb-3">
         Jeweils der Stand zum Monatsersten – so siehst du, ob sich ein Set im Verhältnis zum Booster-/Boxpreis
-        lohnender oder weniger lohnend entwickelt. Ab dem 1. jedes Monats kommt automatisch ein neuer Punkt dazu.
+        lohnender oder weniger lohnend entwickelt. Mehrere Sets lassen sich übereinanderlegen. Ab dem 1. jedes
+        Monats kommt automatisch ein neuer Punkt dazu.
       </p>
 
       {withHistory.length === 0 ? (
         <p className="text-subtle text-sm">Noch kein Stand gespeichert.</p>
       ) : (
         <>
+          <select
+            value={metric}
+            onChange={(e) => setMetric(e.target.value)}
+            className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink mb-3"
+          >
+            {Object.entries(METRICS).map(([v, { label }]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+
           <div className="flex flex-wrap gap-2 mb-3">
-            <select
-              value={current.id}
-              onChange={(e) => setSetId(e.target.value)}
-              className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
-            >
-              {withHistory.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <select
-              value={metric}
-              onChange={(e) => setMetric(e.target.value)}
-              className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
-            >
-              {Object.entries(METRICS).map(([v, { label }]) => (
-                <option key={v} value={v}>{label}</option>
-              ))}
-            </select>
+            {series.map((s) => {
+              const hasData = s.points.length > 0;
+              const on = hasData && !hidden.has(s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  disabled={!hasData}
+                  onClick={() => toggle(s.id)}
+                  aria-pressed={on}
+                  title={hasData ? "" : "Für diese Kennzahl ist bei diesem Set kein Preis hinterlegt"}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition ${
+                    on ? "border-ink text-ink" : "border-line text-subtle"
+                  } ${hasData ? "hover:border-ink" : "opacity-40 cursor-not-allowed"}`}
+                >
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full"
+                    style={{ background: on ? s.color : "transparent", border: `1.5px solid ${s.color}` }}
+                  />
+                  {s.name}
+                </button>
+              );
+            })}
           </div>
 
-          {data.length === 0 ? (
-            <p className="text-subtle text-sm">
-              Für diese Auswahl liegt noch kein passender Preis vor (z. B. Boxpreis bei einem Set ohne Display).
-            </p>
+          {visible.length === 0 ? (
+            <p className="text-subtle text-sm">Kein Set ausgewählt bzw. für diese Kennzahl liegt noch kein Preis vor.</p>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
-                  <XAxis dataKey="month" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="month"
+                    stroke="var(--subtle)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={monthLabel}
+                  />
                   <YAxis
                     width={64}
                     stroke="var(--subtle)"
@@ -260,14 +309,25 @@ function HistoryChart({ rows }) {
                       color: "var(--ink)",
                     }}
                     labelStyle={{ color: "var(--subtle)" }}
-                    formatter={(v) => [m.format(v), m.label]}
+                    labelFormatter={monthLabel}
+                    formatter={(v, _name, item) => [m.format(v), visible.find((s) => s.id === item.dataKey)?.name]}
                   />
-                  <Line type="monotone" dataKey="value" stroke="var(--yellow)" strokeWidth={2.5} dot />
+                  {visible.map((s) => (
+                    <Line
+                      key={s.id}
+                      type="monotone"
+                      dataKey={s.id}
+                      stroke={s.color}
+                      strokeWidth={2.5}
+                      dot
+                      connectNulls
+                    />
+                  ))}
                 </LineChart>
               </ResponsiveContainer>
               {data.length < 2 && (
                 <p className="text-subtle text-xs mt-1">
-                  Erst ein Stand – die Linie entsteht, sobald am nächsten Monatsersten der zweite dazukommt.
+                  Erst ein Stand – die Linien entstehen, sobald am nächsten Monatsersten der zweite dazukommt.
                 </p>
               )}
             </>
