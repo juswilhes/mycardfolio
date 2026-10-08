@@ -106,7 +106,8 @@ export default function PullRatesAnalysis() {
         <b>Hit Rate</b> = Chance, dass ein Pack mindestens eine besondere Karte enthält, also alles außer Common,
         Uncommon, Rare, Double Rare und Pikachu Rare. Sie wird aus den Pull Rates berechnet (Kartenanzahl der
         Seltenheit ÷ Quote pro Karte, die Seltenheiten als voneinander unabhängig gerechnet) und ist daher eine
-        Näherung. „≥" heißt: für eine Seltenheit fehlten Angaben, die echte Chance ist höher.
+        Näherung. Die Classic Collection steckt in den Boostern des 30th Celebration, beide Sets teilen sich deshalb
+        dieselbe Hit Rate. „≥" heißt: für eine Seltenheit fehlten Angaben, die echte Chance ist höher.
       </p>
 
       <div className="overflow-x-auto">

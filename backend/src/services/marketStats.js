@@ -106,6 +106,12 @@ const rarityCountsStmt = db.prepare(`
   GROUP BY set_id, rarity
 `);
 
+// Sets, deren Karten aus den Boostern eines anderen Sets gezogen werden: die
+// Classic Collection steckt in den Boostern des 30th Celebration. Beide teilen
+// sich deshalb eine Hit Rate (gerechnet über alle Seltenheiten beider Sets).
+const BOOSTER_OF = { "30th-c": "30th" };
+const boosterOf = (setId) => BOOSTER_OF[setId] ?? setId;
+
 const normRarity = (r) => r.trim().toLowerCase().replace(/_/g, " ").replace(/s+/g, " ");
 // Keine "Treffer": alles, was in jedem Pack ohnehin zu erwarten ist.
 const NO_HIT_RARITIES = new Set(["common", "uncommon", "rare", "double rare", "pikachu rare"]);
@@ -146,17 +152,29 @@ export function getPullRateOverview() {
     m.set(key, (m.get(key) ?? 0) + c.n);
   }
 
+  // Zeilen und Kartenzahlen je Booster (statt je Set) zusammenfassen
+  const byBooster = new Map();
   const bySet = new Map();
   for (const r of pullRateRowsStmt.all()) {
+    const b = boosterOf(r.id);
+    if (!byBooster.has(b)) byBooster.set(b, { rows: [], counts: new Map() });
+    byBooster.get(b).rows.push(r);
     let s = bySet.get(r.id);
     if (!s) {
-      s = { id: r.id, name: r.name, series: r.series, release_date: r.release_date, rarities: [], rows: [] };
+      s = { id: r.id, name: r.name, series: r.series, release_date: r.release_date, rarities: [] };
       bySet.set(r.id, s);
     }
-    s.rows.push(r);
     s.rarities.push({ rarity: r.rarity, anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator });
   }
-  return [...bySet.values()].map(({ rows, ...s }) => ({ ...s, ...hitRateFor(rows, counts.get(s.id) ?? new Map()) }));
+  for (const [setId, m] of counts) {
+    const target = byBooster.get(boosterOf(setId));
+    if (!target) continue;
+    for (const [key, n] of m) target.counts.set(key, (target.counts.get(key) ?? 0) + n);
+  }
+  return [...bySet.values()].map((s) => {
+    const b = byBooster.get(boosterOf(s.id));
+    return { ...s, ...hitRateFor(b.rows, b.counts) };
+  });
 }
 
 // Unter diesem Betrag verzerren schon einzelne Cent den Prozentwert (z.B.
