@@ -183,6 +183,96 @@ export function getPullRateOverview() {
   });
 }
 
+// Analyse "Wert pro Pack": erwarteter Wert eines Boosters aus den Pull Rates
+// und den aktuellen Kartenpreisen. Pro Seltenheit mit hinterlegter Quote:
+//   Summe der Preise aller Karten dieser Seltenheit / "diese 1/Y" (Quote pro Karte)
+// bzw. ohne diese Quote: Durchschnittspreis / "jede 1/X". Alle Seltenheiten
+// ohne hinterlegte Pull Rate (Common, Uncommon, Rare, Reverse Holo ...) sind
+// NICHT enthalten - der Wert ist daher eine Untergrenze. Ein Display zählt
+// als PACKS_PER_BOX Booster.
+const PACKS_PER_BOX = 36;
+const round2 = (x) => Math.round(x * 100) / 100;
+const cardsWithRarityStmt = db.prepare(`SELECT id, rarity FROM cards WHERE set_id = ? AND rarity IS NOT NULL`);
+const setPricesStmt = db.prepare(`SELECT box_price_cents, booster_price_cents FROM card_sets WHERE id = ?`);
+
+export function getPackValueAnalysis() {
+  const groups = new Map();
+  for (const r of pullRateRowsStmt.all()) {
+    const b = boosterOf(r.id);
+    let g = groups.get(b);
+    if (!g) {
+      g = { id: b, name: r.name, series: r.series, release_date: r.release_date, rows: [] };
+      groups.set(b, g);
+    }
+    if (r.id === b) Object.assign(g, { name: r.name, series: r.series, release_date: r.release_date });
+    g.rows.push(r);
+  }
+
+  return [...groups.values()].map((g) => {
+    // Kartenpreise je Seltenheit (inkl. Karten aus Fremd-Boostern, z. B. Classic Collection)
+    const byRarity = new Map();
+    for (const setId of setsInBooster(g.id)) {
+      for (const c of cardsWithRarityStmt.all(setId)) {
+        const key = normRarity(c.rarity);
+        let e = byRarity.get(key);
+        if (!e) {
+          e = { label: c.rarity, cards: 0, priced: 0, sum: 0 };
+          byRarity.set(key, e);
+        }
+        e.cards++;
+        const price = latestTrend(c.id)?.price;
+        if (price != null) {
+          e.priced++;
+          e.sum += price;
+        }
+      }
+    }
+
+    let complete = true;
+    const listed = new Set();
+    const rarities = [];
+    for (const r of g.rows) {
+      const key = normRarity(r.rarity);
+      listed.add(key);
+      const e = byRarity.get(key);
+      const own = r.id === g.id;
+      const label = !own && r.rarity === "None" ? "Classic Collection" : r.rarity;
+      let value = null;
+      if (e?.priced) {
+        if (r.specific_denominator) value = e.sum / r.specific_denominator;
+        else if (r.any_denominator) value = e.sum / e.priced / r.any_denominator;
+      }
+      if (value == null) complete = false;
+      rarities.push({
+        rarity: label,
+        cards: e?.cards ?? 0,
+        pricedCards: e?.priced ?? 0,
+        avgPrice: e?.priced ? round2(e.sum / e.priced) : null,
+        anyDenominator: r.any_denominator,
+        specificDenominator: r.specific_denominator,
+        valuePerPack: value == null ? null : Math.round(value * 10000) / 10000,
+      });
+    }
+    rarities.sort((a, b) => (b.valuePerPack ?? -1) - (a.valuePerPack ?? -1));
+
+    const packValue = round2(rarities.reduce((s, r) => s + (r.valuePerPack ?? 0), 0));
+    const prices = setPricesStmt.get(g.id) ?? {};
+    return {
+      id: g.id,
+      name: g.name,
+      series: g.series,
+      release_date: g.release_date,
+      packValue,
+      complete,
+      packsPerBox: PACKS_PER_BOX,
+      boosterPriceCents: prices.booster_price_cents ?? null,
+      boxPriceCents: prices.box_price_cents ?? null,
+      rarities,
+      notIncluded: [...byRarity.entries()].filter(([k]) => !listed.has(k)).map(([, e]) => e.label),
+    };
+  });
+}
+
 // Unter diesem Betrag verzerren schon einzelne Cent den Prozentwert (z.B.
 // 0,02 € -> 0,05 € sieht wie "+150 %" aus, ist aber keine echte Bewegung).
 const MOVER_MIN_PRICE = 0.5;

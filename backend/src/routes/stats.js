@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMarketMovers, getSetValueAnalysis, getPullRateOverview } from "../services/marketStats.js";
+import { getMarketMovers, getSetValueAnalysis, getPullRateOverview, getPackValueAnalysis } from "../services/marketStats.js";
 
 const router = Router();
 
@@ -16,6 +16,11 @@ router.get("/market-movers", (req, res) => {
 // GET /api/stats/pull-rates -> Pull Rates aller Sets, bei denen welche hinterlegt sind
 router.get("/pull-rates", (_req, res) => {
   res.json(getPullRateOverview());
+});
+
+// GET /api/stats/pack-value -> erwarteter Wert pro Pack je Set (Pull Rates x Kartenpreise)
+router.get("/pack-value", (_req, res) => {
+  res.json(getPackValueAnalysis());
 });
 
 // GET /api/stats/set-value -> Box-/Boosterpreis vs. Top-20-Kartenwert je Set

@@ -5,6 +5,7 @@ import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
+import PackValueAnalysis from "../components/PackValueAnalysis.jsx";
 import SegmentedToggle from "../components/SegmentedToggle.jsx";
 import { eur, eur0 } from "../lib/format.js";
 
@@ -61,6 +62,7 @@ const ANALYSES = [
   { id: "sammlung", label: "Meine Sammlung", render: () => <CollectionStats /> },
   { id: "booster", label: "Booster vs. Top-Karten", render: () => <SetValueAnalysis /> },
   { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
+  { id: "packwert", label: "Wert pro Pack", render: () => <PackValueAnalysis /> },
 ];
 
 // Route: /analyse – Auswahl verschiedener Analysen (marktweit oder auf die

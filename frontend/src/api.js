@@ -110,6 +110,7 @@ export const getMarketMovers = (days = 7, set = null) =>
   request(`/stats/market-movers?days=${days}${set ? `&set=${encodeURIComponent(set)}` : ""}`);
 export const getSetValueAnalysis = () => request("/stats/set-value");
 export const getPullRateOverview = () => request("/stats/pull-rates");
+export const getPackValueAnalysis = () => request("/stats/pack-value");
 
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");

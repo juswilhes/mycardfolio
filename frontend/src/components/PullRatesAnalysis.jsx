@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getPullRateOverview } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PullRateEditor from "./PullRateEditor.jsx";
+import { rarityLabel } from "../lib/rarity.js";
 
 // Die Schreibweise der Seltenheiten ist je Set uneinheitlich ("Illustration
 // rare" / "Illustration Rare") - für die Zeilen der Matrix zählt die
@@ -10,15 +11,6 @@ import PullRateEditor from "./PullRateEditor.jsx";
 // Großbuchstaben (damit z. B. "RGB Rare" nicht zu "Rgb Rare" wird).
 const keyOf = (r) => r.trim().toLowerCase().replace(/\s+/g, " ");
 const capitals = (s) => (s.match(/[A-Z]/g) ?? []).length;
-
-function rarityLabel(rarity, setName) {
-  if (rarity === "None") return /classic collection/i.test(setName) ? "Classic Collection" : "Ohne Seltenheit";
-  // Rohwerte aus der Datenquelle ("MEGA_ATTACK_RARE") lesbar machen
-  if (/^[A-Z_]+$/.test(rarity)) {
-    return rarity.toLowerCase().split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
-  }
-  return rarity;
-}
 
 const median = (arr) => {
   if (!arr.length) return Infinity;
