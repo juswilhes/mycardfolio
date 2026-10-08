@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { eur0 as eur, eur as eur2 } from "../lib/format.js";
+import RangeSelect from "./RangeSelect.jsx";
+import { rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
 
 // Wert der GESAMTEN Sammlung über die Zeit, plus (falls vorhanden) die
 // investierte Summe als zweite Linie.
 export default function PortfolioChart({ data }) {
+  const [range, setRange] = useState("12m");
   if (!data || data.length < 2) {
     return (
       <p className="text-subtle text-sm py-4">
@@ -13,14 +17,23 @@ export default function PortfolioChart({ data }) {
     );
   }
 
-  const rows = data.map((d) => ({
-    date: new Date(d.captured_on).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+  const days = rangeDays(range);
+  const dateFormat = days > 90 ? { day: "2-digit", month: "2-digit", year: "2-digit" } : { day: "2-digit", month: "2-digit" };
+  const rows = withinDays(data, days, (d) => d.captured_on).map((d) => ({
+    date: new Date(d.captured_on).toLocaleDateString("de-DE", dateFormat),
     Wert: d.total_value,
     Investiert: d.total_cost || null,
   }));
   const hasCost = rows.some((r) => r.Investiert != null);
 
   return (
+    <div>
+      <div className="flex justify-end mb-2">
+        <RangeSelect value={range} onChange={setRange} />
+      </div>
+      {rows.length < 2 ? (
+        <p className="text-subtle text-sm py-4">Für diesen Zeitraum gibt es erst einen Datenpunkt.</p>
+      ) : (
     <ResponsiveContainer width="100%" height={180}>
       <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
         <XAxis dataKey="date" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />
@@ -34,6 +47,7 @@ export default function PortfolioChart({ data }) {
           tickFormatter={eur}
         />
         <Tooltip
+          itemSorter={highestFirst}
           contentStyle={{
             background: "var(--surface)",
             border: "1px solid var(--line)",
@@ -58,5 +72,7 @@ export default function PortfolioChart({ data }) {
         )}
       </LineChart>
     </ResponsiveContainer>
+      )}
+    </div>
   );
 }

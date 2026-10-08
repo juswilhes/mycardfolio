@@ -4,6 +4,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 import { getSetValueAnalysis, getSets, updateSetPrices } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { eur } from "../lib/format.js";
+import RangeSelect from "./RangeSelect.jsx";
+import { RANGES, rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
 
 const SORTS = {
   box_ratio: { label: "Top 20 im Verhältnis zum Boxpreis", fn: (a, b) => (b.boxRatio ?? -1) - (a.boxRatio ?? -1) },
@@ -188,7 +190,10 @@ const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f29
 // eine Linie in eigener Farbe; per Klick auf den Set-Namen ein-/ausblendbar.
 // Der erste Stand entsteht beim ersten Aufruf nach dem Deploy bzw. sobald
 // Preise eingetragen sind, danach automatisch am 1. jedes Monats.
+const HISTORY_RANGES = RANGES.filter((r) => ["3m", "6m", "12m"].includes(r.id));
+
 function HistoryChart({ rows }) {
+  const [range, setRange] = useState("12m");
   const withHistory = useMemo(() => rows.filter((s) => s.history.length > 0), [rows]);
   const [metric, setMetric] = useState("booster");
   const [hidden, setHidden] = useState(() => new Set());
@@ -202,9 +207,11 @@ function HistoryChart({ rows }) {
         id: s.id,
         name: s.name,
         color: SET_COLORS[i % SET_COLORS.length],
-        points: s.history.map((h) => ({ month: h.month, value: m.value(h) })).filter((p) => p.value != null),
+        points: withinDays(s.history, rangeDays(range), (h) => h.month)
+          .map((h) => ({ month: h.month, value: m.value(h) }))
+          .filter((p) => p.value != null),
       })),
-    [withHistory, m]
+    [withHistory, m, range]
   );
 
   const visible = series.filter((s) => s.points.length > 0 && !hidden.has(s.id));
@@ -240,15 +247,18 @@ function HistoryChart({ rows }) {
         <p className="text-subtle text-sm">Noch kein Stand gespeichert.</p>
       ) : (
         <>
-          <select
-            value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-            className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink mb-3"
-          >
-            {Object.entries(METRICS).map(([v, { label }]) => (
-              <option key={v} value={v}>{label}</option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <select
+              value={metric}
+              onChange={(e) => setMetric(e.target.value)}
+              className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+            >
+              {Object.entries(METRICS).map(([v, { label }]) => (
+                <option key={v} value={v}>{label}</option>
+              ))}
+            </select>
+            <RangeSelect value={range} onChange={setRange} options={HISTORY_RANGES} />
+          </div>
 
           <div className="flex flex-wrap gap-2 mb-3">
             {series.map((s) => {
@@ -300,6 +310,7 @@ function HistoryChart({ rows }) {
                     tickFormatter={(v) => m.format(v)}
                   />
                   <Tooltip
+                    itemSorter={highestFirst}
                     contentStyle={{
                       background: "var(--surface)",
                       border: "1px solid var(--line)",

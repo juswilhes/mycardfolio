@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { eur } from "../lib/format.js";
+import RangeSelect from "./RangeSelect.jsx";
+import { rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
 
 const VARIANT_LABEL = { normal: "Normal", holo: "Holo", reverse: "Reverse Holo" };
 
@@ -24,6 +26,7 @@ function lastValue(chartData, key) {
 // varianten es tatsächlich gibt.
 export default function PriceChart({ data }) {
   const [hidden, setHidden] = useState(() => new Set());
+  const [range, setRange] = useState("12m");
 
   if (!data || data.length === 0) {
     return (
@@ -34,15 +37,17 @@ export default function PriceChart({ data }) {
     );
   }
 
+  const days = rangeDays(range);
+  const dateFormat = days > 90 ? { day: "2-digit", month: "2-digit", year: "2-digit" } : { day: "2-digit", month: "2-digit" };
   const byDate = new Map();
   let specialVariant = null;
-  for (const d of data) {
+  for (const d of withinDays(data, days, (x) => x.fetched_at)) {
     const variant = d.variant ?? "normal";
     if (variant !== "normal") specialVariant = variant;
     const day = d.fetched_at.slice(0, 10);
     if (!byDate.has(day)) {
       byDate.set(day, {
-        date: new Date(d.fetched_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+        date: new Date(d.fetched_at).toLocaleDateString("de-DE", dateFormat),
       });
     }
     byDate.get(day)[variant === "normal" ? "normal" : "special"] = d.price;
@@ -74,7 +79,7 @@ export default function PriceChart({ data }) {
       return next;
     });
 
-  const Legend = legendItems.length > 0 && (
+  const Legend = (
     <div className="flex flex-wrap items-center gap-2 mb-2">
       {legendItems.map(({ key, label, price, bg, text, border }) => (
         <button
@@ -90,6 +95,9 @@ export default function PriceChart({ data }) {
           {price != null && <span className="font-mono">{eur(price)}</span>}
         </button>
       ))}
+      <div className="ml-auto">
+        <RangeSelect value={range} onChange={setRange} />
+      </div>
     </div>
   );
 
@@ -98,7 +106,7 @@ export default function PriceChart({ data }) {
       <div>
         {Legend}
         <p className="text-subtle text-sm py-4">
-          Erst ein Datenpunkt — die Verlaufslinie entsteht über die nächsten Tage.
+          Für diesen Zeitraum gibt es erst einen Datenpunkt — die Verlaufslinie entsteht über die nächsten Tage.
         </p>
       </div>
     );
@@ -120,6 +128,7 @@ export default function PriceChart({ data }) {
             tickFormatter={(v) => eur(v)}
           />
           <Tooltip
+            itemSorter={highestFirst}
             contentStyle={{
               background: "var(--surface)",
               border: "1px solid var(--line)",
