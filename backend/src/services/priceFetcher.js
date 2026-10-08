@@ -62,7 +62,7 @@ export async function refreshAllPrices() {
 //     mit Preisen und Bildern versorgt werden)
 //  2. alle Preise aktualisieren
 //  3. Karten ohne jeden Preis nachholen
-//  4. fehlende/kaputte Kartenbilder reparieren
+//  4. fehlende/kaputte Kartenbilder reparieren (sonntags alle Karten)
 //  5. Tagespunkt je Nutzer für den Portfolio-Graphen
 // Jeder Schritt einzeln abgesichert - ein Fehler (z.B. TCGdex kurz down)
 // soll die übrigen nicht verhindern.
@@ -77,7 +77,8 @@ export async function runDailyPriceJob() {
       ["Neu-Check", syncNewCards],
       ["Preise", refreshAllPrices],
       ["Preise nachholen", backfillAllMissingPrices],
-      ["Bilder", () => repairImages()],
+      // sonntags alle Karten prüfen (~3 Min.), sonst nur die üblichen Verdächtigen
+      ["Bilder", () => repairImages({ full: new Date().getDay() === 0 })],
       ["Portfolio", async () => recordAllPortfolioSnapshots()],
     ];
     for (const [name, fn] of steps) {
