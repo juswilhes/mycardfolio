@@ -1,9 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
-
-const eur = (n) =>
-  Number(n).toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const eur2 = (n) =>
-  Number(n).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+import { eur0 as eur, eur as eur2 } from "../lib/format.js";
 
 // Wert der GESAMTEN Sammlung über die Zeit, plus (falls vorhanden) die
 // investierte Summe als zweite Linie.

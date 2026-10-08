@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import CardTile from "./CardTile.jsx";
 import { langLabel, gradeLabel, conditionLabel } from "./CollectionItemDialog.jsx";
 import { deleteCollectionItem } from "../api.js";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 const entryCost = (e) =>
   e.purchase_price != null || e.shipping_cost != null

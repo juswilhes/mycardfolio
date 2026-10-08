@@ -4,8 +4,7 @@ import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduc
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 const SORTS = {
   number: "Nummer",

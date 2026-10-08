@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { conditionLabel } from "./CollectionItemDialog.jsx";
 import { StarRating } from "./StarRating.jsx";
-
-const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
+import { eurCents as eur } from "../lib/format.js";
 
 // Alle aktuellen Marktplatz-Angebote GENAU dieser Karte (günstigstes zuerst),
 // direkt auf der Kartenseite - man muss nicht extra im Marktplatz suchen.

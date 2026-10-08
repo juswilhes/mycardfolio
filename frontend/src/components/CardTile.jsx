@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteCollectionItem } from "../api.js";
 import { variantLabel, langLabel, gradeLabel, conditionLabel } from "./CollectionItemDialog.jsx";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 // EIN Element der Sammlungsliste: Bild, Name/Set, rechts aktueller Wert
 // plus (falls hinterlegt) Einstand und Gewinn/Verlust.

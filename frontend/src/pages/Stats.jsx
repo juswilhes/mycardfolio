@@ -6,10 +6,7 @@ import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
 import SegmentedToggle from "../components/SegmentedToggle.jsx";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
-const eur0 = (n) =>
-  Number(n).toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+import { eur, eur0 } from "../lib/format.js";
 
 const PALETTE = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f2994a", "#56ccf2", "#b0a08a"];
 

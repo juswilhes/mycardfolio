@@ -24,52 +24,15 @@ async function fetchJson(url, timeoutMs = 8000) {
   }
 }
 
-// Suche nach Karten per Namen, z.B. für die "Karte hinzufügen"-Ansicht
-export async function searchCards(query, pageSize = 20) {
-  const url = `${BASE_URL}/cards?q=name:"${encodeURIComponent(query)}*"&pageSize=${pageSize}`;
-  const json = await fetchJson(url);
-  return json.data.map(mapCard);
-}
-
-// Einzelne Karte per externer ID nachladen (u.a. für den Preis-Refresh-Job)
+// Einzelne Karte per externer ID nachladen (Fallback für Karten, die nicht im
+// lokalen Datensatz stecken)
 export async function getCardById(externalId, timeoutMs = 8000) {
   const json = await fetchJson(`${BASE_URL}/cards/${externalId}`, timeoutMs);
   return mapCard(json.data);
 }
 
-// Alle Sets (Erweiterungen), neueste zuerst - Grundlage für die "Alle Karten"-Seite
-export async function getSets() {
-  const json = await fetchJson(`${BASE_URL}/sets?orderBy=-releaseDate`);
-  return json.data.map(mapSet);
-}
-
-export async function getSetById(setId) {
-  const json = await fetchJson(`${BASE_URL}/sets/${setId}`);
-  return mapSet(json.data);
-}
-
-// Alle Karten eines einzelnen Sets, sortiert nach Kartennummer
-export async function getCardsBySet(setId) {
-  const json = await fetchJson(`${BASE_URL}/cards?q=set.id:${setId}&orderBy=number&pageSize=250`);
-  return json.data.map(mapCard);
-}
-
-function mapSet(s) {
-  return {
-    id: s.id,
-    name: s.name,
-    series: s.series,
-    release_date: s.releaseDate,
-    total: s.total,
-    logo: s.images?.logo,
-    symbol: s.images?.symbol,
-  };
-}
-
 // Normalisiert die API-Antwort auf unser internes Format. Preise kommen
 // NICHT von hier - dafür ist priceProvider.js (Cardmarket/EUR) zuständig.
-// Diese Funktion wird nur noch als Fallback für Karten genutzt, die nicht
-// im lokalen Datensatz stecken.
 function mapCard(c) {
   return {
     external_id: c.id,

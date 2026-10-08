@@ -1,27 +1,14 @@
 import PriceChart from "./PriceChart.jsx";
-
-const eur = (n) =>
-  Number(n).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+import { eur } from "../lib/format.js";
 
 const VARIANT_LABEL = { holo: "Holo", reverse: "Reverse Holo" };
 
-// Durchschnitt der letzten 30 Tage aus der eigenen, gesammelten Historie
-// (nicht Cardmarkets eigener Trend- oder avg30-Wert) - für die Sonder-
-// Variante (Holo/Reverse Holo), die der Server nicht separat mitgibt. Für
-// "normal" kommt dieselbe Rechnung schon vom Server (card.latest_price),
-// hier nur für die zweite Zeile unter der Headline gebraucht.
-function avg30FromHistory(history, variant) {
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const prices = (history ?? [])
-    .filter(
-      (h) =>
-        (h.variant ?? "normal") === variant &&
-        h.price != null &&
-        new Date(h.fetched_at).getTime() >= cutoff
-    )
-    .map((h) => h.price);
-  if (!prices.length) return null;
-  return prices.reduce((s, p) => s + p, 0) / prices.length;
+// Aktueller Preis einer Variante = letzter Punkt ihrer Preisreihe (der Graph
+// zeigt dieselbe Reihe, deshalb stimmen beide immer überein). Für "normal"
+// kommt er schon vom Server (card.latest_price) - hier für die Sonder-Variante.
+function lastPrice(history, variant) {
+  const pts = (history ?? []).filter((h) => (h.variant ?? "normal") === variant);
+  return pts.length ? pts[pts.length - 1].price : null;
 }
 
 // Momentum-Signal: reine Beobachtung ("Preis hat sich seit dem ersten
@@ -68,10 +55,9 @@ export default function PriceSection({ card, history }) {
   // sondern höchstens eine der beiden (siehe priceProvider.js) - also die
   // vorhandene Sonder-Variante im Breakdown suchen statt fix "holo".
   const specialVariant = breakdown.find((b) => b.variant === "reverse") ? "reverse" : "holo";
-  const specialAvg = avg30FromHistory(history, specialVariant);
-  // card.latest_price ist der selbst berechnete 30-Tage-Schnitt (siehe
-  // cardService.js latestTrend()), nicht Cardmarkets einzelner Trend-Wert -
-  // byType.trend nur als letzter Notnagel, falls der Server mal nichts liefert.
+  const specialPrice = lastPrice(history, specialVariant);
+  // card.latest_price = letzter Punkt der Preisreihe (cardService.js latestTrend)
+  // - byType.trend nur als letzter Notnagel, falls der Server mal nichts liefert.
   const headline = card.latest_price?.price ?? byType.trend ?? null;
   const basis = card.latest_price?.source ?? (breakdown.length ? "cardmarket" : null);
 
@@ -122,10 +108,10 @@ export default function PriceSection({ card, history }) {
         </p>
       )}
 
-      {specialAvg != null && (
+      {specialPrice != null && (
         <div className="flex items-baseline gap-4 flex-wrap mt-2 text-sm">
           <span className="text-subtle text-xs">{VARIANT_LABEL[specialVariant]}-Variante:</span>
-          <span className="font-mono">{eur(specialAvg)}</span>
+          <span className="font-mono">{eur(specialPrice)}</span>
         </div>
       )}
 
@@ -167,8 +153,8 @@ export default function PriceSection({ card, history }) {
             haben. Das macht den Preis robuster: ein einzelner schlecht
             getroffener Tag (z.B. eine kurzzeitig falsch zugeordnete Karte)
             verzerrt dann nicht mehr den angezeigten Wert. Der Graph darunter
-            zeigt trotzdem die einzelnen Tagespreise, damit du den Verlauf
-            siehst. (Den „Tiefstpreis" zeigen wir bewusst nicht an – der ist
+            zeigt genau diese Reihe – sein letzter Punkt ist der aktuelle
+            Preis. (Den „Tiefstpreis" zeigen wir bewusst nicht an – der ist
             oft nur ein einzelnes Schnäppchen-Angebot.)
           </p>
           <p>

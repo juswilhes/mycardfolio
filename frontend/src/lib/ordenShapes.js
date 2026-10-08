@@ -3,17 +3,7 @@
 // die zu einem Pfad zusammengesetzt werden - wie beim Kunstkenner-Blüten-
 // Cluster, nur pro Orden mit einem eigenen, zum Thema passenden Motiv.
 
-export function polygonPoints(sides, r = 40, cx = 50, cy = 50) {
-  const rot = -90 + 180 / sides;
-  const pts = [];
-  for (let i = 0; i < sides; i++) {
-    const angle = ((rot + (360 / sides) * i) * Math.PI) / 180;
-    pts.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
-  }
-  return pts.join(" ");
-}
-
-export function starPoints(spikes, outerR, innerR, cx = 50, cy = 50) {
+function starPoints(spikes, outerR, innerR, cx = 50, cy = 50) {
   const step = Math.PI / spikes;
   let angle = -Math.PI / 2;
   const pts = [];
@@ -23,15 +13,6 @@ export function starPoints(spikes, outerR, innerR, cx = 50, cy = 50) {
     angle += step;
   }
   return pts.join(" ");
-}
-
-export function flowerPetals(count = 6, ringR = 21, petalR = 17, cx = 50, cy = 50) {
-  const petals = [];
-  for (let i = 0; i < count; i++) {
-    const angle = ((360 / count) * i * Math.PI) / 180;
-    petals.push({ cx: cx + ringR * Math.cos(angle), cy: cy + ringR * Math.sin(angle), r: petalR });
-  }
-  return petals;
 }
 
 // Reines M/L/Z-Polygon als Pfad, IMMER im Uhrzeigersinn. Überlappende Teile

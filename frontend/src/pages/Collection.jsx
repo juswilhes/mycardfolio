@@ -15,6 +15,7 @@ import Movers from "../components/Movers.jsx";
 import OrdenBadge from "../components/OrdenBadge.jsx";
 import OrdenUnlockAnimation from "../components/OrdenUnlockAnimation.jsx";
 import { SortIcon, FilterIcon, SearchIcon } from "../components/icons.jsx";
+import { eur } from "../lib/format.js";
 
 const ORDEN_SEEN_KEY = "mcf-orden-seen";
 
@@ -53,8 +54,6 @@ function detectNewlyEarned(list) {
   }
   return newly;
 }
-
-const eur = (n) => `${n.toFixed(2)} €`;
 
 // Apostroph/Groß-Klein ignorieren, damit "Ns Zekrom" auch "N's Zekrom" in
 // der eigenen Sammlung findet - gleiche Logik wie in der Kartendatenbank.

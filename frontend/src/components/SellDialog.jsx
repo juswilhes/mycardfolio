@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { eur } from "../lib/format.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const eur = (n) => `${Number(n).toFixed(2)} €`;
 
 // Dialog für "Karte verkauft": Verkaufserlös erfassen, realisierten
 // Gewinn/Verlust live anzeigen. onConfirm bekommt die Werte.

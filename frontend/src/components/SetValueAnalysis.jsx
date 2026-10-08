@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { getSetValueAnalysis, getSets, updateSetPrices } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 const SORTS = {
   box_ratio: { label: "Top 20 im Verhältnis zum Boxpreis", fn: (a, b) => (b.boxRatio ?? -1) - (a.boxRatio ?? -1) },

@@ -20,8 +20,7 @@ import { conditionLabel } from "../components/CollectionItemDialog.jsx";
 import { StarRating, StarPicker } from "../components/StarRating.jsx";
 import PurchaseCelebrationAnimation from "../components/PurchaseCelebrationAnimation.jsx";
 import ContactSellerDialog from "../components/ContactSellerDialog.jsx";
-
-const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
+import { eurCents as eur } from "../lib/format.js";
 
 // Route: /marktplatz – Karten & Sealed-Produkte, die andere Nutzer
 // verkaufen. Ohne Stripe-Schlüssel (paymentsEnabled = false) ist das eine

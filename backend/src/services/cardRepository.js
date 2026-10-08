@@ -23,7 +23,7 @@ const parse = (v) => {
 
 // Wandelt eine cards-Zeile in das Format um, das das Frontend erwartet -
 // inkl. aller Zusatzinfos (Artist, Attacken, Schwächen, ...).
-export function rowToCard(row) {
+function rowToCard(row) {
   if (!row) return null;
   return {
     external_id: row.external_id,
@@ -563,6 +563,3 @@ function mapSetRow(s) {
     chase_hit_rate_pct: s.chase_hit_rate_pct ?? null,
   };
 }
-
-export const cardDataImported = () =>
-  db.prepare(`SELECT COUNT(*) AS n FROM cards WHERE raw_json IS NOT NULL`).get().n;

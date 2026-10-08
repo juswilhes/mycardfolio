@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
+import { eurAbs as eur } from "../lib/format.js";
 
-const eur = (n) => `${Math.abs(Number(n)).toFixed(2)} €`;
 const COLORS = ["var(--yellow)", "var(--mint)", "var(--rose)", "#5a9bff", "#c98bff"];
 
 // Animation nach einem Verkauf. Ab > 50 % Gewinn auf den Einstand: große

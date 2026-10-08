@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getSales, undoSale } from "../api.js";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 export default function Sales() {
   const [data, setData] = useState(null);

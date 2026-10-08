@@ -3,12 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { matchImportRows, commitImport, searchCards } from "../api.js";
 import { parseImport, normCondition, normLanguage, normVariant } from "../lib/parseImport.js";
 import { CONDITIONS, VARIANTS } from "../components/CollectionItemDialog.jsx";
+import { eur } from "../lib/format.js";
 
 const num = (v) => {
   const n = parseFloat(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : null;
 };
-const eur = (n) => `${n.toFixed(2)} €`;
 
 // Die Rohzeile aus einer breiten Tabelle (viele Spalten) kann sehr lang
 // werden - hier gekürzt mit "…", voller Inhalt bleibt als Tooltip erhalten.

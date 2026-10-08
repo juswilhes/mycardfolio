@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getSellerProfile } from "../api.js";
 import { StarRating } from "../components/StarRating.jsx";
-
-const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
+import { eurCents as eur } from "../lib/format.js";
 
 // Route: /verkaeufer/:userId – öffentliches Profil: Bewertungsschnitt,
 // abgeschlossene Verkäufe, Bewertungstexte und aktive Angebote. Cardmarket

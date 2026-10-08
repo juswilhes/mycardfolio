@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getWatchlist, removeFromWatchlist } from "../api.js";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 // Route: /watchlist – Karten, die man im Auge behält, ohne sie zu besitzen.
 // Herzchen setzt man auf der Kartensuche, den Set-Seiten oder der

@@ -4,8 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { getListing, buyListing, postListingComment, getMarketplaceConfig } from "../api.js";
 import { StarRating } from "../components/StarRating.jsx";
 import ContactSellerDialog from "../components/ContactSellerDialog.jsx";
-
-const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
+import { eurCents as eur } from "../lib/format.js";
 
 // Route: /marktplatz/angebot/:id – Detailansicht eines Angebots: großes
 // Foto, Verkäufer-Vertrauen (Bewertung) und Fragen/Kommentare, statt eines

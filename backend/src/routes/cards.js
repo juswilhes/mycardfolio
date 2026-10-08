@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { getCardById } from "../services/pokemonTcgApi.js";
 import {
-  priceHistoryForCardAllVariants,
   setArtistManual,
-  priceHistoryByExternalId,
-  cardmarketBreakdownByExternalId,
+  priceHistoryByExternal,
+  cardmarketBreakdownByExternal,
   cardMetaByExternalId,
-  latestPriceByExternalId,
+  latestTrendByExternal,
 } from "../services/cardService.js";
 import {
   searchCardsLocal,
@@ -45,11 +44,11 @@ router.get("/external/:externalId", async (req, res) => {
   bumpCardView(externalId); // "Beliebtheit" in der Set-Übersicht
 
   if (local) {
-    const breakdown = cardmarketBreakdownByExternalId.all(externalId);
+    const breakdown = cardmarketBreakdownByExternal(externalId);
     const dbMeta = cardMetaByExternalId.get(externalId);
     return res.json({
       ...local,
-      latest_price: latestPriceByExternalId.get(externalId) ?? null,
+      latest_price: latestTrendByExternal(externalId) ?? null,
       price_breakdown: breakdown,
       cardmarket_updated: dbMeta?.cardmarket_updated ?? null,
       cardmarket_url: cardmarketUrl(dbMeta?.cardmarket_product_id ?? null),
@@ -65,9 +64,10 @@ router.get("/external/:externalId", async (req, res) => {
   }
 });
 
-// GET /api/cards/external/:externalId/prices -> Trend-Verlauf (EUR) für den Graphen
+// GET /api/cards/external/:externalId/prices -> Preisreihe (gleitender 30-Tage-
+// Schnitt, EUR) für den Graphen; ihr letzter Punkt ist der "Aktuelle Preis".
 router.get("/external/:externalId/prices", (req, res) => {
-  res.json(priceHistoryByExternalId.all(req.params.externalId));
+  res.json(priceHistoryByExternal(req.params.externalId));
 });
 
 // PATCH /api/cards/external/:externalId/artist  { artist }
@@ -80,13 +80,6 @@ router.patch("/external/:externalId/artist", authRequired, (req, res) => {
   const info = setArtistManual.run(artist, req.params.externalId);
   if (!info.changes) return res.status(404).json({ error: "Karte nicht gefunden" });
   res.json({ ok: true, artist });
-});
-
-// GET /api/cards/:id/prices  -> Trend-Verlauf (EUR) inkl. Holo/Reverse,
-// interne ID - für die Kartenseite in der Sammlung, dieselbe Ansicht wie
-// in der Kartensuche (siehe /external/:externalId/prices).
-router.get("/:id/prices", (req, res) => {
-  res.json(priceHistoryForCardAllVariants.all(req.params.id));
 });
 
 export default router;

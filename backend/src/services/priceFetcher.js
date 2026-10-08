@@ -30,7 +30,7 @@ let running = false;
 // Zieht für jede bereits einmal bepreiste Karte den aktuellen Cardmarket-
 // Preis (EUR) nach und legt einen Snapshot an. Das ist der Baustein, der
 // die Preishistorie ohne manuelles Zutun wachsen lässt.
-export async function refreshAllPrices() {
+async function refreshAllPrices() {
   const cards = trackedCards.all();
   console.log(`[priceFetcher] Aktualisiere ${cards.length} Karten ...`);
 

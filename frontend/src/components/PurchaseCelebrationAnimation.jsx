@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
+import { eurCents as eur } from "../lib/format.js";
 
-const eur = (cents) => `${(cents / 100).toFixed(2)} €`;
 const COLORS = ["var(--yellow)", "var(--mint)", "#5a9bff", "#c98bff", "var(--rose)"];
 
 // Animation nach einem erfolgreichen Kauf im Marktplatz: Konfetti-Regen +

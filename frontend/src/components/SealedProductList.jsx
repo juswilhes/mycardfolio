@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { getSealedProducts, updateSealedProduct, deleteSealedProduct, createListing } from "../api.js";
 import SealedProductDialog from "./SealedProductDialog.jsx";
 import SellListingDialog from "./SellListingDialog.jsx";
-
-const eur = (n) => `${Number(n).toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 const cost = (p) =>
   p.purchase_price != null || p.shipping_cost != null

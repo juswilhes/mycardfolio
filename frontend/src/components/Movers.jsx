@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
-
-const eur = (n) => `${Math.abs(Number(n)).toFixed(2)} €`;
+import { eurAbs as eur } from "../lib/format.js";
 
 function Row({ m, positive }) {
   return (

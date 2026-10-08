@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-
-const eur = (n) =>
-  n.toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+import { eur } from "../lib/format.js";
 
 const VARIANT_LABEL = { normal: "Normal", holo: "Holo", reverse: "Reverse Holo" };
 
@@ -15,7 +13,7 @@ function lastValue(chartData, key) {
   return null;
 }
 
-// Erwartet Trend-Snapshots ({price, fetched_at, variant}) in EUR und
+// Erwartet die Preisreihe ({price, fetched_at, variant}) in EUR und
 // zeichnet Normal plus die vorhandene Sonder-Variante (Holo ODER Reverse
 // Holo) als eigene, farbige Linie. Die Legende steht OBEN, als farbige
 // Buttons mit dem jeweils aktuellen Preis - Klick blendet die Linie aus/ein,

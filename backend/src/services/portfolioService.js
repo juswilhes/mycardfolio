@@ -1,5 +1,5 @@
 import db from "../db/index.js";
-import { listCollection, latestPriceForCard, priceHistoryForCard } from "./cardService.js";
+import { listCollection, latestTrend, priceHistoryForCard } from "./cardService.js";
 import { listUserIds } from "./authService.js";
 
 const n = (v) => (v == null ? 0 : Number(v) || 0);
@@ -25,7 +25,7 @@ export function recordPortfolioSnapshot(userId) {
   let cost = 0;
   let count = 0;
   for (const r of rows) {
-    const lp = latestPriceForCard.get(r.card_id);
+    const lp = latestTrend(r.card_id);
     value += n(lp?.price) * r.quantity;
     if (r.purchase_price != null || r.shipping_cost != null) {
       cost += (n(r.purchase_price) + n(r.shipping_cost)) * r.quantity;

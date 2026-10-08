@@ -80,54 +80,76 @@ export const listCollection = {
   all: (userId) => listCollectionStmt.all(userId),
 };
 
-const trendRows = db.prepare(`
+const DAY_MS = 24 * 60 * 60 * 1000;
+const round2 = (x) => Math.round(x * 100) / 100;
+
+// DIE Preisreihe einer Karte: gleitender 30-Tage-Durchschnitt. Zu jedem
+// Tagespunkt der Schnitt aller Punkte der 30 Tage bis einschließlich dieses
+// Punktes - NICHT Cardmarkets einzelner Trend- oder avg30-Wert. Ein einzelner
+// schlecht getroffener Tag (z.B. eine kurz falsch zugeordnete Karte) fällt so
+// weniger ins Gewicht. Der Graph auf der Kartenseite zeigt diese Reihe, und
+// der "Aktuelle Preis" ist ihr letzter Punkt - deshalb stimmen beide immer
+// überein. Zeilen: EINE Karte + Variante, älteste zuerst.
+export function rollingAvg30(rows) {
+  const out = [];
+  let start = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const t = Date.parse(rows[i].fetched_at);
+    while (Date.parse(rows[start].fetched_at) <= t - 30 * DAY_MS) start++;
+    let sum = 0;
+    for (let j = start; j <= i; j++) sum += rows[j].price;
+    out.push({ ...rows[i], price: round2(sum / (i - start + 1)) });
+  }
+  return out;
+}
+
+// Alle Reihen einer Karte (je Variante), älteste zuerst. Cardmarket-Punkte
+// haben Vorrang; nur wenn es für eine Variante keine gibt, zählen die
+// TCGplayer-Ersatzwerte (in EUR umgerechnet).
+function priceSeriesFrom(rows) {
+  const byVariant = new Map();
+  for (const r of rows) {
+    if (!byVariant.has(r.variant)) byVariant.set(r.variant, []);
+    byVariant.get(r.variant).push(r);
+  }
+  const series = [];
+  for (const [variant, list] of byVariant) {
+    const cm = list.filter((r) => r.source === "cardmarket");
+    series.push({ variant, points: rollingAvg30(cm.length ? cm : list) });
+  }
+  return series;
+}
+
+const trendNewestStmt = db.prepare(`
   SELECT price, currency, price_type, source, variant, fetched_at
-  FROM price_snapshots
-  WHERE card_id = ? AND price_type = 'trend'
-  ORDER BY (source = 'cardmarket') DESC, fetched_at DESC
+  FROM price_snapshots WHERE card_id = ? AND price_type = 'trend'
+  ORDER BY fetched_at DESC LIMIT 150
+`);
+const trendAllStmt = db.prepare(`
+  SELECT price, currency, price_type, source, variant, fetched_at
+  FROM price_snapshots WHERE card_id = ? AND price_type = 'trend'
+  ORDER BY fetched_at ASC
 `);
 
-const avg30Stmt = db.prepare(`
-  SELECT price, fetched_at, n FROM card_price_avg30 WHERE card_id = ? AND variant = ?
-`);
-
-// Selbst berechneter Durchschnitt aus allen Cardmarket-Trend-Punkten der
-// letzten 30 Tage (card_price_avg30, siehe db/index.js) - NICHT Cardmarkets
-// eigener Trend- oder avg30-Wert. Ein einzelner schlecht getroffener Tag
-// (z.B. eine kurz falsch zugeordnete Karte) fällt so weniger ins Gewicht.
-function avg30(cardId, variant) {
-  const r = avg30Stmt.get(cardId, variant);
-  if (!r || r.price == null) return null;
-  return {
-    price: Math.round(r.price * 100) / 100,
-    currency: "EUR",
-    price_type: "trend",
-    source: "cardmarket",
-    variant,
-    fetched_at: r.fetched_at,
-    sampleSize: r.n,
-  };
+// Verlauf für den Graphen: alle Varianten (normal/holo/reverse), älteste zuerst.
+function priceHistory(cardId) {
+  return priceSeriesFrom(trendAllStmt.all(cardId))
+    .filter((s) => ["normal", "holo", "reverse"].includes(s.variant))
+    .flatMap((s) => s.points)
+    .sort((a, b) => a.fetched_at.localeCompare(b.fetched_at));
 }
 
-// Aktueller Referenzpreis für eine Karte + Variante. Fällt auf 'normal'
-// zurück, wenn es für die Variante keinen eigenen Preis gibt, und ohne
-// Daten der letzten 30 Tage (z.B. eine sehr lange nicht aktualisierte
-// Karte) auf den letzten bekannten Einzelwert, egal wie alt - damit keine
-// Karte plötzlich preislos dasteht, nur weil sie 30+ Tage nicht neu
-// abgerufen wurde.
+// Aktueller Preis einer Karte + Variante = letzter Punkt der Reihe oben.
+// Fällt auf 'normal' zurück, wenn es für die Variante keinen eigenen Preis
+// gibt, und dann auf irgendeine vorhandene Reihe. Es reichen die neuesten
+// Zeilen (30 Tage Fenster + Reserve) - das Ergebnis ist identisch zum
+// letzten Punkt der vollen Reihe.
 export function latestTrend(cardId, variant = "normal") {
-  const a = avg30(cardId, variant) ?? avg30(cardId, "normal");
-  if (a) return a;
-  const rows = trendRows.all(cardId);
-  return (
-    rows.find((r) => r.variant === variant) ??
-    rows.find((r) => r.variant === "normal") ??
-    rows[0] ??
-    null
-  );
+  const rows = trendNewestStmt.all(cardId).reverse();
+  const series = priceSeriesFrom(rows);
+  const pick = series.find((s) => s.variant === variant) ?? series.find((s) => s.variant === "normal") ?? series[0];
+  return pick ? pick.points[pick.points.length - 1] : null;
 }
-// alter Name, für bestehende Aufrufer
-export const latestPriceForCard = { get: (cardId) => latestTrend(cardId, "normal") };
 
 const cmBreakdownRows = db.prepare(`
   SELECT variant, price_type, price, currency, MAX(fetched_at) AS fetched_at
@@ -138,13 +160,10 @@ const cmBreakdownRows = db.prepare(`
 export function cardmarketBreakdown(cardId) {
   return cmBreakdownRows.all(cardId);
 }
-export const cardmarketBreakdownForCard = { all: cardmarketBreakdown };
 
-// Trend-Verlauf (EUR, Variante 'normal') für den Graphen. NUR 'normal' -
-// wird u.a. von marketStats.js (Preisbewegungen) genutzt, das eine einzelne
-// saubere Preisreihe je Karte erwartet; Holo/Reverse würden die Berechnung
-// verfälschen. Für die Kartenseite selbst (mit Holo/Reverse-Linie) siehe
-// priceHistoryForCardAllVariants unten bzw. priceHistoryByExternalId.
+// ROHE Tagespunkte (Variante 'normal') - für Preisbewegungen (marketStats.js)
+// und Portfolio-Bewegung: dort zählt die tatsächliche Tagesveränderung, nicht
+// der geglättete Schnitt.
 export const priceHistoryForCard = db.prepare(`
   SELECT price, currency, price_type, source, fetched_at
   FROM price_snapshots
@@ -152,43 +171,11 @@ export const priceHistoryForCard = db.prepare(`
   ORDER BY fetched_at ASC
 `);
 
-// Wie priceHistoryForCard, aber inkl. Holo/Reverse - für die Preisgraphen
-// auf den Kartenseiten (Sammlung UND Kartensuche sollen dieselbe Ansicht
-// zeigen, siehe priceHistoryByExternalId für die externalId-Variante).
-export const priceHistoryForCardAllVariants = db.prepare(`
-  SELECT price, currency, price_type, source, variant, fetched_at
-  FROM price_snapshots
-  WHERE card_id = ? AND price_type = 'trend' AND variant IN ('normal', 'holo', 'reverse')
-  ORDER BY fetched_at ASC
-`);
-
-export const allCardsForGame = db.prepare(`
-  SELECT c.id, c.external_id, g.slug AS game_slug
-  FROM cards c JOIN games g ON g.id = c.game_id
-`);
-
-export const cardIdByExternalId = db.prepare(`
-  SELECT id FROM cards
-  WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
-`);
-
 // Illustrator manuell setzen. artist_manual = 1 schützt den Wert davor,
 // beim nächsten `npm run import` überschrieben zu werden.
 export const setArtistManual = db.prepare(`
   UPDATE cards SET artist = ?, artist_source = 'manual', artist_manual = 1
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
-`);
-
-// variant IN ('normal','holo','reverse') - der Graph zeigt Normal + die
-// jeweils vorhandene Sonder-Variante getrennt (siehe PriceChart.jsx). Pro
-// Karte kommt von der Quelle immer höchstens EINE der beiden vor (holo ODER
-// reverse, nie beide) - welche, steht in priceProvider.js.
-export const priceHistoryByExternalId = db.prepare(`
-  SELECT ps.price, ps.currency, ps.price_type, ps.source, ps.variant, ps.fetched_at
-  FROM price_snapshots ps
-  JOIN cards c ON c.id = ps.card_id
-  WHERE c.external_id = ? AND ps.price_type = 'trend' AND ps.variant IN ('normal', 'holo', 'reverse')
-  ORDER BY ps.fetched_at ASC
 `);
 
 const cardIdForExternal = db.prepare(`
@@ -199,7 +186,6 @@ export function cardmarketBreakdownByExternal(externalId) {
   const row = cardIdForExternal.get(externalId);
   return row ? cardmarketBreakdown(row.id) : [];
 }
-export const cardmarketBreakdownByExternalId = { all: cardmarketBreakdownByExternal };
 
 export const cardMetaByExternalId = db.prepare(`
   SELECT id, cardmarket_product_id, cardmarket_updated
@@ -211,30 +197,21 @@ export function latestTrendByExternal(externalId, variant = "normal") {
   const row = cardIdForExternal.get(externalId);
   return row ? latestTrend(row.id, variant) : null;
 }
-export const latestPriceByExternalId = { get: (externalId) => latestTrendByExternal(externalId, "normal") };
 
-// Aktueller Preis (30-Tage-Schnitt, normal) für ALLE Karten eines Sets auf
-// einmal - für die Set-Übersicht (Sortierung/Anzeige nach Preis), statt pro
-// Karte einzeln nachzufragen. Ohne Daten der letzten 30 Tage Fallback auf
-// den letzten bekannten Einzelwert (egal wie alt), wie bei latestTrend().
-const pricesForSetStmt = db.prepare(`
-  SELECT c.external_id,
-    COALESCE(
-      (SELECT AVG(ps.price) FROM price_snapshots ps
-       WHERE ps.card_id = c.id AND ps.price_type = 'trend' AND ps.variant = 'normal'
-         AND ps.source = 'cardmarket' AND ps.fetched_at >= datetime('now', '-30 days')),
-      (SELECT ps2.price FROM price_snapshots ps2
-       WHERE ps2.card_id = c.id AND ps2.price_type = 'trend' AND ps2.variant = 'normal'
-       ORDER BY (ps2.source = 'cardmarket') DESC, ps2.fetched_at DESC LIMIT 1)
-    ) AS price
-  FROM cards c
-  WHERE c.set_id = ?
-`);
+// Verlauf einer Karte per externer ID (Kartenseite).
+export function priceHistoryByExternal(externalId) {
+  const row = cardIdForExternal.get(externalId);
+  return row ? priceHistory(row.id) : [];
+}
+
+const cardsOfSetStmt = db.prepare(`SELECT id, external_id FROM cards WHERE set_id = ?`);
+
+// Aktueller Preis (siehe latestTrend) für ALLE Karten eines Sets - für die
+// Set-Übersicht (Sortierung/Anzeige nach Preis). Dieselbe Rechnung wie auf
+// der Kartenseite, deshalb überall derselbe Preis.
 export function pricesForSet(setId) {
   const map = new Map();
-  for (const r of pricesForSetStmt.all(setId)) {
-    map.set(r.external_id, r.price != null ? Math.round(r.price * 100) / 100 : null);
-  }
+  for (const c of cardsOfSetStmt.all(setId)) map.set(c.external_id, latestTrend(c.id, "normal")?.price ?? null);
   return map;
 }
 

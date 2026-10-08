@@ -49,7 +49,6 @@ export const searchCards = (q) => request(`/cards/search?q=${encodeURIComponent(
 export const getCardsByArtist = (artist) => request(`/cards/by-artist?name=${encodeURIComponent(artist)}`);
 export const getCardInfo = (externalId) => request(`/cards/external/${externalId}`);
 export const getCardPriceHistory = (externalId) => request(`/cards/external/${externalId}/prices`);
-export const getPriceHistory = (cardId) => request(`/cards/${cardId}/prices`);
 export const updateCardArtist = (externalId, artist) =>
   request(`/cards/external/${externalId}/artist`, { method: "PATCH", body: { artist } });
 
@@ -74,7 +73,6 @@ export function getPortfolioHistory(filter = {}) {
 }
 export const getMovers = () => request("/portfolio/movers");
 export const getSales = () => request("/sales");
-export const deleteSale = (id) => request(`/sales/${id}`, { method: "DELETE" });
 export const undoSale = (id) => request(`/sales/${id}/undo`, { method: "POST" });
 
 // --- Sets --------------------------------------------------------
@@ -159,22 +157,3 @@ export const contactSeller = (id, message) =>
 export const getListingContacts = (id) => request(`/marketplace/listings/${id}/contacts`);
 export const markListingSold = (id, buyerUserId) =>
   request(`/marketplace/listings/${id}/sold`, { method: "POST", body: { buyerUserId: buyerUserId ?? null } });
-
-// Datei-Upload braucht FormData statt JSON - eigener, schlanker Aufruf statt
-// über den zentralen request()-Helfer (der immer Content-Type: json setzt).
-export async function uploadListingPhoto(id, file) {
-  const form = new FormData();
-  form.append("photo", file);
-  const res = await fetch(`${BASE}/marketplace/listings/${id}/photo`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const err = new Error(data?.error || `Fehler ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return data;
-}

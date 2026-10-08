@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMarketplaceConfig } from "../api.js";
-
-const eur = (n) => `${n.toFixed(2)} €`;
+import { eur } from "../lib/format.js";
 
 // Dialog zum Einstellen einer Karte oder eines Sealed-Produkts im
 // Marktplatz. Setzt ein eingerichtetes Verkäuferkonto voraus (prüft der
