@@ -1,6 +1,14 @@
 import db from "../db/index.js";
 import { priceHistoryForCard, latestTrend } from "./cardService.js";
 
+// Sets, deren Karten aus den Boostern eines anderen Sets gezogen werden: die
+// Classic Collection steckt in den Boostern des 30th Celebration. In den
+// Analysen zählt sie deshalb zum 30th Celebration (Pull Rates, Hit Rate,
+// Top-20-Karten) und hat keine eigene Spalte/Zeile.
+const BOOSTER_OF = { "30th-c": "30th" };
+const boosterOf = (setId) => BOOSTER_OF[setId] ?? setId;
+const setsInBooster = (setId) => [setId, ...Object.keys(BOOSTER_OF).filter((k) => BOOSTER_OF[k] === setId)];
+
 // Alle Karten, für die wir überhaupt eine Preishistorie haben (nicht nur die
 // in einer Sammlung) - Grundlage für eine marktweite, nutzerunabhängige
 // Auswertung statt nur des eigenen Portfolios.
@@ -66,8 +74,8 @@ export function getSetValueAnalysis() {
   }
 
   return pricedSetsStmt.all().map((r) => {
-    const cards = setCardsStmt
-      .all(r.id)
+    const cards = setsInBooster(r.id)
+      .flatMap((id) => setCardsStmt.all(id))
       .map((c) => ({ ...c, price: latestTrend(c.id)?.price ?? null }))
       .filter((c) => c.price != null)
       .sort((a, b) => b.price - a.price);
@@ -105,12 +113,6 @@ const rarityCountsStmt = db.prepare(`
   WHERE set_id IN (SELECT DISTINCT set_id FROM pull_rates) AND rarity IS NOT NULL
   GROUP BY set_id, rarity
 `);
-
-// Sets, deren Karten aus den Boostern eines anderen Sets gezogen werden: die
-// Classic Collection steckt in den Boostern des 30th Celebration. Beide teilen
-// sich deshalb eine Hit Rate (gerechnet über alle Seltenheiten beider Sets).
-const BOOSTER_OF = { "30th-c": "30th" };
-const boosterOf = (setId) => BOOSTER_OF[setId] ?? setId;
 
 const normRarity = (r) => r.trim().toLowerCase().replace(/_/g, " ").replace(/s+/g, " ");
 // Keine "Treffer": alles, was in jedem Pack ohnehin zu erwarten ist.
@@ -159,12 +161,16 @@ export function getPullRateOverview() {
     const b = boosterOf(r.id);
     if (!byBooster.has(b)) byBooster.set(b, { rows: [], counts: new Map() });
     byBooster.get(b).rows.push(r);
-    let s = bySet.get(r.id);
+    let s = bySet.get(b);
     if (!s) {
-      s = { id: r.id, name: r.name, series: r.series, release_date: r.release_date, rarities: [] };
-      bySet.set(r.id, s);
+      s = { id: b, name: r.name, series: r.series, release_date: r.release_date, rarities: [] };
+      bySet.set(b, s);
     }
-    s.rarities.push({ rarity: r.rarity, anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator });
+    const own = r.id === b;
+    if (own) Object.assign(s, { name: r.name, series: r.series, release_date: r.release_date });
+    // Karten ohne Seltenheit ("None") gibt es nur in der Classic Collection
+    const rarity = !own && r.rarity === "None" ? "Classic Collection" : r.rarity;
+    s.rarities.push({ rarity, anyDenominator: r.any_denominator, specificDenominator: r.specific_denominator });
   }
   for (const [setId, m] of counts) {
     const target = byBooster.get(boosterOf(setId));
