@@ -7,6 +7,7 @@ import { syncNewCards } from "./newCardsSync.js";
 import { repairImages } from "./imageRepair.js";
 import { rebuildAnalysisCache } from "./analysisCache.js";
 import { recordSetValueSnapshots } from "./setValueSnapshots.js";
+import { rebuildSitemap } from "./seo.js";
 import db from "../db/index.js";
 
 // ALLE Preise werden nur noch hier geholt: einmal täglich um 1 Uhr nachts
@@ -65,7 +66,8 @@ async function refreshAllPrices() {
 //  2. alle Preise aktualisieren
 //  3. Karten ohne jeden Preis nachholen
 //  4. alle Auswertungen der Analyse mit den neuen Preisen neu rechnen
-//     (analysisCache.js) und - am Monatsersten - den Monatsstand speichern
+//     (analysisCache.js), am Monatsersten den Monatsstand speichern und die
+//     Sitemap (alle Sets/Karten für Google) neu bauen
 //  5. fehlende/kaputte Kartenbilder reparieren (sonntags alle Karten)
 //  6. Tagespunkt je Nutzer für den Portfolio-Graphen
 // Jeder Schritt einzeln abgesichert - ein Fehler (z.B. TCGdex kurz down)
@@ -83,6 +85,7 @@ export async function runDailyPriceJob() {
       ["Preise nachholen", backfillAllMissingPrices],
       ["Analysen", async () => rebuildAnalysisCache()],
       ["Monatsstand", async () => recordSetValueSnapshots({ onlyMissing: true })],
+      ["Sitemap", async () => rebuildSitemap()],
       // sonntags alle Karten prüfen (~3 Min.), sonst nur die üblichen Verdächtigen
       ["Bilder", () => repairImages({ full: new Date().getDay() === 0 })],
       ["Portfolio", async () => recordAllPortfolioSnapshots()],

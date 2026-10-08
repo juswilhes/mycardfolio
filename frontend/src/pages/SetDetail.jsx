@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePageTitle } from "../hooks/usePageTitle.js";
 import { useParams, Link } from "react-router-dom";
 import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -21,6 +22,7 @@ export default function SetDetail() {
   const { setId } = useParams();
   const [set, setSet] = useState(null);
   const [cards, setCards] = useState(null);
+  usePageTitle(set ? `${set.name} – Kartenliste & Preise | mycardfolio` : null);
   const [owned, setOwned] = useState(new Set());
   const [watchedIds, setWatchedIds] = useState(new Set());
   const [filter, setFilter] = useState("all"); // all | have | missing

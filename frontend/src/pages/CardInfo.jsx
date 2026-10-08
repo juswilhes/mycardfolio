@@ -15,6 +15,7 @@ import {
 } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
+import { usePageTitle } from "../hooks/usePageTitle.js";
 import CollectionItemDialog, { conditionLabel, variantLabel, gradeLabel } from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
@@ -64,6 +65,7 @@ export default function CardInfo() {
   const [listEntry, setListEntry] = useState(null);
   const [listError, setListError] = useState(null);
   const [listed, setListed] = useState(null);
+  usePageTitle(card ? `${card.name} (${card.set_name} ${card.number}) – Preis & Verlauf | mycardfolio` : null);
 
   const loadEntries = useCallback(() => {
     if (!user) return setEntries([]);

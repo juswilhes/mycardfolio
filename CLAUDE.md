@@ -35,6 +35,12 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - Bezahlung (Stripe Connect) ist gebaut, schaltet sich mit `STRIPE_SECRET_KEY` ein. **Vor Livegang umbauen:** Verkäufer soll die Stripe-Gebühren tragen (Direct Charges, Konten mit `fees.payer=account`), sonst zahlt die Plattform 2 €/Verkäufer/Monat drauf.
 - Registrierung ist auf dem Server geschlossen (`REGISTRATION_OPEN=false`).
 
+## Suchmaschinen (SEO)
+- Die App ist eine SPA: Titel, Beschreibung, canonical, noindex und Vorschaubild setzt der **Server** pro Seite ein (`backend/src/services/seo.js`, der Block zwischen `<!--seo:start-->` und `<!--seo:end-->` in `frontend/index.html` wird ersetzt - Markierungen nicht entfernen). Neue öffentliche Seite = Eintrag in `PUBLIC_PAGES`/`metaFor`; Seiten nur für Angemeldete stehen in `PRIVATE_PAGES` (noindex).
+- `/sitemap.xml` wird dynamisch gebaut (feste Seiten, alle Sets, Karten, Illustratoren) und nachts im Nachtlauf neu erzeugt. Nicht gefundene Karten/Sets liefern echten 404.
+- **`/api` nie in der robots.txt sperren:** Google rendert die Seiten und holt die Daten von dort.
+- Google-Anmeldung (Search Console, Sitemap einreichen) kann nur Justus mit seinem Google-Konto machen.
+
 ## Analyse-Seite
 - Der Reiter "Markt" wurde entfernt (`MarketMovers`/`SetsOverview` liegen ungenutzt im Code, falls daraus eigene Analysen werden sollen). Reihenfolge: Meine Sammlung zuerst.
 - Nav-Punkt "Analyse" (`/analyse`, früher "Statistik"): Auswahl verschiedener Analysen. Neue Analyse = neuer Eintrag in `ANALYSES` in `frontend/src/pages/Stats.jsx` (+ Komponente, ggf. Endpunkt unter `/api/stats`). "Meine Sammlung" bleibt in jedem Fall erhalten. Umschalter = `SegmentedToggle` (gleich wie bei "Alle Karten").
@@ -46,4 +52,4 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - "Pull Rates": Matrix Seltenheit x Set, Daten von Hand (`pull_rates`, `PATCH /api/sets/:id/pull-rates`), Pflege über "Pull Rates pflegen" in der Analyse. Die Hit Rate (Chance auf mind. 1 besondere Karte pro Pack) wird in `marketStats.js` berechnet. Sets, die in fremden Boostern stecken (Classic Collection -> 30th Celebration), stehen in `BOOSTER_OF` und erscheinen in den Analysen nicht als eigene Spalte, sondern zählen zum Booster-Set.
 
 ## Offene Punkte
-Meta-Tags/Canonical pro Seite (SEO), DSGVO-Export um Marktplatzdaten erweitern, Wunschliste + Watchlist zusammenlegen, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.
+DSGVO-Export um Marktplatzdaten erweitern, Wunschliste + Watchlist zusammenlegen, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.

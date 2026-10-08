@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Routes, Route, NavLink, Link, Navigate, useLocation } from "react-router-dom";
 import Logo from "./components/Logo.jsx";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
@@ -31,6 +31,7 @@ import AccountMenu from "./components/AccountMenu.jsx";
 import NavMenu from "./components/NavMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { useTheme } from "./hooks/useTheme.js";
+import { SITE_TITLE } from "./hooks/usePageTitle.js";
 import { useAuth } from "./context/AuthContext.jsx";
 
 const navCls = ({ isActive }) =>
@@ -44,12 +45,35 @@ function RequireAuth({ children }) {
   return children;
 }
 
+// Tab-Titel der festen Seiten; Karten-, Set- und Illustratorseiten setzen ihren
+// eigenen, sobald die Daten da sind.
+const PAGE_TITLES = {
+  "/sets": "Alle Karten & Sets",
+  "/marktplatz": "Marktplatz",
+  "/marktplatz-agb": "Marktplatz-Bedingungen",
+  "/impressum": "Impressum",
+  "/datenschutz": "Datenschutzerklärung",
+  "/login": "Anmelden",
+  "/register": "Registrieren",
+  "/import": "Import",
+  "/verkauft": "Verkäufe",
+  "/analyse": "Analyse",
+  "/konto": "Konto",
+  "/orden": "Orden",
+  "/watchlist": "Watchlist",
+};
+
 export default function App() {
   const { isDark, toggleTheme } = useTheme();
   const { user, loading, logout, registrationOpen } = useAuth();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const t = PAGE_TITLES[location.pathname];
+    document.title = t ? `${t} | mycardfolio` : SITE_TITLE;
+  }, [location.pathname]);
 
   async function doLogout() {
     setLoggingOut(true);

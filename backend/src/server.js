@@ -26,6 +26,7 @@ import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "./services/analysisCache.js";
+import { metaFor, renderIndex, sitemap } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
@@ -139,15 +140,25 @@ const frontendDist = process.env.FRONTEND_DIST
   ? path.resolve(process.env.FRONTEND_DIST)
   : path.join(__dirname, "..", "..", "frontend", "dist");
 
+// Sitemap mit allen Sets, Karten und Illustratoren (services/seo.js), nachts neu gebaut
+app.get("/sitemap.xml", (_req, res) => {
+  res.type("application/xml").send(sitemap());
+});
+
 if (fs.existsSync(path.join(frontendDist, "index.html"))) {
   app.use(express.static(frontendDist, { maxAge: "1h", index: false }));
+  const indexHtml = fs.readFileSync(path.join(frontendDist, "index.html"), "utf8");
   // SPA-Fallback: alles, was keine Datei ist, liefert index.html - aber nur
   // mit Status 200, wenn es auch eine echte Route der App ist. Sonst (alte
   // WordPress-URLs, Scanner-Pfade, Tippfehler) mit echtem 404-Status, damit
   // Google & Co. das nicht als "Soft 404" crawlen und im Index behalten
   // wollen, obwohl React Router dafür ohnehin nichts anzeigt.
+  // Titel, Beschreibung, canonical und Vorschaubild werden pro Seite eingesetzt
+  // (services/seo.js) - Suchmaschinen und Link-Vorschauen sehen nur dieses HTML.
   app.get(/^(?!\/api).*/, (req, res) => {
-    res.status(isKnownRoute(req.path) ? 200 : 404).sendFile(path.join(frontendDist, "index.html"));
+    const meta = metaFor(req.path);
+    const known = isKnownRoute(req.path) && !meta.missing;
+    res.status(known ? 200 : 404).type("html").send(renderIndex(indexHtml, known ? meta : { ...meta, robots: false }));
   });
   console.log(`[frontend] wird ausgeliefert aus ${frontendDist}`);
 }

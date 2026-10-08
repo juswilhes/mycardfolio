@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getCardsByArtist } from "../api.js";
+import { usePageTitle } from "../hooks/usePageTitle.js";
 
 // Route: /illustrator/:name – alle Karten eines Illustrators, verlinkt von
 // der Illustrator-Zeile auf der Kartenseite. Frei zugänglich wie die Suche.
@@ -8,6 +9,7 @@ export default function ArtistCards() {
   const { name } = useParams();
   const artist = decodeURIComponent(name);
   const [cards, setCards] = useState(null);
+  usePageTitle(`Pokémon-Karten von ${artist} | mycardfolio`);
 
   useEffect(() => {
     setCards(null);
