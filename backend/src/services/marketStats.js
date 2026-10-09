@@ -1,6 +1,7 @@
 import db from "../db/index.js";
 import { priceHistoryForCard, latestTrend } from "./cardService.js";
 import { slugOfSet } from "./setSlugs.js";
+import { slugOfCard } from "./cardSlugs.js";
 
 // Sets, deren Karten aus den Boostern eines anderen Sets gezogen werden: die
 // Classic Collection steckt in den Boostern des 30th Celebration. In den
@@ -34,6 +35,7 @@ function moverFor(c, days) {
   return {
     card_id: c.id,
     external_id: c.external_id,
+    slug: slugOfCard(c.external_id),
     name: c.name,
     set_name: c.set_name,
     image_small: c.image_small,
@@ -94,7 +96,7 @@ export function getSetValueAnalysis() {
       top20Value: Math.round(top.reduce((sum, c) => sum + c.price, 0) * 100) / 100,
       top20Count: top.length,
       pricedCards: cards.length,
-      topCards: top.map((c) => ({ external_id: c.external_id, name: c.name, image_small: c.image_small, price: c.price })),
+      topCards: top.map((c) => ({ external_id: c.external_id, slug: slugOfCard(c.external_id), name: c.name, image_small: c.image_small, price: c.price })),
       history: history.get(r.id) ?? [],
     };
   });
@@ -318,7 +320,7 @@ export function buildSetRanking(setValue, pullRates, packValue) {
     row.boosterPriceCents = s.boosterPriceCents ?? row.boosterPriceCents;
     Object.assign(row, { top20Value: s.top20Value, top20Count: s.top20Count });
     const top = s.topCards[0];
-    row.topCard = top ? { external_id: top.external_id, name: top.name, price: top.price } : null;
+    row.topCard = top ? { external_id: top.external_id, slug: top.slug, name: top.name, price: top.price } : null;
   }
   // Nur Sets, für die die Pull Rates vorliegen - ohne sie ist kein fairer Vergleich möglich
   return [...sets.values()].filter((r) => r.hitRatePct != null || r.packValue != null);
@@ -349,6 +351,7 @@ export function getPullOrBuy() {
         if (price == null) continue;
         cards.push({
           external_id: c.external_id,
+          slug: slugOfCard(c.external_id),
           name: c.name,
           number: c.number,
           image_small: c.image_small,

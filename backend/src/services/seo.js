@@ -2,6 +2,7 @@ import db from "../db/index.js";
 import { latestTrendByExternal } from "./cardService.js";
 import { slugOfSet, resolveSetParam, rebuildSetSlugs } from "./setSlugs.js";
 import { getArticleBySlug, listPublishedArticles } from "./articles.js";
+import { slugOfCard, resolveCardParam, rebuildCardSlugs } from "./cardSlugs.js";
 
 // Meta-Tags pro Seite (Titel, Beschreibung, canonical, Vorschaubild) und die
 // Sitemap. Die App ist eine Single-Page-App: ohne dieses Einsetzen auf dem
@@ -68,8 +69,9 @@ export function metaFor(rawPath) {
 
   let m;
   if ((m = path.match(/^\/database\/([^/]+)$/))) {
-    const c = cardStmt.get(decodeURIComponent(m[1]));
+    const c = cardStmt.get(resolveCardParam(decodeURIComponent(m[1])));
     if (!c) return { ...base, robots: false, missing: true };
+    base.canonical = `${SITE_URL}/database/${slugOfCard(c.external_id)}`;
     // deutscher Name nur, wenn er sich wirklich unterscheidet (nicht nur Bindestrich/Groß-Klein)
     const plain = (n) => n.toLowerCase().replace(/[-s]+/g, " ");
     const german = c.name_de && plain(c.name_de) !== plain(c.name) ? c.name_de : null;
@@ -128,8 +130,17 @@ export function metaFor(rawPath) {
   return { ...base, robots: false };
 }
 
-// Alte Adressen (/sets/me1) auf die lesbaren (/sets/mega-evolution) umleiten.
+// Alte Adressen (/sets/me1, /database/pl4-60) auf die lesbaren (/sets/mega-evolution,
+// /database/arceus-60-gengar) umleiten.
 export function redirectFor(rawPath) {
+  const card = rawPath.match(/^\/database\/([^/]+)\/?$/);
+  if (card) {
+    const param = decodeURIComponent(card[1]);
+    const id = resolveCardParam(param);
+    if (!cardStmt.get(id)) return null;
+    const slug = slugOfCard(id);
+    return param === slug && !rawPath.endsWith("/") ? null : `/database/${encodeURIComponent(slug)}`;
+  }
   const m = rawPath.match(/^\/sets\/([^/]+)\/?$/);
   if (!m) return null;
   const param = decodeURIComponent(m[1]);
@@ -176,11 +187,12 @@ let sitemapXml = null;
 
 export function rebuildSitemap() {
   rebuildSetSlugs(); // neue Sets seit dem letzten Nachtlauf bekommen ihren Slug
+  rebuildCardSlugs(); // ... und neue Karten
   const urls = Object.keys(PUBLIC_PAGES).map((p) => p);
   for (const s of allSetsStmt.all()) urls.push(`/sets/${encodeURIComponent(slugOfSet(s.id))}`);
   for (const a of listPublishedArticles(500)) urls.push(`/news/${encodeURIComponent(a.slug)}`);
   for (const a of allArtistsStmt.all()) urls.push(`/illustrator/${encodeURIComponent(a.artist)}`);
-  for (const c of allCardsStmt.all()) urls.push(`/database/${encodeURIComponent(c.external_id)}`);
+  for (const c of allCardsStmt.all()) urls.push(`/database/${encodeURIComponent(slugOfCard(c.external_id))}`);
   const body = urls.map((u) => `  <url><loc>${esc(SITE_URL + u)}</loc></url>`).join("\n");
   sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
   console.log(`[seo] Sitemap neu gebaut (${urls.length} Seiten).`);

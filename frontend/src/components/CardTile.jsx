@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { deleteCollectionItem } from "../api.js";
 import { variantLabel, langLabel, gradeLabel, conditionLabel } from "./CollectionItemDialog.jsx";
@@ -31,7 +32,7 @@ export default function CardTile({ item, onChanged }) {
 
   return (
     <Link
-      to={`/database/${item.external_id}`}
+      to={cardPath(item)}
       className="group flex items-center gap-3 sm:gap-4 py-4 border-b border-line"
     >
       <img

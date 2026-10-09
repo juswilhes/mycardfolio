@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { usePageTitle } from "../hooks/usePageTitle.js";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct } from "../api.js";
@@ -195,7 +196,7 @@ export default function SetDetail() {
             return (
               <Link
                 key={card.external_id}
-                to={`/database/${card.external_id}`}
+                to={cardPath(card)}
                 className="flex flex-col"
               >
                 <div className="relative">

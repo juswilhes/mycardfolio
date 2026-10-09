@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { getSetRanking } from "../api.js";
 import { eur } from "../lib/format.js";
@@ -139,7 +140,7 @@ export default function SetRanking() {
                   })}
                   <td className="py-2 text-xs">
                     {s.topCard ? (
-                      <Link to={`/database/${s.topCard.external_id}`} className="hover:underline">
+                      <Link to={cardPath(s.topCard)} className="hover:underline">
                         {s.topCard.name} <span className="font-mono text-subtle">{eur(s.topCard.price)}</span>
                       </Link>
                     ) : (

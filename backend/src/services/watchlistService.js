@@ -1,4 +1,5 @@
 import db from "../db/index.js";
+import { slugOfCard } from "./cardSlugs.js";
 import { latestTrend, cardmarketBreakdown } from "./cardService.js";
 
 const insertWatch = db.prepare(`INSERT OR IGNORE INTO watchlist_items (user_id, card_id) VALUES (?, ?)`);
@@ -37,6 +38,7 @@ export function removeFromWatchlist(userId, externalId) {
 export function listWatchlist(userId) {
   return listWatchStmt.all(userId).map((item) => ({
     ...item,
+    slug: slugOfCard(item.external_id),
     latest_price: latestTrend(item.card_id, "normal"),
     price_breakdown: cardmarketBreakdown(item.card_id),
   }));

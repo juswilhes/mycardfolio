@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { getPullOrBuy } from "../api.js";
 import { eur, eur0 } from "../lib/format.js";
@@ -132,7 +133,7 @@ export default function PullOrBuyAnalysis() {
             {cards.map((c) => (
               <tr key={c.external_id} className="border-b border-line">
                 <td className="py-2 pr-3">
-                  <Link to={`/database/${c.external_id}`} className="flex items-center gap-3 group">
+                  <Link to={cardPath(c)} className="flex items-center gap-3 group">
                     <img src={c.image_small} alt="" className="w-9 rounded shrink-0" loading="lazy" />
                     <span className="min-w-0">
                       <span className="block truncate group-hover:underline">{c.name}</span>

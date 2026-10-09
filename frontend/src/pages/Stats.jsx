@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link, useSearchParams } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
@@ -238,7 +239,7 @@ function CollectionStats() {
           {top.map((i, idx) => (
             <Link
               key={i.collection_item_id}
-              to={`/database/${i.external_id}`}
+              to={cardPath(i)}
               className="flex items-center gap-3 py-2.5 border-b border-line text-sm"
             >
               <span className="text-subtle w-5 text-right shrink-0">{idx + 1}</span>

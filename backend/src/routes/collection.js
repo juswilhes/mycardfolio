@@ -1,3 +1,4 @@
+import { slugOfCard } from "../services/cardSlugs.js";
 import { Router } from "express";
 import db from "../db/index.js";
 import { getCardById } from "../services/pokemonTcgApi.js";
@@ -71,6 +72,7 @@ const gradingFrom = (body) => {
 router.get("/", (req, res) => {
   const items = listCollection.all(req.user.id).map((item) => ({
     ...item,
+    slug: slugOfCard(item.external_id),
     latest_price: latestTrend(item.card_id, item.variant || "normal"),
     price_breakdown: cardmarketBreakdown(item.card_id),
     cardmarket_url: cardmarketUrl(item.cardmarket_product_id),

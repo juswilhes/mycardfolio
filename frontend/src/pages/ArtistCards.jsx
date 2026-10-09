@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { useParams, Link } from "react-router-dom";
 import { getCardsByArtist } from "../api.js";
 import { usePageTitle } from "../hooks/usePageTitle.js";
@@ -31,7 +32,7 @@ export default function ArtistCards() {
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
           {cards.map((card) => (
-            <Link key={card.external_id} to={`/database/${card.external_id}`} className="flex flex-col">
+            <Link key={card.external_id} to={cardPath(card)} className="flex flex-col">
               <img
                 src={card.image_small}
                 alt={`${card.name} (Englisch)`}

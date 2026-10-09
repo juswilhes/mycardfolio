@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { getSetValueAnalysis, getSets, updateSetPrices } from "../api.js";
@@ -156,7 +157,7 @@ export default function SetValueAnalysis() {
                           </div>
                           <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-3">
                             {s.topCards.map((c) => (
-                              <Link key={c.external_id} to={`/database/${c.external_id}`} className="flex flex-col">
+                              <Link key={c.external_id} to={cardPath(c)} className="flex flex-col">
                                 <img
                                   src={c.image_small}
                                   alt={`${c.name} (Englisch)`}

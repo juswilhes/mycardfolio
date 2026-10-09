@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { getWatchlist, removeFromWatchlist } from "../api.js";
 import { eur } from "../lib/format.js";
@@ -48,7 +49,7 @@ export default function Watchlist() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {items.map((card) => (
             <div key={card.external_id} className="flex flex-col">
-              <Link to={`/database/${card.external_id}`} className="flex flex-col group">
+              <Link to={cardPath(card)} className="flex flex-col group">
                 <img
                   src={card.image_large ?? card.image_small}
                   alt={`${card.name} (Englisch)`}

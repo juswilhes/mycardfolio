@@ -34,6 +34,7 @@ router.get("/pull-or-buy", (_req, res) => {
 // größten Preisbewegungen der Woche (alles aus den Nacht-Auswertungen).
 const moverFields = (m) => ({
   external_id: m.external_id,
+  slug: m.slug,
   name: m.name,
   set_name: m.set_name,
   image_small: m.image_small,

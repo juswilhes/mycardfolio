@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   getCardInfo,
@@ -42,9 +42,11 @@ const entryCost = (e) =>
 // (nur der Betreiber – schützt vor Vandalismus durch angemeldete Nutzer).
 export default function CardInfo() {
   const { user, registrationOpen } = useAuth();
-  const { externalId } = useParams();
+  const { externalId: param } = useParams(); // lesbarer Slug oder (alt) die ID
   const location = useLocation();
   const [card, setCard] = useState(null);
+  const externalId = card?.external_id ?? null; // die echte ID, sobald die Karte geladen ist
+  const loadedFor = useRef(new Set());
   const [history, setHistory] = useState(null);
   const [error, setError] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -68,7 +70,7 @@ export default function CardInfo() {
   usePageTitle(card ? `${card.name} (${card.set_name} ${card.number}) – Preis & Verlauf | mycardfolio` : null);
 
   const loadEntries = useCallback(() => {
-    if (!user) return setEntries([]);
+    if (!user || !externalId) return setEntries([]);
     return getCollection()
       .then((items) => setEntries(items.filter((i) => i.external_id === externalId)))
       .catch(() => setEntries([]));
@@ -79,11 +81,12 @@ export default function CardInfo() {
   }, [loadEntries]);
 
   useEffect(() => {
-    if (!user) return setWatched(false);
+    if (!user || !externalId) return setWatched(false);
     getWatchlistIds().then((ids) => setWatched(ids.includes(externalId))).catch(() => {});
   }, [externalId, user]);
 
   useEffect(() => {
+    if (!externalId) return;
     setListings(null);
     getListingsForCard(externalId)
       .then(setListings)
@@ -91,23 +94,27 @@ export default function CardInfo() {
   }, [externalId]);
 
   useEffect(() => {
+    // nach dem Umstellen auf die lesbare Adresse nicht noch einmal laden
+    if (loadedFor.current.has(param)) return;
     setCard(null);
     setHistory(null);
     setError(false);
-    // erst die Karteninfo (stößt serverseitig den Preis-Abruf an), dann die
-    // Historie – sonst wäre der frische Datenpunkt noch nicht geschrieben.
-    getCardInfo(externalId)
+    getCardInfo(param)
       .then((c) => {
+        loadedFor.current = new Set([param, c.slug, c.external_id]);
         setCard(c);
-        getCardPriceHistory(externalId)
+        getCardPriceHistory(c.external_id)
           .then((h) => setHistory(h ?? []))
           .catch(() => setHistory([]));
+        // alte ID-Adresse (/database/pl4-60) -> lesbare (/database/arceus-60-cherubi)
+        if (c.slug && c.slug !== param) navigate(`/database/${c.slug}`, { replace: true });
       })
       .catch(() => {
         setError(true);
         setHistory([]);
       });
-  }, [externalId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [param]);
 
   async function confirmAdd({ lots, ...shared }) {
     setBusy(true);

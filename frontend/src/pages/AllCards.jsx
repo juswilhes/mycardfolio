@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchCards, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -247,7 +248,7 @@ export default function AllCards() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {results.map((card) => (
               <div key={card.external_id} className="flex flex-col">
-                <Link to={`/database/${card.external_id}`} className="flex flex-col group relative">
+                <Link to={cardPath(card)} className="flex flex-col group relative">
                   <img
                     src={card.image_large}
                     alt={`${card.name} (Englisch)`}
@@ -278,7 +279,7 @@ export default function AllCards() {
                 </Link>
                 <div className="mt-auto flex gap-2">
                   <Link
-                    to={`/database/${card.external_id}`}
+                    to={cardPath(card)}
                     className="flex-1 text-center border border-line text-xs py-1.5 rounded-full hover:border-ink"
                   >
                     Preisverlauf
@@ -404,7 +405,7 @@ function MoverColumn({ title, items, positive }) {
           {items.map((m) => (
             <Link
               key={m.external_id}
-              to={`/database/${m.external_id}`}
+              to={cardPath(m)}
               className="flex items-center gap-2 py-1.5 text-sm hover:opacity-80"
             >
               <img src={m.image_small} alt="" className="w-8 h-auto rounded shrink-0" />

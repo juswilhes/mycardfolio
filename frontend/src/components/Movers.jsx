@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
+import { cardPath } from "../lib/paths.js";
 import { eurAbs as eur } from "../lib/format.js";
 
 function Row({ m, positive }) {
   return (
     <Link
-      to={`/database/${m.external_id}`}
+      to={cardPath(m)}
       className="flex items-center gap-2 py-1.5 text-sm hover:opacity-80"
     >
       <img src={m.image_small} alt="" className="w-6 rounded shrink-0" />

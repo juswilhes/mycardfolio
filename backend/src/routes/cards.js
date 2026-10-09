@@ -15,10 +15,17 @@ import {
 } from "../services/cardRepository.js";
 import { cardmarketUrl } from "../services/priceProvider.js";
 import { analysis } from "../services/analysisCache.js";
+import { resolveCardParam } from "../services/cardSlugs.js";
 import { authRequired } from "../middleware/auth.js";
 import { isOperatorUser } from "../lib/admin.js";
 
 const router = Router();
+
+// :externalId darf der lesbare Slug (arceus-60-gengar) oder die ID (pl4-60) sein
+router.param("externalId", (req, _res, next, value) => {
+  req.params.externalId = resolveCardParam(value);
+  next();
+});
 
 // GET /api/cards/search?q=Pikachu  -> lokal, sofort
 // Optional: &type=Level-Up (Kartenart, siehe /types) - dann reicht auch ein leeres q.

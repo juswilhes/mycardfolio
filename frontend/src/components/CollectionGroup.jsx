@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import CardTile from "./CardTile.jsx";
 import { langLabel, gradeLabel, conditionLabel } from "./CollectionItemDialog.jsx";
@@ -140,7 +141,7 @@ export default function CollectionGroup({ group, onChanged }) {
             const g = c != null && v != null ? v - c : null;
             return (
               <div key={e.collection_item_id} className="flex items-center justify-between gap-3 text-xs">
-                <Link to={`/database/${group.external_id}`} className="text-subtle truncate hover:text-ink">
+                <Link to={cardPath(group)} className="text-subtle truncate hover:text-ink">
                   {e.purchase_date
                     ? new Date(e.purchase_date).toLocaleDateString("de-DE")
                     : "Datum unbekannt"}
@@ -186,7 +187,7 @@ export default function CollectionGroup({ group, onChanged }) {
             );
           })}
           <Link
-            to={`/database/${group.external_id}`}
+            to={cardPath(group)}
             className="inline-block text-xs text-subtle underline hover:text-ink mt-1"
           >
             Käufe verwalten →

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import Icon from "../components/Icon.jsx";
@@ -43,7 +44,7 @@ function Section({ title, intro, children, action }) {
 function MoverRow({ m }) {
   const up = m.delta_pct >= 0;
   return (
-    <Link to={`/database/${m.external_id}`} className="flex items-center gap-3 py-2 border-b border-line last:border-0 group">
+    <Link to={cardPath(m)} className="flex items-center gap-3 py-2 border-b border-line last:border-0 group">
       <img src={m.image_small} alt="" className="w-10 rounded shrink-0" loading="lazy" />
       <span className="min-w-0 flex-1">
         <span className="block text-sm truncate group-hover:underline">{m.name}</span>

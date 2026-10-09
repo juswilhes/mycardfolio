@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import db from "../db/index.js";
 import { slugOfSet } from "./setSlugs.js";
+import { slugOfCard } from "./cardSlugs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +29,7 @@ function rowToCard(row) {
   if (!row) return null;
   return {
     external_id: row.external_id,
+    slug: slugOfCard(row.external_id),
     name: row.name,
     set_name: row.set_name,
     set_id: row.set_id,
