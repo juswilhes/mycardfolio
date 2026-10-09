@@ -557,6 +557,13 @@ if (!db.prepare(`PRAGMA table_info(cards)`).all().some((c) => c.name === "varian
   db.exec(`ALTER TABLE cards ADD COLUMN variant_flags TEXT`);
 }
 
+// cards.price_valid_from: ab wann die gespeicherten Preise einer Karte stimmen. Gesetzt,
+// wenn die Gegenprüfung (priceProvider.js correctSharedProduct) gemerkt hat, dass TCGdex
+// der Karte das falsche Cardmarket-Produkt zuordnet - ältere Preise werden dann ignoriert.
+if (!db.prepare(`PRAGMA table_info(cards)`).all().some((c) => c.name === "price_valid_from")) {
+  db.exec(`ALTER TABLE cards ADD COLUMN price_valid_from TEXT`);
+}
+
 // News & Artikel (services/articles.js)
 db.exec(`
   CREATE TABLE IF NOT EXISTS articles (

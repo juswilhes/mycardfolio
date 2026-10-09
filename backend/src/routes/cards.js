@@ -59,7 +59,8 @@ router.get("/external/:externalId", async (req, res) => {
       latest_price: latestTrendByExternal(externalId) ?? null,
       price_breakdown: breakdown,
       cardmarket_updated: dbMeta?.cardmarket_updated ?? null,
-      cardmarket_url: cardmarketUrl(dbMeta?.cardmarket_product_id ?? null),
+      // kein Link, wenn TCGdex der Karte ein falsches Cardmarket-Produkt zugeordnet hatte
+      cardmarket_url: dbMeta?.price_valid_from ? null : cardmarketUrl(dbMeta?.cardmarket_product_id ?? null),
     });
   }
 

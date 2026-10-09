@@ -214,6 +214,7 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
           prices: cmRows,
           meta: { basis: "cardmarket", productId: cm.idProduct ?? null, updated: cm.updated ?? null },
         };
+        value = (await correctSharedProduct(row, cm).catch((e) => { console.warn(`[preise] Gegenprüfung ${externalId}: ${e.message}`); return null; })) ?? value; // nicht erreichbar: TCGdex-Werte behalten
       } else if (tp) {
         // Fallback: TCGplayer-Marktpreis (USD) -> EUR umgerechnet
         const variant = tp.holofoil ?? tp.normal ?? tp.reverseHolofoil ?? Object.values(tp).find((v) => v?.marketPrice);
@@ -275,14 +276,13 @@ const paced = async (fn) => {
 const eurRow = (variant, priceType, price) =>
   price > 0 ? { source: "cardmarket", variant, price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 } : null;
 
-async function pokemonTcgFallback(externalId) {
-  const raw = await paced(() => getRawPricesById(externalId));
-  if (!raw) return { prices: [], meta: null };
-
+// Preise aus den Rohdaten von pokemontcg.io: deren Cardmarket-Wert (wenn nicht älter
+// als maxAgeMs), sonst der TCGplayer-Marktpreis (USD, umgerechnet).
+async function pricesFromRaw(raw, maxAgeMs) {
   const cm = raw.cardmarket;
   const p = cm?.prices;
   const updated = cm?.updatedAt ? Date.parse(String(cm.updatedAt).replace(/\//g, "-")) : NaN;
-  if (p && p.trendPrice > 0 && Date.now() - updated < FALLBACK_MAX_AGE_MS) {
+  if (p && p.trendPrice > 0 && Date.now() - updated < maxAgeMs) {
     const rows = [
       eurRow("normal", "trend", p.trendPrice),
       eurRow("normal", "low", p.lowPrice),
@@ -303,6 +303,35 @@ async function pokemonTcgFallback(externalId) {
     };
   }
   return { prices: [], meta: null };
+}
+
+async function pokemonTcgFallback(externalId) {
+  const raw = await paced(() => getRawPricesById(externalId));
+  return raw ? pricesFromRaw(raw, FALLBACK_MAX_AGE_MS) : { prices: [], meta: null };
+}
+
+// Gegenprüfung: TCGdex ordnet bei mehreren Karten mit gleichem Namen im selben Set
+// manchmal allen dasselbe Cardmarket-Produkt zu (z. B. Ponyta Nr. 46 und 72 bekommen
+// den Preis der glänzenden SH11). Teilt sich die Karte ihr Produkt mit einer anderen
+// Karte DESSELBEN Sets, wird der TCGdex-Trend mit dem TCGplayer-Marktpreis von
+// pokemontcg.io (gehört eindeutig zur Karte) verglichen. Ist er mehr als dreimal so
+// hoch (und mindestens 2 EUR darüber), gilt die Zuordnung als falsch: dann zählen
+// die Werte von pokemontcg.io (Cardmarket, auch wenn älter, sonst TCGplayer).
+const sharedProductStmt = db.prepare(
+  `SELECT 1 FROM cards WHERE cardmarket_product_id = ? AND set_id = ? AND external_id != ? LIMIT 1`
+);
+async function correctSharedProduct(row, cm) {
+  if (!cm.idProduct || !sharedProductStmt.get(cm.idProduct, row.set_id, row.external_id)) return null;
+  const raw = await paced(() => getRawPricesById(row.external_id));
+  const prices = raw?.tcgplayer?.prices;
+  const ref = prices && (prices.normal?.market > 0 ? prices.normal : Object.values(prices).find((v) => v?.market > 0));
+  if (!ref) return null;
+  const refEur = ref.market * (await usdToEur());
+  if (!(cm.trend > 3 * refEur && cm.trend - refEur >= 2)) return null;
+  const fixed = await pricesFromRaw(raw, Infinity);
+  if (!fixed.prices.length) return null;
+  // Produkt-ID bleibt gespeichert (damit die Mehrfachvergabe weiter erkannt wird)
+  return { prices: fixed.prices, meta: { ...fixed.meta, productId: cm.idProduct, corrected: true } };
 }
 
 export function cardmarketUrl(productId) {

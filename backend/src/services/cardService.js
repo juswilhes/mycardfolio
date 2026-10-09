@@ -46,9 +46,18 @@ export function upsertCardRow(gameSlug, cardData) {
 
 // Schreibt Preis-Snapshots. Pro Tag/Quelle/Preistyp höchstens einen Wert,
 // damit die Historie nicht durch mehrfache Abrufe am selben Tag zuwuchert.
+const markCorrectedStmt = db.prepare(`UPDATE cards SET price_valid_from = COALESCE(price_valid_from, ?) WHERE id = ?`);
+const deleteDaySnapshotsStmt = db.prepare(`DELETE FROM price_snapshots WHERE card_id = ? AND substr(fetched_at, 1, 10) = ?`);
+
 export function recordPrices(cardId, prices = [], meta = null) {
   const day = new Date().toISOString().slice(0, 10);
   const now = new Date().toISOString();
+  if (meta?.corrected) {
+    // Preise stammen aus der Gegenprüfung (TCGdex hatte das falsche Produkt): frühere
+    // Werte gelten nicht mehr, ein heute schon gespeicherter falscher Wert wird ersetzt.
+    markCorrectedStmt.run(`${day}T00:00:00.000Z`, cardId);
+    deleteDaySnapshotsStmt.run(cardId, day);
+  }
   for (const p of prices) {
     const variant = p.variant ?? "normal";
     if (snapshotToday.get(cardId, p.source, p.price_type, variant, day)) continue;
@@ -160,10 +169,13 @@ const trendAllStmt = db.prepare(`
 //    heißt die erste Reihe "Holo" (baseLabel) statt "Normal".
 //  - nur eine Ausführung: EINE Reihe ("normal"), ohne Sonder-Variante
 //  - Angaben unbekannt: Reihen unverändert
-const flagsStmt = db.prepare(`SELECT variant_flags FROM cards WHERE id = ?`);
+const flagsStmt = db.prepare(`SELECT variant_flags, price_valid_from FROM cards WHERE id = ?`);
 
-function alignToPrintings(cardId, rows) {
-  const raw = flagsStmt.get(cardId)?.variant_flags;
+function alignToPrintings(cardId, allRows) {
+  const card = flagsStmt.get(cardId);
+  // Preise vor price_valid_from stammen vom falschen Cardmarket-Produkt (siehe priceProvider.js)
+  const rows = card?.price_valid_from ? allRows.filter((r) => r.fetched_at >= card.price_valid_from) : allRows;
+  const raw = card?.variant_flags;
   if (!raw) return rows;
   const flags = JSON.parse(raw);
   const twoPrintings = [flags.normal, flags.holo, flags.reverse].filter(Boolean).length >= 2;
@@ -216,7 +228,13 @@ const normalTrendStmt = db.prepare(`
   WHERE card_id = ? AND price_type = 'trend' AND variant = 'normal'
   ORDER BY fetched_at ASC
 `);
-export const priceHistoryForCard = { all: (cardId) => despike(normalTrendStmt.all(cardId)) };
+export const priceHistoryForCard = {
+  all: (cardId) => {
+    const from = flagsStmt.get(cardId)?.price_valid_from;
+    const rows = normalTrendStmt.all(cardId);
+    return despike(from ? rows.filter((r) => r.fetched_at >= from) : rows);
+  },
+};
 
 // Illustrator manuell setzen. artist_manual = 1 schützt den Wert davor,
 // beim nächsten `npm run import` überschrieben zu werden.
@@ -235,7 +253,7 @@ export function cardmarketBreakdownByExternal(externalId) {
 }
 
 export const cardMetaByExternalId = db.prepare(`
-  SELECT id, cardmarket_product_id, cardmarket_updated
+  SELECT id, cardmarket_product_id, cardmarket_updated, price_valid_from
   FROM cards
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
