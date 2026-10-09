@@ -9,6 +9,7 @@ import { rebuildAnalysisCache } from "./analysisCache.js";
 import { recordSetValueSnapshots } from "./setValueSnapshots.js";
 import { rebuildSitemap } from "./seo.js";
 import { refreshVariantFlags } from "./variantFlags.js";
+import { refreshPricesFromGuide } from "./guidePrices.js";
 import db from "../db/index.js";
 
 // ALLE Preise werden nur noch hier geholt: einmal täglich um 1 Uhr nachts
@@ -20,10 +21,18 @@ import db from "../db/index.js";
 // einfach nur auf der Datenbank-Seite angesehen), bekommt weiter täglich
 // einen neuen Snapshot - sonst bliebe der Graph für angesehene, aber nicht
 // besessene Karten für immer bei "ein einzelner Punkt" stehen.
+// Karten, die heute schon über die Cardmarket-Preisliste bepreist wurden
+// (guidePrices.js), brauchen keinen Einzelabruf mehr - übrig bleiben nur die, die sich
+// dort nicht eindeutig zuordnen ließen.
 const trackedCards = db.prepare(`
   SELECT DISTINCT c.id, c.external_id
   FROM cards c
   JOIN price_snapshots ps ON ps.card_id = c.id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM price_snapshots t
+    WHERE t.card_id = c.id AND t.source = 'cardmarket' AND t.price_type = 'trend'
+      AND t.variant = 'normal' AND substr(t.fetched_at, 1, 10) = date('now')
+  )
 `);
 
 const CONCURRENCY = 5;
@@ -65,7 +74,8 @@ async function refreshAllPrices() {
 //  1. neue Sets/Karten bei TCGdex suchen und importieren (damit sie gleich
 //     mit Preisen und Bildern versorgt werden)
 //  2. welche Ausführungen (normal/Reverse Holo/Holo) jede Karte hat (variantFlags.js),
-//     dann alle Preise aktualisieren
+//     dann die Preise: zuerst alle Karten in einem Rutsch aus Cardmarkets Preisliste
+//     (guidePrices.js), danach per Einzelabruf nur noch die übrigen
 //  3. Karten ohne jeden Preis nachholen
 //  4. alle Auswertungen der Analyse mit den neuen Preisen neu rechnen
 //     (analysisCache.js), am Monatsersten den Monatsstand speichern und die
@@ -84,6 +94,7 @@ export async function runDailyPriceJob() {
     const steps = [
       ["Neu-Check", syncNewCards],
       ["Ausführungen", refreshVariantFlags],
+      ["Preisliste", refreshPricesFromGuide],
       ["Preise", refreshAllPrices],
       ["Preise nachholen", backfillAllMissingPrices],
       ["Analysen", async () => rebuildAnalysisCache()],

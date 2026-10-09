@@ -256,7 +256,7 @@ const paced = async (fn) => {
 };
 // Preiszeilen aus einem Cardmarket-Datensatz (TCGdex oder Cardmarkets Preisliste:
 // gleiche Feldnamen, die zweite Spalte endet auf "-holo").
-function cardmarketRows(cm, specialVariant) {
+export function cardmarketRows(cm, specialVariant) {
   return [
     eurRow("normal", "trend", cm.trend),
     eurRow("normal", "low", cm.low),

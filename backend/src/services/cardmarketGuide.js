@@ -62,26 +62,33 @@ const splitName = (name) => {
   return { base: m[1], bracket: m[2] ?? "" };
 };
 
-// Sucht zu einer Karte das passende Cardmarket-Produkt innerhalb der Erweiterung des
-// (falsch geteilten) Produkts `sharedProductId`: gleicher Name, und alle Fähigkeiten-/
-// Angriffsnamen der Karte kommen im Cardmarket-Namen vor (bei alten Karten fehlen uns
-// z. B. die Poké-Power-Namen, deshalb reicht "enthalten"). Gewinnt das Produkt mit den
-// wenigsten zusätzlichen Namen; nur ein EINDEUTIGER Treffer zählt (sonst null).
+// Erweiterung (Cardmarket) zu einem Produkt
+export const expansionOfProduct = (guide, productId) => guide.products.get(productId)?.expansion ?? null;
+
+// Sucht zu einer Karte das passende Cardmarket-Produkt innerhalb einer Erweiterung:
+//  - Karten mit Fähigkeiten/Angriffen: gleicher Name, und alle Fähigkeiten-/Angriffsnamen
+//    der Karte kommen im Cardmarket-Namen vor (bei alten Karten fehlen uns z. B. die
+//    Poké-Power-Namen, deshalb reicht "enthalten"); gewinnt das Produkt mit den wenigsten
+//    zusätzlichen Namen
+//  - Karten ohne (Trainer, Energien): genau ein Produkt mit exakt diesem Namen und ohne
+//    Klammer-Zusatz
+// Nur ein EINDEUTIGER Treffer zählt (sonst null).
 // Rückgabe: { idProduct, cm } mit den Preisfeldern der Preisliste (trend, low, avg30 ...).
-export async function resolveProduct(card, sharedProductId) {
+export function resolveInExpansion(guide, card, expansionId) {
+  if (!expansionId) return null;
   const ours = [...parseList(card.abilities), ...parseList(card.attacks)].map((a) => norm(a.name)).filter(Boolean);
-  if (!ours.length || !sharedProductId) return null; // Trainer/Energien ohne Angriffe: nicht eindeutig
-  const guide = await loadGuide();
-  const shared = guide.products.get(sharedProductId);
-  if (!shared) return null;
   const wanted = norm(card.name);
   const hits = [];
-  for (const p of guide.byExpansion.get(shared.expansion) ?? []) {
+  for (const p of guide.byExpansion.get(expansionId) ?? []) {
     const { base, bracket } = splitName(p.name);
     const a = norm(base);
-    if (!(a.startsWith(wanted) || wanted.startsWith(a))) continue;
-    const theirs = bracket.split("|").map(norm).filter(Boolean);
-    if (ours.every((t) => theirs.includes(t))) hits.push({ p, extra: theirs.length - ours.length });
+    if (ours.length) {
+      if (!(a.startsWith(wanted) || wanted.startsWith(a))) continue;
+      const theirs = bracket.split("|").map(norm).filter(Boolean);
+      if (ours.every((t) => theirs.includes(t))) hits.push({ p, extra: theirs.length - ours.length });
+    } else if (a === wanted && !bracket) {
+      hits.push({ p, extra: 0 });
+    }
   }
   if (!hits.length) return null;
   const best = Math.min(...hits.map((h) => h.extra));
@@ -89,4 +96,11 @@ export async function resolveProduct(card, sharedProductId) {
   if (top.length !== 1) return null;
   const row = guide.prices.get(top[0].p.id);
   return row ? { idProduct: top[0].p.id, cm: { ...row, idProduct: top[0].p.id, updated: guide.updated } } : null;
+}
+
+// Wie resolveInExpansion, mit der Erweiterung eines (falsch geteilten) Produkts
+export async function resolveProduct(card, sharedProductId) {
+  if (!sharedProductId) return null;
+  const guide = await loadGuide();
+  return resolveInExpansion(guide, card, expansionOfProduct(guide, sharedProductId));
 }
