@@ -7,8 +7,8 @@
 //    inkl. Cardmarket-Produkt-ID (für einen Direktlink).
 //
 // Grenzen (bewusst):
-//  - Es ist der Preis der ENGLISCHEN Karte auf Cardmarket. Für die deutsche
-//    Druckvariante gibt es keine frei verfügbare Preisquelle.
+//  - Es ist EIN Cardmarket-Wert pro Karte - nicht nach Sprache (Deutsch/Englisch)
+//    und nicht nach Zustand aufgeteilt; eine getrennte Quelle gibt es nicht frei.
 //  - eBay-Verkaufspreise gibt es ohne kostenpflichtigen API-Zugang nicht.
 
 import fs from "node:fs";

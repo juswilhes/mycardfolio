@@ -257,7 +257,7 @@ export default function Landing() {
             ["Kostet mycardfolio etwas?", "Nein. Kartensuche und Datenbank sind kostenlos und ohne Konto nutzbar."],
             [
               "Woher kommen die Preise?",
-              "Von Cardmarket (Trendwert in Euro), bezogen über die offene Schnittstelle von TCGdex. Es sind Preise der englischen Karten – für deutsche Karten gibt es keine frei verfügbare Quelle.",
+              "Von Cardmarket (Trendwert in Euro, aus der öffentlichen Tages-Preisliste). Es ist ein Wert pro Karte – nicht nach Sprache oder Zustand aufgeteilt.",
             ],
             ["Wie aktuell sind die Preise?", "Wir holen alle Preise einmal täglich um 1 Uhr nachts. Die Seiten zeigen den Stand dieser Nacht."],
             ["Sind die Preise verbindlich?", "Nein, es sind Richtwerte ohne Gewähr – keine Kauf- oder Verkaufsempfehlung."],

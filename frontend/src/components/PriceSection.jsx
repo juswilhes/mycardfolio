@@ -40,7 +40,7 @@ function computeMomentum(history) {
 }
 
 // Einheitliche Preis-Anzeige für Sammlungs- und Datenbank-Detailseite.
-// Alles in EUR. Bevorzugte Quelle: Cardmarket (englische Karte).
+// Alles in EUR. Bevorzugte Quelle: Cardmarket (ein Wert pro Karte, nicht nach Sprache/Zustand getrennt).
 // Preise werden nur einmal täglich um 1 Uhr aktualisiert (kein Abruf beim
 // Öffnen der Seite).
 export default function PriceSection({ card, history }) {
@@ -161,9 +161,11 @@ export default function PriceSection({ card, history }) {
             an – der ist oft nur ein einzelnes Schnäppchen-Angebot.)
           </p>
           <p>
-            Es ist der Preis der <b>englischen</b> Karte. Für die deutsche
-            Druckvariante gibt es keine frei verfügbare Preisquelle – deutsche
-            Karten sind meist etwas günstiger.
+            Es ist Cardmarkts Marktpreis für diese Karte: <b>ein Wert pro Karte,
+            nicht nach Sprache (Deutsch/Englisch) und nicht nach Zustand
+            aufgeteilt</b>. Eine getrennte Preisquelle für deutsche und englische
+            Karten oder einen bestimmten Zustand (z. B. Near Mint) gibt es für
+            uns bisher nicht.
           </p>
           <p>
             Bei wenigen Karten hat Cardmarket keinen Wert; dann wird der
