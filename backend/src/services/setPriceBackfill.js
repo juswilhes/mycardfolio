@@ -55,15 +55,10 @@ async function recheckSharedProductCards() {
 export function catchUpMissingPrices() {
   const marker = (key) => db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(key);
   const setMarker = (key) => db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, '1')`).run(key);
-  setTimeout(async () => {
-    if (!marker("missing_prices_fallback_v1")) {
-      await backfillAllMissingPrices();
-      setMarker("missing_prices_fallback_v1");
-    }
-    if (!marker("shared_product_check_v1")) {
-      await recheckSharedProductCards();
-      setMarker("shared_product_check_v1");
-    }
+  // beide gleichzeitig: die Abrufe bei pokemontcg.io teilen sich ohnehin die Pause zwischen den Starts
+  setTimeout(() => {
+    if (!marker("missing_prices_fallback_v1")) backfillAllMissingPrices().then(() => setMarker("missing_prices_fallback_v1"));
+    if (!marker("shared_product_check_v1")) recheckSharedProductCards().then(() => setMarker("shared_product_check_v1"));
   }, 60_000);
 }
 
