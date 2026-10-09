@@ -551,6 +551,12 @@ for (const u of db.prepare(`SELECT id, email FROM users WHERE password_hash = ''
   );
 }
 
+// cards.variant_flags: welche Ausführungen es gibt ({"normal":true,"reverse":true,"holo":false}),
+// von TCGdex (services/variantFlags.js). NULL = unbekannt.
+if (!db.prepare(`PRAGMA table_info(cards)`).all().some((c) => c.name === "variant_flags")) {
+  db.exec(`ALTER TABLE cards ADD COLUMN variant_flags TEXT`);
+}
+
 // News & Artikel (services/articles.js)
 db.exec(`
   CREATE TABLE IF NOT EXISTS articles (

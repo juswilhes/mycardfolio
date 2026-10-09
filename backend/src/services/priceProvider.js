@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import db from "../db/index.js";
+import { getRawPricesById } from "./pokemonTcgApi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_FILE = path.join(__dirname, "..", "..", "vendor", "tcgdex-price-cache.json");
@@ -78,7 +79,7 @@ function persistCache() {
   }, 1000);
 }
 
-async function fetchJson(url, tries = 2) {
+export async function fetchJson(url, tries = 2) {
   for (let i = 0; i < tries; i++) {
     try {
       const ctrl = new AbortController();
@@ -144,7 +145,7 @@ export async function tcgdexSetId(setName, ourSetId) {
   return sets.find((s) => norm(s.name) === key)?.id ?? null;
 }
 
-async function tcgdexCardId(setName, number, cardName, ourSetId) {
+export async function tcgdexCardId(setName, number, cardName, ourSetId) {
   const sid = await tcgdexSetId(setName, ourSetId);
   if (!sid) return null;
   if (!cache.setCards[sid]) {
@@ -238,6 +239,15 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
     return value; // Netzwerkfehler -> leeres Ergebnis, nicht cachen
   }
 
+  // TCGdex hat keinen Preis: zweite Quelle versuchen
+  if (!value.prices.length) {
+    try {
+      value = await pokemonTcgFallback(externalId);
+    } catch {
+      return value; // auch die zweite Quelle gerade nicht erreichbar -> nicht cachen
+    }
+  }
+
   // Leere Ergebnisse nicht (lange) cachen – vielleicht ist die Quelle nur
   // kurz unvollständig.
   if (value.prices.length) {
@@ -245,6 +255,51 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
     persistCache();
   }
   return value;
+}
+
+// Rückfallebene, wenn TCGdex für eine Karte gar keinen Preis hat (z. B. viele
+// Promos): die Preisdaten von pokemontcg.io. Zuerst deren Cardmarket-Wert (EUR),
+// falls er frisch ist (höchstens 14 Tage alt), sonst der TCGplayer-Marktpreis
+// (USD, umgerechnet). Die Abrufe laufen nacheinander mit Pause, damit die
+// kostenlose API nicht drosselt.
+const FALLBACK_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+let fallbackChain = Promise.resolve();
+const paced = (fn) => {
+  const run = fallbackChain.then(fn);
+  fallbackChain = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 350)));
+  return run;
+};
+const eurRow = (variant, priceType, price) =>
+  price > 0 ? { source: "cardmarket", variant, price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 } : null;
+
+async function pokemonTcgFallback(externalId) {
+  const raw = await paced(() => getRawPricesById(externalId));
+  if (!raw) return { prices: [], meta: null };
+
+  const cm = raw.cardmarket;
+  const p = cm?.prices;
+  const updated = cm?.updatedAt ? Date.parse(String(cm.updatedAt).replace(/\//g, "-")) : NaN;
+  if (p && p.trendPrice > 0 && Date.now() - updated < FALLBACK_MAX_AGE_MS) {
+    const rows = [
+      eurRow("normal", "trend", p.trendPrice),
+      eurRow("normal", "low", p.lowPrice),
+      eurRow("normal", "avg30", p.avg30),
+      eurRow("reverse", "trend", p.reverseHoloTrend),
+    ].filter(Boolean);
+    return { prices: rows, meta: { basis: "cardmarket", productId: null, updated: cm.updatedAt } };
+  }
+
+  const tp = raw.tcgplayer;
+  const variant = tp?.prices && Object.values(tp.prices).find((v) => v?.market > 0 || v?.mid > 0);
+  const usd = variant?.market ?? variant?.mid;
+  if (usd > 0) {
+    const rate = await usdToEur();
+    return {
+      prices: [{ source: "tcgplayer", variant: "normal", price_type: "trend", currency: "EUR", price: Math.round(usd * rate * 100) / 100 }],
+      meta: { basis: "tcgplayer", productId: null, updated: tp.updatedAt ?? null, usdRate: rate },
+    };
+  }
+  return { prices: [], meta: null };
 }
 
 export function cardmarketUrl(productId) {

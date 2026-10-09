@@ -8,6 +8,7 @@ import { repairImages } from "./imageRepair.js";
 import { rebuildAnalysisCache } from "./analysisCache.js";
 import { recordSetValueSnapshots } from "./setValueSnapshots.js";
 import { rebuildSitemap } from "./seo.js";
+import { refreshVariantFlags } from "./variantFlags.js";
 import db from "../db/index.js";
 
 // ALLE Preise werden nur noch hier geholt: einmal täglich um 1 Uhr nachts
@@ -63,7 +64,8 @@ async function refreshAllPrices() {
 // Der komplette Nachtlauf um 1 Uhr:
 //  1. neue Sets/Karten bei TCGdex suchen und importieren (damit sie gleich
 //     mit Preisen und Bildern versorgt werden)
-//  2. alle Preise aktualisieren
+//  2. welche Ausführungen (normal/Reverse Holo/Holo) jede Karte hat (variantFlags.js),
+//     dann alle Preise aktualisieren
 //  3. Karten ohne jeden Preis nachholen
 //  4. alle Auswertungen der Analyse mit den neuen Preisen neu rechnen
 //     (analysisCache.js), am Monatsersten den Monatsstand speichern und die
@@ -81,6 +83,7 @@ export async function runDailyPriceJob() {
   try {
     const steps = [
       ["Neu-Check", syncNewCards],
+      ["Ausführungen", refreshVariantFlags],
       ["Preise", refreshAllPrices],
       ["Preise nachholen", backfillAllMissingPrices],
       ["Analysen", async () => rebuildAnalysisCache()],

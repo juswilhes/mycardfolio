@@ -8,6 +8,7 @@ import {
   buildSetRanking,
   getSiteCounts,
 } from "./marketStats.js";
+import { listCardTypes } from "./cardRepository.js";
 
 // Die Auswertungen der Analyse werden nicht bei jedem Seitenaufruf neu
 // gerechnet, sondern einmal im Nachtlauf um 1 Uhr (nach den neuen Preisen,
@@ -21,6 +22,7 @@ const BUILDERS = {
   packValue: getPackValueAnalysis,
   pullOrBuy: getPullOrBuy,
   siteCounts: getSiteCounts,
+  cardTypes: listCardTypes,
 };
 // Setzt sich aus den Auswertungen oben zusammen (wird danach gerechnet).
 const DERIVED = {

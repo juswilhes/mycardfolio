@@ -21,6 +21,18 @@ const missingPriceCardsStmt = db.prepare(`
 
 let sweepRunning = false;
 
+// Einmalig nach dem Deploy der Rückfallquelle im Hintergrund: Karten, die bisher
+// gar keinen Preis hatten, sollen nicht erst bis zum nächsten Nachtlauf warten
+// (danach hält der Nachtlauf um 1 Uhr alles aktuell).
+export function catchUpMissingPrices() {
+  const done = db.prepare(`SELECT value FROM app_meta WHERE key = 'missing_prices_fallback_v1'`).get();
+  if (done) return;
+  setTimeout(async () => {
+    await backfillAllMissingPrices();
+    db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('missing_prices_fallback_v1', '1')`).run();
+  }, 60_000);
+}
+
 export async function backfillAllMissingPrices() {
   if (sweepRunning) return;
   sweepRunning = true;

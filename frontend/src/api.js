@@ -45,7 +45,10 @@ export const deleteAccount = (password) =>
 export const exportDataUrl = `${BASE}/auth/export`;
 
 // --- Karten-Suche / -Datenbank -------------------------------------
-export const searchCards = (q) => request(`/cards/search?q=${encodeURIComponent(q)}`);
+// type = Kartenart (z. B. "Level-Up" für LV.X, siehe getCardTypes); dann reicht auch ein leeres q
+export const searchCards = (q, { type } = {}) =>
+  request(`/cards/search?q=${encodeURIComponent(q)}${type ? `&type=${encodeURIComponent(type)}` : ""}`);
+export const getCardTypes = () => request("/cards/types");
 export const getCardsByArtist = (artist) => request(`/cards/by-artist?name=${encodeURIComponent(artist)}`);
 export const getCardInfo = (externalId) => request(`/cards/external/${externalId}`);
 export const getCardPriceHistory = (externalId) => request(`/cards/external/${externalId}/prices`);

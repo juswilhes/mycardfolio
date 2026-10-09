@@ -216,7 +216,7 @@ function runSearch({ game, terms, number, limit }) {
   return searchStmt.all(params).map(rowToCard);
 }
 
-export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
+function searchCardsBase(query, { game = "pokemon", limit = 30 } = {}) {
   let { text, number } = splitNumber(query);
 
   // Set-Kürzel/-Name am Ende des Namensteils abtrennen ("Mega Gardevoir ex MEP 32").
@@ -264,6 +264,35 @@ export function searchCardsLocal(query, { game = "pokemon", limit = 30 } = {}) {
   }
   return rows;
 }
+
+// Kartenart (cards.subtypes, z. B. "Level-Up" = LV.X, "VMAX", "Supporter"): ohne Suchtext
+// alle Karten dieser Art (neueste Sets zuerst), mit Suchtext die Treffer darauf eingegrenzt.
+const byTypeStmt = db.prepare(`
+  SELECT c.* FROM cards c
+  LEFT JOIN card_sets s ON s.id = c.set_id
+  WHERE c.game_id = (SELECT id FROM games WHERE slug = @game)
+    AND EXISTS (SELECT 1 FROM json_each(c.subtypes) j WHERE j.value = @type)
+  ORDER BY s.release_date DESC, c.name
+  LIMIT @limit
+`);
+
+export function searchCardsLocal(query, { game = "pokemon", limit = 30, type = null } = {}) {
+  if (!type) return searchCardsBase(query, { game, limit });
+  if (!query.trim()) return byTypeStmt.all({ game, type, limit }).map(rowToCard);
+  return searchCardsBase(query, { game, limit: 400 })
+    .filter((r) => r.subtypes.includes(type))
+    .slice(0, limit);
+}
+
+// Alle vorkommenden Kartenarten mit Anzahl (für die Auswahl in der Suche)
+const cardTypesStmt = db.prepare(`
+  SELECT j.value AS subtype, COUNT(*) AS n
+  FROM cards c, json_each(c.subtypes) j
+  WHERE c.subtypes IS NOT NULL
+  GROUP BY j.value
+  ORDER BY n DESC
+`);
+export const listCardTypes = () => cardTypesStmt.all();
 
 const normLoose = (s) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 

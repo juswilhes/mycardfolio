@@ -149,9 +149,38 @@ const trendAllStmt = db.prepare(`
   ORDER BY fetched_at ASC
 `);
 
+// Cardmarket liefert je Karte zwei Preisspalten (normal und "-holo"), aber
+// viele Karten gibt es nur in EINER Ausführung (z. B. Illustration Rare, Rare
+// Holo): dort ist die zweite Spalte keine echte zweite Ausführung. Nach den
+// Angaben aus cards.variant_flags (services/variantFlags.js):
+//  - mindestens zwei Ausführungen (normal / holo / reverse): zwei Reihen. Die
+//    erste ("normal") ist die Hauptspalte, die zweite die "-holo"-Spalte und
+//    heißt "reverse" (sonst "holo"); alte, anders benannte Punkte zählen mit.
+//    Gibt es kein "normal" (z. B. ältere Rare Holo: Holo + Reverse Holo),
+//    heißt die erste Reihe "Holo" (baseLabel) statt "Normal".
+//  - nur eine Ausführung: EINE Reihe ("normal"), ohne Sonder-Variante
+//  - Angaben unbekannt: Reihen unverändert
+const flagsStmt = db.prepare(`SELECT variant_flags FROM cards WHERE id = ?`);
+
+function alignToPrintings(cardId, rows) {
+  const raw = flagsStmt.get(cardId)?.variant_flags;
+  if (!raw) return rows;
+  const flags = JSON.parse(raw);
+  const twoPrintings = [flags.normal, flags.holo, flags.reverse].filter(Boolean).length >= 2;
+  const special = flags.reverse ? "reverse" : "holo";
+  const baseLabel = twoPrintings && !flags.normal ? "Holo" : null;
+  const hasNormalRows = rows.some((r) => r.variant === "normal");
+  return rows.flatMap((r) => {
+    if (r.variant === "normal") return [baseLabel ? { ...r, baseLabel } : r];
+    if (r.variant !== "holo" && r.variant !== "reverse") return [r];
+    if (twoPrintings) return [{ ...r, variant: special }];
+    return hasNormalRows ? [] : [{ ...r, variant: "normal" }]; // nur die Sonder-Spalte hat Preise: das ist dann DER Preis
+  });
+}
+
 // Verlauf für den Graphen: alle Varianten (normal/holo/reverse), älteste zuerst.
 function priceHistory(cardId) {
-  return priceSeriesFrom(trendAllStmt.all(cardId))
+  return priceSeriesFrom(alignToPrintings(cardId, trendAllStmt.all(cardId)))
     .filter((s) => ["normal", "holo", "reverse"].includes(s.variant))
     .flatMap((s) => s.points)
     .sort((a, b) => a.fetched_at.localeCompare(b.fetched_at));
@@ -162,7 +191,7 @@ function priceHistory(cardId) {
 // keinen eigenen Preis gibt, und dann auf irgendeine vorhandene Reihe. Es
 // reichen die neuesten Zeilen (30-Tage-Fenster + Reserve).
 export function latestTrend(cardId, variant = "normal") {
-  const rows = trendNewestStmt.all(cardId).reverse();
+  const rows = alignToPrintings(cardId, trendNewestStmt.all(cardId).reverse());
   const series = priceSeriesFrom(rows);
   const pick = series.find((s) => s.variant === variant) ?? series.find((s) => s.variant === "normal") ?? series[0];
   return pick ? { ...pick.points[pick.points.length - 1], avg30: avg30Of(pick.points) } : null;

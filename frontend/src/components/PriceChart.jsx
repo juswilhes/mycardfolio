@@ -15,15 +15,14 @@ function lastValue(chartData, key) {
   return null;
 }
 
-// Erwartet die Preisreihe ({price, fetched_at, variant}) in EUR und
-// zeichnet Normal plus die vorhandene Sonder-Variante (Holo ODER Reverse
-// Holo) als eigene, farbige Linie. Die Legende steht OBEN, als farbige
-// Buttons mit dem jeweils aktuellen Preis - Klick blendet die Linie aus/ein,
-// standardmäßig sind alle an. Mehr als diese zwei Reihen (z.B. getrennt für
-// Reverse Holo UND Holo gleichzeitig, oder 1st Edition) liefert die
-// kostenlose Quelle (Cardmarket über TCGdex) nicht - die hat strukturell
-// nur zwei Preisfelder pro Karte, unabhängig davon, wie viele Druck-
-// varianten es tatsächlich gibt.
+// Erwartet die Preisreihe ({price, fetched_at, variant}) in EUR. Hat die Karte
+// nur EINE Ausführung (der Server liefert dann nur die Reihe "normal"), gibt es
+// eine Linie ohne Beschriftung - kein "Normal", weil es nichts abzugrenzen gibt.
+// Bei zwei Ausführungen (z. B. normal + Reverse Holo) kommt die zweite als
+// farbige Linie dazu; die Legende steht OBEN, als farbige Buttons mit dem
+// jeweils aktuellen Preis - Klick blendet die Linie aus/ein. Mehr als zwei
+// Reihen liefert die kostenlose Quelle (Cardmarket über TCGdex) nicht: sie hat
+// strukturell nur zwei Preisfelder pro Karte.
 export default function PriceChart({ data }) {
   const [hidden, setHidden] = useState(() => new Set());
   const [range, setRange] = useState("12m");
@@ -39,6 +38,8 @@ export default function PriceChart({ data }) {
 
   const days = rangeDays(range);
   const dateFormat = days > 90 ? { day: "2-digit", month: "2-digit", year: "2-digit" } : { day: "2-digit", month: "2-digit" };
+  // Name der ersten Linie: "Normal", außer bei Karten ohne normale Ausführung (Holo + Reverse Holo)
+  const baseLabel = data.find((d) => d.baseLabel)?.baseLabel ?? "Normal";
   const byDate = new Map();
   let specialVariant = null;
   for (const d of withinDays(data, days, (x) => x.fetched_at)) {
@@ -63,7 +64,7 @@ export default function PriceChart({ data }) {
   // Legende, nur den Graphen.
   const legendItems = hasSpecial
     ? [
-        { key: "normal", label: "Normal", price: lastValue(chartData, "normal"), bg: "bg-yellow", text: "text-yellowInk", border: "border-yellow" },
+        { key: "normal", label: baseLabel, price: lastValue(chartData, "normal"), bg: "bg-yellow", text: "text-yellowInk", border: "border-yellow" },
         { key: "special", label: specialLabel, price: lastValue(chartData, "special"), bg: "bg-holo", text: "text-white", border: "border-holo" },
       ]
     : [];
@@ -137,7 +138,7 @@ export default function PriceChart({ data }) {
               color: "var(--ink)",
             }}
             labelStyle={{ color: "var(--subtle)" }}
-            formatter={(value, name) => [eur(value), name === "special" ? specialLabel : "Normal"]}
+            formatter={(value, name) => [eur(value), hasSpecial ? (name === "special" ? specialLabel : baseLabel) : "Preis"]}
           />
           {!hidden.has("normal") && (
             <Line type="monotone" dataKey="normal" name="normal" stroke="var(--yellow)" strokeWidth={2.5} dot={false} connectNulls />

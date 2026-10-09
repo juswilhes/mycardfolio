@@ -1,11 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { searchCards, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
+import { searchCards, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SegmentedToggle from "../components/SegmentedToggle.jsx";
+
+// Kartenarten für die Auswahl: [Wert in den Daten, Anzeigename], gruppiert.
+// Angezeigt werden nur Arten, die es in der Datenbank gibt.
+const TYPE_GROUPS = [
+  ["Pokémon-Arten", [["Level-Up", "LV.X"], ["ex", "ex"], ["EX", "EX"], ["GX", "GX"], ["V", "V"], ["VMAX", "VMAX"], ["VSTAR", "VSTAR"], ["V-UNION", "V-UNION"], ["TAG TEAM", "TAG TEAM"], ["MEGA", "Mega"], ["BREAK", "BREAK"], ["Prime", "Prime"], ["LEGEND", "LEGEND"], ["Prism Star", "Prism Star"], ["Radiant", "Radiant"], ["Tera", "Tera"], ["Star", "Star"], ["Baby", "Baby"]]],
+  ["Trainer", [["Supporter", "Unterstützer"], ["Item", "Item"], ["Stadium", "Stadion"], ["Pokémon Tool", "Pokémon-Ausrüstung"], ["ACE SPEC", "ACE SPEC"], ["Technical Machine", "Technische Maschine"]]],
+  ["Entwicklung", [["Basic", "Basis"], ["Stage 1", "Phase 1"], ["Stage 2", "Phase 2"]]],
+];
 
 // "Alle Karten": oben die Kartensuche – funktioniert auch ohne Konto.
 // Darunter, solange nichts gesucht wird, die Set-Übersicht. Zur Sammlung
@@ -17,6 +25,8 @@ export default function AllCards() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [type, setType] = useState(params.get("t") ?? "");
+  const [types, setTypes] = useState([]);
 
   const [sets, setSets] = useState(null);
   const [progress, setProgress] = useState({});
@@ -35,10 +45,11 @@ export default function AllCards() {
 
   const navigate = useNavigate();
   const reqId = useRef(0);
-  const isSearching = query.trim().length >= 2;
+  const isSearching = query.trim().length >= 2 || !!type;
 
   useEffect(() => {
     getSets().then(setSets).catch(() => setSets([]));
+    getCardTypes().then(setTypes).catch(() => setTypes([]));
     getSetProgress().then(setProgress).catch(() => setProgress({}));
   }, []);
 
@@ -60,7 +71,7 @@ export default function AllCards() {
 
   async function runSearch(q) {
     const term = q.trim();
-    if (term.length < 2) {
+    if (term.length < 2 && !type) {
       setResults([]);
       setSearched(false);
       return;
@@ -68,7 +79,7 @@ export default function AllCards() {
     const id = ++reqId.current;
     setLoading(true);
     try {
-      const res = await searchCards(term);
+      const res = await searchCards(term, { type });
       if (id === reqId.current) {
         setResults(res);
         setSearched(true);
@@ -82,11 +93,23 @@ export default function AllCards() {
   useEffect(() => {
     const t = setTimeout(() => {
       runSearch(query);
-      setParams(query.trim() ? { q: query.trim() } : {}, { replace: true });
+      setParams({ ...(query.trim() ? { q: query.trim() } : {}), ...(type ? { t: type } : {}) }, { replace: true });
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, type]);
+
+  // Sets, die zum Suchtext passen (Name, Serie oder Kürzel) - stehen über den Karten
+  const matchingSets = useMemo(() => {
+    const norm = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const q = norm(query);
+    if (q.length < 2 || !sets) return [];
+    return sets
+      .filter((s) => norm(s.name).includes(q) || norm(s.id) === q || norm(s.slug) === q || norm(s.series).includes(q))
+      .slice(0, 8);
+  }, [query, sets]);
+
+  const typeCounts = Object.fromEntries(types.map((t) => [t.subtype, t.n]));
 
   async function confirmAdd({ lots, ...shared }) {
     setBusy(true);
@@ -125,9 +148,10 @@ export default function AllCards() {
         </Link>
       </div>
       <p className="text-subtle text-sm mb-4">
-        Karte suchen – ganz ohne Konto. Deutsche Namen gehen auch („Glurak"),
-        und du kannst die Kartennummer anhängen (z. B. „Mega Absol ex
-        180/132"). Ohne Suche siehst du unten alle Sets.
+        Karte oder Set suchen – ganz ohne Konto. Deutsche Namen gehen auch („Glurak"),
+        du kannst die Kartennummer anhängen (z. B. „Mega Absol ex 180/132")
+        und über „Kartenart" auch nur LV.X, VMAX, Unterstützer & Co. anzeigen.
+        Ohne Suche siehst du unten alle Sets.
         {!user && " Zum Hinzufügen zu einer Sammlung meldest du dich an."}
       </p>
 
@@ -136,12 +160,12 @@ export default function AllCards() {
           e.preventDefault();
           runSearch(query);
         }}
-        className="flex gap-2 mb-8"
+        className="flex gap-2 mb-3"
       >
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="z. B. Charizard, Glurak oder Mega Absol ex 180/132"
+          placeholder="Karte oder Set, z. B. Glurak, Arceus oder Mega Absol ex 180/132"
           className="flex-1 rounded-full px-4 py-2.5 text-sm border border-line bg-white text-[#241c15] placeholder:text-[#8a7a63] caret-[#241c15] focus:outline-none focus:border-ink"
         />
         <button
@@ -151,6 +175,35 @@ export default function AllCards() {
           Suchen
         </button>
       </form>
+
+      <div className="flex items-center gap-2 mb-8 text-sm">
+        <label htmlFor="card-type" className="text-subtle">Kartenart</label>
+        <select
+          id="card-type"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+        >
+          <option value="">Alle Kartenarten</option>
+          {TYPE_GROUPS.map(([group, items]) => {
+            const present = items.filter(([value]) => typeCounts[value]);
+            return present.length ? (
+              <optgroup key={group} label={group}>
+                {present.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label} ({typeCounts[value].toLocaleString("de-DE")})
+                  </option>
+                ))}
+              </optgroup>
+            ) : null;
+          })}
+        </select>
+        {type && (
+          <button type="button" onClick={() => setType("")} className="text-xs text-subtle hover:text-ink underline">
+            zurücksetzen
+          </button>
+        )}
+      </div>
 
       {!isSearching && (
         <SegmentedToggle
@@ -165,9 +218,31 @@ export default function AllCards() {
 
       {isSearching ? (
         <>
+          {matchingSets.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xs text-subtle mb-2">Passende Sets</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {matchingSets.map((set) => (
+                  <Link
+                    key={set.id}
+                    to={`/sets/${set.slug ?? set.id}`}
+                    className="border border-line rounded-2xl p-3 flex items-center gap-2 hover:border-ink shadow-sm min-w-0"
+                  >
+                    {(set.logo || set.symbol) && <img src={set.logo ?? set.symbol} alt="" className="h-8 w-8 object-contain shrink-0" />}
+                    <span className="min-w-0">
+                      <span className="block font-medium text-sm truncate">{set.name}</span>
+                      <span className="block text-[11px] text-subtle">
+                        {set.total} Karten{set.release_date ? ` · ${set.release_date.slice(0, 4)}` : ""}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
           {loading && <p className="text-subtle text-sm">Suche läuft …</p>}
           {!loading && searched && results.length === 0 && (
-            <p className="text-subtle text-sm">Keine Karte gefunden.</p>
+            <p className="text-subtle text-sm">{matchingSets.length ? "Keine Karte mit diesem Namen – aber passende Sets oben." : "Keine Karte gefunden."}</p>
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {results.map((card) => (

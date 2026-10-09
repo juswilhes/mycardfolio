@@ -27,6 +27,8 @@ import { countPageView, isKnownRoute } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { seedStarterArticles } from "./services/articles.js";
+import { catchUpVariantFlags } from "./services/variantFlags.js";
+import { catchUpMissingPrices } from "./services/setPriceBackfill.js";
 import { rebuildAnalysisCache } from "./services/analysisCache.js";
 import { metaFor, renderIndex, sitemap, redirectFor } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
@@ -186,6 +188,8 @@ app.listen(PORT, () => {
   schedulePriceFetching();
   catchUpSetValueSnapshots();
   seedStarterArticles();
+  catchUpVariantFlags();
+  catchUpMissingPrices();
   // Auswertungen der Analyse einmal vorrechnen, ohne den Start zu verzögern
   setTimeout(rebuildAnalysisCache, 2000);
   scheduleImageRepair();

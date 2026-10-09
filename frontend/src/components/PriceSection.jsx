@@ -51,11 +51,12 @@ export default function PriceSection({ card, history }) {
       breakdown.filter((b) => (b.variant ?? "normal") === variant).map((b) => [b.price_type, b.price])
     );
   const byType = pick("normal");
-  // Pro Karte liefert die Quelle nie Holo UND Reverse Holo gleichzeitig,
-  // sondern höchstens eine der beiden (siehe priceProvider.js) - also die
-  // vorhandene Sonder-Variante im Breakdown suchen statt fix "holo".
-  const specialVariant = breakdown.find((b) => b.variant === "reverse") ? "reverse" : "holo";
-  const specialPrice = lastPrice(history, specialVariant);
+  // Eine zweite Ausführung (Reverse Holo oder Holo) gibt es nur, wenn der Server
+  // dafür eine eigene Reihe liefert (siehe cardService.js alignToPrintings) -
+  // Karten mit nur einer Ausführung haben nur einen Preis.
+  const specialVariant = (history ?? []).find((h) => (h.variant ?? "normal") !== "normal")?.variant ?? null;
+  const specialPrice = specialVariant ? lastPrice(history, specialVariant) : null;
+  const baseLabel = (history ?? []).find((h) => h.baseLabel)?.baseLabel ?? null;
   // card.latest_price = letzter Tageswert (cardService.js latestTrend), avg30 =
   // Zusatzinfo. byType.trend nur als Notnagel, falls der Server mal nichts liefert.
   const headline = card.latest_price?.price ?? byType.trend ?? null;
@@ -81,7 +82,9 @@ export default function PriceSection({ card, history }) {
     <section>
       <div className="flex items-baseline gap-4 flex-wrap">
         <div>
-          <p className="text-subtle text-sm">Aktueller Preis</p>
+          <p className="text-subtle text-sm">
+            Aktueller Preis{specialPrice != null ? ` · ${baseLabel ?? "Normal"}` : ""}
+          </p>
           <p className="text-3xl font-semibold font-mono">
             {headline != null ? eur(headline) : "—"}
           </p>
@@ -168,10 +171,12 @@ export default function PriceSection({ card, history }) {
             entsprechend gekennzeichnet.
           </p>
           <p>
-            <b>Varianten:</b> Wenn eine Karte als Holo ODER als Reverse Holo
-            existiert, zeigen wir dafür einen eigenen Wert (zweite Linie im
-            Graphen). Beides gleichzeitig liefert die kostenlose Quelle nicht
-            getrennt – dann greift für die zweite Variante der Standard-Wert.
+            <b>Ausführungen:</b> Gibt es eine Karte in zwei Ausführungen (zum
+            Beispiel normal und Reverse Holo), zeigen wir für beide einen
+            eigenen Wert und eine zweite Linie im Graphen. Karten, die es nur
+            in einer Ausführung gibt, haben nur einen Preis und eine Linie.
+            Mehr als zwei Ausführungen liefert die kostenlose Quelle nicht
+            getrennt.
           </p>
           <p>
             eBay-Verkaufspreise sind hier (noch) nicht dabei: dafür gibt es

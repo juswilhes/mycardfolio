@@ -14,16 +14,24 @@ import {
   bumpCardView,
 } from "../services/cardRepository.js";
 import { cardmarketUrl } from "../services/priceProvider.js";
+import { analysis } from "../services/analysisCache.js";
 import { authRequired } from "../middleware/auth.js";
 import { isOperatorUser } from "../lib/admin.js";
 
 const router = Router();
 
 // GET /api/cards/search?q=Pikachu  -> lokal, sofort
+// Optional: &type=Level-Up (Kartenart, siehe /types) - dann reicht auch ein leeres q.
 router.get("/search", (req, res) => {
-  const q = req.query.q;
-  if (!q) return res.status(400).json({ error: "Query-Parameter 'q' fehlt" });
-  res.json(searchCardsLocal(q.trim()));
+  const q = String(req.query.q ?? "").trim();
+  const type = req.query.type ? String(req.query.type) : null;
+  if (!q && !type) return res.status(400).json({ error: "Query-Parameter 'q' fehlt" });
+  res.json(searchCardsLocal(q, { type, limit: type ? 120 : 30 }));
+});
+
+// GET /api/cards/types -> [{ subtype, n }] alle Kartenarten (aus den Nacht-Auswertungen)
+router.get("/types", (_req, res) => {
+  res.json(analysis("cardTypes"));
 });
 
 // GET /api/cards/by-artist?name=Ken%20Sugimori -> alle Karten dieses

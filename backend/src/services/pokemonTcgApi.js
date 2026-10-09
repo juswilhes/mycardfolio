@@ -31,6 +31,23 @@ export async function getCardById(externalId, timeoutMs = 8000) {
   return mapCard(json.data);
 }
 
+// Rohe Preisdaten einer Karte (Cardmarket in EUR und TCGplayer in USD), nur als
+// Rückfallebene für Karten, zu denen TCGdex keinen Preis hat (siehe priceProvider.js).
+// Die kostenlose API drosselt ohne API-Key schnell: bei Fehlern kurz warten und
+// noch einmal versuchen. -> { cardmarket, tcgplayer } oder null (Karte unbekannt)
+export async function getRawPricesById(externalId) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      const json = await fetchJson(`${BASE_URL}/cards/${encodeURIComponent(externalId)}?select=id,tcgplayer,cardmarket`, 9000);
+      return { cardmarket: json.data?.cardmarket ?? null, tcgplayer: json.data?.tcgplayer ?? null };
+    } catch (err) {
+      if (/ 404/.test(err.message)) return null;
+      if (i === 2) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+}
+
 // Normalisiert die API-Antwort auf unser internes Format. Preise kommen
 // NICHT von hier - dafür ist priceProvider.js (Cardmarket/EUR) zuständig.
 function mapCard(c) {
