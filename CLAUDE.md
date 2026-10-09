@@ -63,5 +63,8 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - "Ziehen oder kaufen": je Set die Chase-Karten (Seltenheiten mit Quote pro Karte) mit Preis; erwartete Packs = Quote, Kosten = Packs x Boosterpreis, Vergleich mit dem Kaufpreis (`getPullOrBuy` in `marketStats.js`, Rechnung im Frontend).
 - "Pull Rates": Matrix Seltenheit x Set, Daten von Hand (`pull_rates`, `PATCH /api/sets/:id/pull-rates`), Pflege über "Pull Rates pflegen" in der Analyse. Die Hit Rate (Chance auf mind. 1 besondere Karte pro Pack) wird in `marketStats.js` berechnet. Sets, die in fremden Boostern stecken (Classic Collection -> 30th Celebration), stehen in `BOOSTER_OF` und erscheinen in den Analysen nicht als eigene Spalte, sondern zählen zum Booster-Set.
 
+## Watchlist
+- Es gibt nur EINE Merkliste und sie heißt überall **Watchlist** (Herz-Symbol auf Karten, Seite `/watchlist`, erreichbar über den Button auf "Meine Sammlung"; nicht in der Hauptnavigation). Keine zweite "Wunschliste" anlegen. Neue Marktplatz-Angebote lösen eine Mail an alle aus, die die Karte auf der Watchlist haben.
+
 ## Offene Punkte
-DSGVO-Export um Marktplatzdaten erweitern, Wunschliste + Watchlist zusammenlegen, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.
+DSGVO-Export um Marktplatzdaten erweitern, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.

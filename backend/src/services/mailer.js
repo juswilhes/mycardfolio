@@ -63,7 +63,7 @@ export function sendAdminMail(subject, { text, html }) {
 // Jemand bietet eine Karte an, die auf der Watchlist eines anderen Nutzers
 // steht - Community-Feature: statt nur selbst zu suchen, wird man
 // automatisch benachrichtigt, sobald "seine" Karte verfügbar wird.
-export function sendWishlistMatchMail(email, { cardName, price, listingUrl }) {
+export function sendWatchlistMatchMail(email, { cardName, price, listingUrl }) {
   return send({
     to: email,
     subject: `mycardfolio – ${cardName} ist im Marktplatz aufgetaucht`,

@@ -41,7 +41,7 @@ import {
   markListingSold,
 } from "../services/marketplaceService.js";
 import { watchersForExternalId } from "../services/watchlistService.js";
-import { sendWishlistMatchMail, sendListingCommentMail, sendListingContactMail } from "../services/mailer.js";
+import { sendWatchlistMatchMail, sendListingCommentMail, sendListingContactMail } from "../services/mailer.js";
 import { uploadListingPhoto, listingPhotoUrl } from "../lib/uploads.js";
 import { findUserById } from "../services/authService.js";
 
@@ -183,7 +183,7 @@ router.post("/listings", authRequired, (req, res) => {
     if (listing?.external_id) {
       for (const watcher of watchersForExternalId(listing.external_id)) {
         if (watcher.user_id === req.user.id) continue;
-        sendWishlistMatchMail(watcher.email, {
+        sendWatchlistMatchMail(watcher.email, {
           cardName: listing.title,
           price: eur(listing.price_cents),
           listingUrl: `${FRONTEND_URL}/marktplatz/angebot/${listing.id}`,
