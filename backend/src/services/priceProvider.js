@@ -260,14 +260,17 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
 // Rückfallebene, wenn TCGdex für eine Karte gar keinen Preis hat (z. B. viele
 // Promos): die Preisdaten von pokemontcg.io. Zuerst deren Cardmarket-Wert (EUR),
 // falls er frisch ist (höchstens 14 Tage alt), sonst der TCGplayer-Marktpreis
-// (USD, umgerechnet). Die Abrufe laufen nacheinander mit Pause, damit die
-// kostenlose API nicht drosselt.
+// (USD, umgerechnet). Die Abrufe laufen mit Abstand, damit die kostenlose API
+// nicht drosselt.
 const FALLBACK_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
-let fallbackChain = Promise.resolve();
-const paced = (fn) => {
-  const run = fallbackChain.then(fn);
-  fallbackChain = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, 350)));
-  return run;
+// Starts mindestens 350 ms auseinander (ca. 3 Abrufe pro Sekunde), die Abrufe selbst
+// laufen aber gleichzeitig - die kostenlose API antwortet manchmal sehr langsam.
+let nextSlot = 0;
+const paced = async (fn) => {
+  const start = Math.max(Date.now(), nextSlot);
+  nextSlot = start + 350;
+  if (start > Date.now()) await new Promise((r) => setTimeout(r, start - Date.now()));
+  return fn();
 };
 const eurRow = (variant, priceType, price) =>
   price > 0 ? { source: "cardmarket", variant, price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 } : null;
