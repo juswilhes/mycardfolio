@@ -75,7 +75,7 @@ export default function SetValueAnalysis() {
         onClick={() => setEditing((v) => !v)}
         className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink"
       >
-        {editing ? "Pflege schließen" : "✏️ Preise pflegen"}
+        {editing ? "Pflege schließen" : "Preise pflegen"}
       </button>
     </div>
   );
@@ -85,7 +85,7 @@ export default function SetValueAnalysis() {
       {editorToggle}
       {editing && <PriceEditor onSaved={load} />}
 
-      <h2 className="text-sm font-medium mb-1">📦 Booster vs. Top-Karten</h2>
+      <h2 className="text-sm font-medium mb-1">Booster vs. Top-Karten</h2>
       <p className="text-xs text-subtle mb-3">
         Wie viel sind die 20 teuersten Karten eines Sets wert – im Verhältnis zum Preis eines Displays
         bzw. eines einzelnen Boosters? Kartenwerte sind die aktuellen Preise. Sondersets ohne Display
@@ -149,7 +149,7 @@ export default function SetValueAnalysis() {
                       <tr className="border-b border-line">
                         <td colSpan={6} className="py-4">
                           <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs text-subtle">💎 Die {s.topCards.length} teuersten Karten</p>
+                            <p className="text-xs text-subtle">Die {s.topCards.length} teuersten Karten</p>
                             <Link to={`/sets/${s.slug ?? s.id}`} className="text-xs text-subtle underline hover:text-ink">
                               zum Set →
                             </Link>
@@ -236,7 +236,7 @@ function HistoryChart({ rows }) {
 
   return (
     <div className="mt-10">
-      <h2 className="text-sm font-medium mb-1">📈 Verlauf</h2>
+      <h2 className="text-sm font-medium mb-1">Verlauf</h2>
       <p className="text-xs text-subtle mb-3">
         Jeweils der Stand zum Monatsersten – so siehst du, ob sich ein Set im Verhältnis zum Booster-/Boxpreis
         lohnender oder weniger lohnend entwickelt. Mehrere Sets lassen sich übereinanderlegen. Ab dem 1. jedes
@@ -363,7 +363,7 @@ function PriceEditor({ onSaved }) {
 
   return (
     <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
-      <p className="text-sm font-medium mb-1">✏️ Preise pflegen</p>
+      <p className="text-sm font-medium mb-1">Preise pflegen</p>
       <p className="text-xs text-subtle mb-3">Boxpreis leer lassen bei Sets ohne Display (z. B. 30th Celebration).</p>
       <div className="space-y-2">
         {list.map((s) => (

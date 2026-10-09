@@ -163,12 +163,12 @@ function CollectionStats() {
         )}
       </div>
 
-      <Movers data={movers} title="📈 Deine Top-Bewegungen (7 Tage)" />
+      <Movers data={movers} title="Deine Top-Bewegungen (7 Tage)" />
 
       {setProgress.length > 0 && (
         <section className="mb-8">
           <h2 className="text-sm text-subtle mb-3">
-            🧩 Set-Fortschritt – was fehlt noch, um ein Set fertigzumachen?
+            Set-Fortschritt – was fehlt noch, um ein Set fertigzumachen?
           </h2>
           <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
             {setProgress.map((s) => (

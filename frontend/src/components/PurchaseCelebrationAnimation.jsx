@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import Icon from "./Icon.jsx";
 import { eurCents as eur } from "../lib/format.js";
 
 const COLORS = ["var(--yellow)", "var(--mint)", "#5a9bff", "#c98bff", "var(--rose)"];
@@ -130,7 +131,7 @@ export default function PurchaseCelebrationAnimation({ listing, onDone }) {
             className="buy-anim w-40 h-40 rounded-2xl shadow-2xl bg-canvas flex items-center justify-center text-5xl"
             style={{ animation: "buy-card 2.6s cubic-bezier(.2,.8,.2,1) forwards" }}
           >
-            📦
+            <Icon name="box" className="w-16 h-16 text-subtle" />
           </div>
         )}
 
@@ -138,7 +139,7 @@ export default function PurchaseCelebrationAnimation({ listing, onDone }) {
           className="buy-anim mt-5 rounded-full px-5 py-2.5 shadow-lg text-center bg-yellow text-yellowInk text-base font-semibold"
           style={{ animation: "buy-badge 2.4s ease-out forwards" }}
         >
-          🎉 Gekauft!
+          Gekauft!
           {listing && (
             <div className="text-sm font-normal mt-0.5 truncate max-w-[220px]">
               {listing.title} · {eur(listing.price_cents)}

@@ -254,8 +254,8 @@ export default function CardInfo() {
               className="border border-line px-4 py-2 rounded-full text-sm hover:border-ink disabled:opacity-50 disabled:hover:border-line"
             >
               {listings && listings.length > 0
-                ? `🛒 ${listings.length} ${listings.length === 1 ? "Angebot" : "Angebote"} ansehen`
-                : "🛒 Keine Angebote"}
+                ? `${listings.length} ${listings.length === 1 ? "Angebot" : "Angebote"} ansehen`
+                : "Keine Angebote"}
             </button>
             {user && (
               <WatchlistHeart
@@ -288,7 +288,7 @@ export default function CardInfo() {
 
       {entries && entries.length > 0 && (
         <div className="mt-10">
-          <h2 className="text-sm font-medium mb-3">📦 Deine Sammlung</h2>
+          <h2 className="text-sm font-medium mb-3">Deine Sammlung</h2>
 
           <div className="border-t border-line">
             <Row label="Exemplare in deiner Sammlung" value={`${totalQty}×`} />
@@ -372,14 +372,14 @@ export default function CardInfo() {
                         to={e.listing_id ? `/marktplatz/angebot/${e.listing_id}` : "/marktplatz"}
                         className="border border-mint text-mint text-xs px-3 py-1.5 rounded-full"
                       >
-                        🛒 Im Marktplatz angeboten
+                        Im Marktplatz angeboten
                       </Link>
                     ) : (
                       <button
                         onClick={() => { setListError(null); setListEntry(e); }}
                         className="border border-line text-xs px-3 py-1.5 rounded-full hover:border-ink"
                       >
-                        🛒 Im Marktplatz anbieten
+                        Im Marktplatz anbieten
                       </button>
                     )}
                     {confirmDeleteId === e.collection_item_id ? (

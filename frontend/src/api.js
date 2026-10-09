@@ -121,6 +121,15 @@ export const getArticle = (slug) => request(`/articles/${encodeURIComponent(slug
 export const createArticle = (payload) => request("/articles", { method: "POST", body: payload });
 export const updateArticle = (id, payload) => request(`/articles/${id}`, { method: "PATCH", body: payload });
 export const deleteArticle = (id) => request(`/articles/${id}`, { method: "DELETE" });
+// Titelbild hochladen (multipart) -> { url }
+export async function uploadArticleImage(file) {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await fetch(`${BASE}/articles/image`, { method: "POST", credentials: "include", body: form });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error || `Fehler ${res.status}`);
+  return data;
+}
 
 // --- Marktplatz --------------------------------------------------------
 export const getMarketplaceConfig = () => request("/marketplace/config");

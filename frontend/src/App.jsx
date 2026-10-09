@@ -100,14 +100,14 @@ export default function App() {
         <div className="flex items-center gap-4 sm:gap-6">
           <nav className="hidden sm:flex gap-6 text-sm">
             <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
-            <NavLink to="/marktplatz" className={navCls}>🛒 Marktplatz</NavLink>
-            <NavLink to="/news" className={navCls}>📰 News</NavLink>
+            <NavLink to="/marktplatz" className={navCls}>Marktplatz</NavLink>
+            <NavLink to="/news" className={navCls}>News</NavLink>
             {user && (
               <>
                 <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
                 <NavLink to="/analyse" className={navCls}>Analyse</NavLink>
-                <NavLink to="/watchlist" className={navCls}>❤️ Watchlist</NavLink>
-                <NavLink to="/orden" id="nav-orden" className={navCls}>🏅 Orden</NavLink>
+                <NavLink to="/watchlist" className={navCls}>Watchlist</NavLink>
+                <NavLink to="/orden" id="nav-orden" className={navCls}>Orden</NavLink>
               </>
             )}
           </nav>

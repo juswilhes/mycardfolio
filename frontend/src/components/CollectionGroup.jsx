@@ -80,7 +80,7 @@ export default function CollectionGroup({ group, onChanged }) {
               ))}
               {listedCount > 0 && (
                 <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-mint border border-mint rounded px-1 py-0.5">
-                  🛒 {listedCount > 1 ? `${listedCount}× ` : ""}Im Marktplatz
+                  {listedCount > 1 ? `${listedCount}× ` : ""}Im Marktplatz
                 </span>
               )}
             </p>
@@ -150,7 +150,7 @@ export default function CollectionGroup({ group, onChanged }) {
                   {gradeLabel(e.grading_company, e.grade) ? ` · ${gradeLabel(e.grading_company, e.grade)}` : ""}
                   {e.purchase_price != null ? ` · Kauf ${eur(e.purchase_price)}` : ""}
                   {c != null ? ` · Einstand ${eur(c)}` : ""}
-                  {e.listing_id ? " · 🛒 im Marktplatz" : ""}
+                  {e.listing_id ? " · im Marktplatz" : ""}
                 </Link>
                 <span className="flex items-center gap-2 shrink-0">
                   {g != null && (

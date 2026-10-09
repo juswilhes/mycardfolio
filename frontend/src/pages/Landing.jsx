@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
+import Icon from "../components/Icon.jsx";
+import ArticleCover from "../components/ArticleCover.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getLanding, getArticles } from "../api.js";
 import { eur, formatDate } from "../lib/format.js";
 
 const FEATURES = [
-  { icon: "💶", title: "Cardmarket-Preise in Euro", text: "Trendpreise, jede Nacht frisch – dazu der 30-Tage-Schnitt und ein Preisverlauf mit wählbarem Zeitraum." },
-  { icon: "📈", title: "Wertverlauf deines Portfolios", text: "Kaufpreis inkl. Versand erfassen und sehen, wie sich der Wert deiner ganzen Sammlung entwickelt." },
-  { icon: "🧩", title: "Set-Fortschritt", text: "Pro Set auf einen Blick, wie viele Karten dir noch fehlen – mit Fortschrittsbalken und Filter „Fehlt mir“." },
-  { icon: "📥", title: "Massen-Import", text: "Excel-Tabelle einfügen – mycardfolio erkennt Name, Nummer, Menge und Preis, egal wie deine Tabelle aufgebaut ist." },
-  { icon: "🔎", title: "Karten-Datenbank", text: "Über 20.000 Karten, deutsche Namen inklusive. Zum Nachschlagen brauchst du gar kein Konto." },
-  { icon: "📊", title: "Analysen", text: "Hit Rate, Wert pro Pack, Ziehen oder kaufen und eine Set-Rangliste – damit der nächste Booster keine Wundertüte bleibt." },
-  { icon: "🛒", title: "Marktplatz", text: "Karten und Sealed-Produkte anbieten oder finden – als Kontaktbörse für Sammler, mit Bewertungen." },
-  { icon: "🏅", title: "Orden sammeln", text: "Wie in der Arena, nur ohne Kampf: Erreiche Meilensteine mit deiner Sammlung und sammle Orden." },
-  { icon: "❤️", title: "Watchlist", text: "Karten im Auge behalten, ohne sie zu besitzen – mit aktuellem Preis auf einen Blick." },
+  { icon: "euro", title: "Cardmarket-Preise in Euro", text: "Trendpreise, jede Nacht frisch – dazu der 30-Tage-Schnitt und ein Preisverlauf mit wählbarem Zeitraum." },
+  { icon: "trend", title: "Wertverlauf deines Portfolios", text: "Kaufpreis inkl. Versand erfassen und sehen, wie sich der Wert deiner ganzen Sammlung entwickelt." },
+  { icon: "grid", title: "Set-Fortschritt", text: "Pro Set auf einen Blick, wie viele Karten dir noch fehlen – mit Fortschrittsbalken und Filter „Fehlt mir“." },
+  { icon: "import", title: "Massen-Import", text: "Excel-Tabelle einfügen – mycardfolio erkennt Name, Nummer, Menge und Preis, egal wie deine Tabelle aufgebaut ist." },
+  { icon: "search", title: "Karten-Datenbank", text: "Über 20.000 Karten, deutsche Namen inklusive. Zum Nachschlagen brauchst du gar kein Konto." },
+  { icon: "chart", title: "Analysen", text: "Hit Rate, Wert pro Pack, Ziehen oder kaufen und eine Set-Rangliste – damit der nächste Booster keine Wundertüte bleibt." },
+  { icon: "bag", title: "Marktplatz", text: "Karten und Sealed-Produkte anbieten oder finden – als Kontaktbörse für Sammler, mit Bewertungen." },
+  { icon: "medal", title: "Orden sammeln", text: "Wie in der Arena, nur ohne Kampf: Erreiche Meilensteine mit deiner Sammlung und sammle Orden." },
+  { icon: "heart", title: "Watchlist", text: "Karten im Auge behalten, ohne sie zu besitzen – mit aktuellem Preis auf einen Blick." },
 ];
 
 const STEPS = [
@@ -111,8 +113,11 @@ export default function Landing() {
           {[
             [num(data.counts.cards), "Karten in der Datenbank"],
             [num(data.counts.sets), "Sets, von Base bis heute"],
-            ["1 Uhr", "frische Preise, jede Nacht"],
-            ["Cardmarket", "Preise in Euro"],
+            [num(data.counts.priced), "Karten mit Preisverlauf"],
+            [
+              data.counts.pricesAt ? new Date(data.counts.pricesAt).toLocaleDateString("de-DE", { day: "numeric", month: "short" }) : "–",
+              "Preise zuletzt aktualisiert",
+            ],
           ].map(([value, label]) => (
             <div key={label} className="bg-surface border border-line rounded-2xl px-4 py-4 text-center shadow-sm">
               <p className="text-xl font-semibold font-mono">{value}</p>
@@ -122,10 +127,25 @@ export default function Landing() {
         </section>
       )}
 
+      {/* So geht's */}
+      <Section title="So funktioniert's">
+        <div className="grid sm:grid-cols-3 gap-4">
+          {STEPS.map(([title, text], i) => (
+            <div key={title} className="text-center">
+              <div className="w-8 h-8 rounded-full bg-yellow text-yellowInk font-mono font-semibold flex items-center justify-center mx-auto mb-3">
+                {i + 1}
+              </div>
+              <h3 className="font-medium mb-1">{title}</h3>
+              <p className="text-subtle text-sm leading-relaxed">{text}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
       {/* Preisbewegungen */}
       {data && (data.gainers.length > 0 || data.losers.length > 0) && (
         <Section
-          title="📈 Preisbewegungen der Woche"
+          title="Preisbewegungen der Woche"
           intro="Auch ein Karpador wird irgendwann zum Garados – bei manchen Karten geht es nur etwas schneller. Die größten Bewegungen der letzten 7 Tage, ganz ohne Konto."
           action={<Link to="/sets" className="text-xs text-subtle hover:text-ink underline shrink-0">Alle Karten →</Link>}
         >
@@ -149,7 +169,7 @@ export default function Landing() {
       {/* Booster-Check */}
       {data && data.boosters.length > 0 && (
         <Section
-          title="🎁 Lohnt sich der Booster? Wir haben nachgerechnet."
+          title="Lohnt sich der Booster? Wir haben nachgerechnet."
           intro="Aus den Pull Rates und den aktuellen Kartenpreisen berechnen wir, was ein Pack im Schnitt wert ist. 100 % hieße: Der Inhalt ist so viel wert wie der Booster kostet. (Spoiler: Meist ist er weniger wert – Spaß am Aufreißen gibt es gratis dazu.)"
           action={<Link to="/news/ziehen-oder-kaufen" className="text-xs text-subtle hover:text-ink underline shrink-0">Mehr dazu →</Link>}
         >
@@ -191,7 +211,9 @@ export default function Landing() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map((f) => (
             <div key={f.title} className="bg-surface border border-line rounded-2xl p-5 shadow-sm">
-              <p className="text-2xl mb-2" aria-hidden="true">{f.icon}</p>
+              <div className="w-10 h-10 rounded-xl bg-yellow text-yellowInk flex items-center justify-center mb-3">
+                <Icon name={f.icon} className="w-5 h-5" />
+              </div>
               <h3 className="font-medium mb-1">{f.title}</h3>
               <p className="text-subtle text-sm leading-relaxed">{f.text}</p>
             </div>
@@ -202,7 +224,7 @@ export default function Landing() {
       {/* News */}
       {articles.length > 0 && (
         <Section
-          title="📰 Frisch aus dem Labor"
+          title="Frisch aus dem Labor"
           intro="Artikel und Auswertungen – verständlich erklärt, ohne dass du dafür Professor werden musst."
           action={<Link to="/news" className="text-xs text-subtle hover:text-ink underline shrink-0">Alle Artikel →</Link>}
         >
@@ -211,33 +233,21 @@ export default function Landing() {
               <Link
                 key={a.id}
                 to={`/news/${a.slug}`}
-                className="block bg-surface border border-line rounded-2xl p-5 shadow-sm hover:border-ink transition"
+                className="block bg-surface border border-line rounded-2xl overflow-hidden shadow-sm hover:border-ink transition"
               >
-                <p className="text-[11px] text-subtle mb-1">
-                  {a.category} · {formatDate(a.published_at)}
-                </p>
-                <h3 className="font-medium mb-1 leading-snug">{a.title}</h3>
-                <p className="text-subtle text-sm leading-relaxed">{a.summary}</p>
+                <ArticleCover article={a} />
+                <div className="p-5">
+                  <p className="text-[11px] text-subtle mb-1">
+                    {a.category} · {formatDate(a.published_at)}
+                  </p>
+                  <h3 className="font-medium mb-1 leading-snug">{a.title}</h3>
+                  <p className="text-subtle text-sm leading-relaxed">{a.summary}</p>
+                </div>
               </Link>
             ))}
           </div>
         </Section>
       )}
-
-      {/* So geht's */}
-      <Section title="So funktioniert's">
-        <div className="grid sm:grid-cols-3 gap-4">
-          {STEPS.map(([title, text], i) => (
-            <div key={title} className="text-center">
-              <div className="w-8 h-8 rounded-full bg-yellow text-yellowInk font-mono font-semibold flex items-center justify-center mx-auto mb-3">
-                {i + 1}
-              </div>
-              <h3 className="font-medium mb-1">{title}</h3>
-              <p className="text-subtle text-sm leading-relaxed">{text}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
 
       {/* FAQ */}
       <Section title="Häufige Fragen">

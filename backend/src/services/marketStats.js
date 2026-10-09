@@ -285,9 +285,15 @@ export function getPackValueAnalysis() {
 const countCardsStmt = db.prepare(`SELECT COUNT(*) AS n FROM cards`);
 const countSetsStmt = db.prepare(`SELECT COUNT(*) AS n FROM card_sets`);
 const lastPriceStmt = db.prepare(`SELECT MAX(fetched_at) AS at FROM price_snapshots`);
+const pricedCardsStmt = db.prepare(`SELECT COUNT(DISTINCT card_id) AS n FROM price_snapshots`);
 
 export function getSiteCounts() {
-  return { cards: countCardsStmt.get().n, sets: countSetsStmt.get().n, pricesAt: lastPriceStmt.get().at };
+  return {
+    cards: countCardsStmt.get().n,
+    sets: countSetsStmt.get().n,
+    priced: pricedCardsStmt.get().n,
+    pricesAt: lastPriceStmt.get().at,
+  };
 }
 
 // Analyse "Set-Rangliste": Hit Rate, Wert pro Pack und Top-20-Wert je Set in

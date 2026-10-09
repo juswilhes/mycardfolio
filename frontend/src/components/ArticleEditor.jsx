@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { createArticle, updateArticle } from "../api.js";
+import { createArticle, updateArticle, uploadArticleImage } from "../api.js";
+import ArticleCover from "./ArticleCover.jsx";
 import Prose from "./Prose.jsx";
 
 const CATEGORIES = ["News", "Grundlagen", "Analyse", "Tipps"];
@@ -14,6 +15,7 @@ export default function ArticleEditor({ article, onSaved, onCancel }) {
     category: article?.category ?? "News",
     published_at: article?.published_at ?? new Date().toISOString().slice(0, 10),
     published: article ? !!article.published : false,
+    image: article?.image ?? "",
     body: article?.body ?? "",
   });
   const [preview, setPreview] = useState(false);
@@ -21,6 +23,22 @@ export default function ArticleEditor({ article, onSaved, onCancel }) {
   const [error, setError] = useState(null);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+
+  async function pickImage(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await uploadArticleImage(file);
+      setForm((f) => ({ ...f, image: url }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+      e.target.value = "";
+    }
+  }
 
   async function save() {
     setBusy(true);
@@ -39,7 +57,7 @@ export default function ArticleEditor({ article, onSaved, onCancel }) {
 
   return (
     <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-8">
-      <p className="text-sm font-medium mb-3">{article ? "✏️ Artikel bearbeiten" : "✏️ Neuer Artikel"}</p>
+      <p className="text-sm font-medium mb-3">{article ? "Artikel bearbeiten" : "Neuer Artikel"}</p>
       <div className="space-y-3">
         <input value={form.title} onChange={set("title")} placeholder="Titel" maxLength={140} className={input} />
         <textarea
@@ -58,6 +76,24 @@ export default function ArticleEditor({ article, onSaved, onCancel }) {
             <input type="checkbox" checked={form.published} onChange={set("published")} />
             Veröffentlicht
           </label>
+        </div>
+        <div>
+          <p className="text-xs text-subtle mb-1">Titelbild (ohne eigenes Bild erscheint das Standardbild)</p>
+          <div className="flex items-center gap-4">
+            <ArticleCover article={form} className="w-40 rounded-lg border border-line" />
+            <div className="flex flex-col items-start gap-2">
+              <label className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink cursor-pointer">
+                Bild hochladen
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={pickImage} className="hidden" />
+              </label>
+              {form.image && (
+                <button type="button" onClick={() => setForm((f) => ({ ...f, image: "" }))} className="text-xs text-subtle hover:text-ink">
+                  Standardbild verwenden
+                </button>
+              )}
+              <p className="text-[11px] text-subtle">JPG, PNG oder WebP, höchstens 5 MB, am besten im Querformat 1200 × 630.</p>
+            </div>
+          </div>
         </div>
         <textarea
           value={form.body}

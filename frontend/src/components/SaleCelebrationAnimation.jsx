@@ -145,7 +145,7 @@ export default function SaleCelebrationAnimation({ card, realized, cost, proceed
         >
           {big ? (
             <>
-              🎉 Fetter Gewinn! 🎉
+              Fetter Gewinn!
               <div className="text-sm font-normal mt-0.5">
                 +{eur(realized)} · +{pct.toFixed(0)} %
               </div>

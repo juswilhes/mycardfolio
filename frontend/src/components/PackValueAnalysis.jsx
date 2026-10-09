@@ -52,7 +52,7 @@ export default function PackValueAnalysis() {
 
   return (
     <div className="mb-10">
-      <h2 className="text-sm font-medium mb-1">🎁 Wert pro Pack</h2>
+      <h2 className="text-sm font-medium mb-1">Wert pro Pack</h2>
       <p className="text-xs text-subtle mb-3">
         Was ist ein Booster im Schnitt wert? Für jede Seltenheit mit hinterlegter Pull Rate zählt die Summe aller
         Kartenpreise dieser Seltenheit geteilt durch die Quote pro Karte (z. B. 1/480). Daraus ergibt sich der

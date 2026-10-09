@@ -13,7 +13,9 @@ export const uploadsRoot = dbPath
   : path.join(process.cwd(), "uploads");
 
 const listingsDir = path.join(uploadsRoot, "listings");
+const newsDir = path.join(uploadsRoot, "news");
 fs.mkdirSync(listingsDir, { recursive: true });
+fs.mkdirSync(newsDir, { recursive: true });
 
 const EXT_BY_MIME = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" };
 
@@ -29,3 +31,15 @@ export const uploadListingPhoto = multer({
 }).single("photo");
 
 export const listingPhotoUrl = (filename) => `/uploads/listings/${filename}`;
+
+// Titelbilder für News-Artikel (nur Betreiber, siehe routes/articles.js)
+export const uploadArticleImage = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, newsDir),
+    filename: (_req, file, cb) => cb(null, `${crypto.randomUUID()}${EXT_BY_MIME[file.mimetype] || ""}`),
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => cb(null, !!EXT_BY_MIME[file.mimetype]),
+}).single("image");
+
+export const articleImageUrl = (filename) => `/uploads/news/${filename}`;

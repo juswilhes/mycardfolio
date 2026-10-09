@@ -49,7 +49,7 @@ export default function CardTile({ item, onChanged }) {
           )}
           {item.listing_id && (
             <span className="ml-1.5 align-middle text-[10px] font-semibold tracking-wide text-mint border border-mint rounded px-1 py-0.5">
-              🛒 Im Marktplatz
+              Im Marktplatz
             </span>
           )}
           {gradeLabel(item.grading_company, item.grade) && (

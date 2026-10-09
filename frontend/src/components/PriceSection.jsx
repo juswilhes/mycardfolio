@@ -96,7 +96,7 @@ export default function PriceSection({ card, history }) {
           {momentum.pct != null ? (
             <>
               <span className={momentum.pct > 1 ? "text-mint" : momentum.pct < -1 ? "text-rose" : "text-subtle"}>
-                {momentum.pct > 1 ? "📈" : momentum.pct < -1 ? "📉" : "➡️"}{" "}
+                {momentum.pct > 1 ? "▲" : momentum.pct < -1 ? "▼" : "►"}{" "}
                 {momentum.pct >= 0 ? "+" : ""}
                 {momentum.pct.toFixed(1)} %
               </span>{" "}
@@ -139,7 +139,7 @@ export default function PriceSection({ card, history }) {
           rel="noreferrer"
           className="inline-block mt-3 text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink"
         >
-          🔗 Auf Cardmarket ansehen
+          Auf Cardmarket ansehen
         </a>
       )}
 

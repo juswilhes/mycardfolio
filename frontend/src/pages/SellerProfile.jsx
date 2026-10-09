@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "../components/Icon.jsx";
 import { useParams, Link } from "react-router-dom";
 import { getSellerProfile } from "../api.js";
 import { StarRating } from "../components/StarRating.jsx";
@@ -52,7 +53,7 @@ export default function SellerProfile() {
                   className="rounded-xl mb-2 object-contain h-28 bg-canvas"
                 />
               ) : (
-                <div className="rounded-xl mb-2 h-28 bg-canvas flex items-center justify-center text-2xl">📦</div>
+                <div className="rounded-xl mb-2 h-28 bg-canvas flex items-center justify-center text-2xl"><Icon name="box" className="w-10 h-10 text-subtle" /></div>
               )}
               <p className="text-xs font-medium truncate">{l.title}</p>
               <p className="text-xs font-mono mt-auto pt-1">{eur(l.price_cents)}</p>

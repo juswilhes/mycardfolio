@@ -11,6 +11,7 @@ import {
   deleteArticle,
 } from "../services/articles.js";
 import { rebuildSitemap } from "../services/seo.js";
+import { uploadArticleImage, articleImageUrl } from "../lib/uploads.js";
 
 const router = Router();
 
@@ -30,6 +31,15 @@ router.get("/:slug", (req, res) => {
   const a = getArticleBySlug(req.params.slug);
   if (!a || (!a.published && !isOperator(req))) return res.status(404).json({ error: "Artikel nicht gefunden" });
   res.json(a);
+});
+
+// POST /api/articles/image (multipart, Feld "image") -> { url } des hochgeladenen Titelbilds.
+router.post("/image", authRequired, operatorOnly, (req, res) => {
+  uploadArticleImage(req, res, (err) => {
+    if (err) return res.status(400).json({ error: "Bild konnte nicht hochgeladen werden (max. 5 MB)." });
+    if (!req.file) return res.status(400).json({ error: "Bitte ein Bild wählen (JPG, PNG oder WebP)." });
+    res.json({ url: articleImageUrl(req.file.filename) });
+  });
 });
 
 // POST /api/articles | PATCH /api/articles/:id | DELETE /api/articles/:id -> nur Betreiber

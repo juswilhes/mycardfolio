@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "../components/Icon.jsx";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getListing, buyListing, postListingComment, getMarketplaceConfig } from "../api.js";
@@ -85,7 +86,7 @@ export default function ListingDetail() {
           <img src={photo} alt="" className="w-40 h-40 object-contain rounded-2xl border border-line bg-canvas shrink-0" />
         ) : (
           <div className="w-40 h-40 rounded-2xl border border-line bg-canvas flex items-center justify-center text-4xl shrink-0">
-            📦
+            <Icon name="box" className="w-14 h-14 text-subtle" />
           </div>
         )}
         <div className="min-w-0">
@@ -101,7 +102,7 @@ export default function ListingDetail() {
       </div>
 
       {listing.photo_url && (
-        <p className="text-xs text-subtle mb-4">📷 Foto vom Verkäufer selbst hochgeladen – kein Stockbild.</p>
+        <p className="text-xs text-subtle mb-4">Foto vom Verkäufer selbst hochgeladen – kein Stockbild.</p>
       )}
 
       {listing.description && (
@@ -131,7 +132,7 @@ export default function ListingDetail() {
       )}
       {!paymentsEnabled && listing.status === "active" && !isOwn && (
         <p className="text-xs text-subtle mt-3">
-          ⚠️ Kein Käuferschutz: Zahlung und Versand regelt ihr direkt, mycardfolio ist nicht beteiligt.
+          Kein Käuferschutz: Zahlung und Versand regelt ihr direkt, mycardfolio ist nicht beteiligt.
         </p>
       )}
       {contactSent && (
@@ -150,7 +151,7 @@ export default function ListingDetail() {
 
       <div className="mt-10">
         <h2 className="text-sm font-semibold mb-3">
-          💬 Fragen &amp; Kommentare {listing.comments.length > 0 && `(${listing.comments.length})`}
+          Fragen &amp; Kommentare {listing.comments.length > 0 && `(${listing.comments.length})`}
         </h2>
         {listing.comments.length === 0 ? (
           <p className="text-subtle text-sm mb-4">Noch keine Fragen. Sei die erste!</p>

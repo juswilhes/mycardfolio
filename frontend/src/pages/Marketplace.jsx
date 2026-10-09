@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "../components/Icon.jsx";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
@@ -76,7 +77,7 @@ export default function Marketplace() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">🛒 Marktplatz</h1>
+      <h1 className="text-xl font-semibold mb-1">Marktplatz</h1>
       <p className="text-subtle text-sm mb-3">
         Karten &amp; Sealed-Produkte von anderen mycardfolio-Nutzern kaufen oder deine eigenen
         verkaufen.
@@ -91,7 +92,7 @@ export default function Marketplace() {
       </p>
       {!paymentsEnabled && (
         <div className="border border-yellow bg-yellow/10 rounded-xl px-4 py-3 text-sm mb-4">
-          <strong>⚠️ Kein Käuferschutz.</strong> Zahlung und Versand laufen direkt zwischen Käufer und
+          <strong>Kein Käuferschutz.</strong> Zahlung und Versand laufen direkt zwischen Käufer und
           Verkäufer, mycardfolio ist daran nicht beteiligt und kann bei Problemen nicht helfen.
           Tipp: bei höherwertigen Karten versicherten, nachverfolgbaren Versand und eine
           nachvollziehbare Zahlungsart (z. B. PayPal Waren &amp; Dienstleistungen) vereinbaren und
@@ -99,10 +100,10 @@ export default function Marketplace() {
         </div>
       )}
       <ul className="text-subtle text-xs mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <li className="border border-line rounded-xl px-3 py-2">⭐ Echte Käufer-/Verkäufer-Bewertungen</li>
-        <li className="border border-line rounded-xl px-3 py-2">📷 Fotos vom echten Exemplar statt Stockbild</li>
-        <li className="border border-line rounded-xl px-3 py-2">💬 Fragen direkt beim Angebot stellen</li>
-        <li className="border border-line rounded-xl px-3 py-2">🔔 Watchlist-Alarm bei neuen Angeboten</li>
+        <li className="border border-line rounded-xl px-3 py-2">Echte Käufer-/Verkäufer-Bewertungen</li>
+        <li className="border border-line rounded-xl px-3 py-2">Fotos vom echten Exemplar statt Stockbild</li>
+        <li className="border border-line rounded-xl px-3 py-2">Fragen direkt beim Angebot stellen</li>
+        <li className="border border-line rounded-xl px-3 py-2">Watchlist-Alarm bei neuen Angeboten</li>
       </ul>
 
       {params.get("kauf") === "erfolgreich" && (
@@ -167,7 +168,7 @@ export default function Marketplace() {
                       />
                     ) : (
                       <div className="rounded-xl mb-2 h-40 bg-canvas flex items-center justify-center text-3xl">
-                        📦
+                        <Icon name="box" className="w-12 h-12 text-subtle" />
                       </div>
                     )}
                     <p className="text-sm font-medium truncate hover:underline">{l.title}</p>

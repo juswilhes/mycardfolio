@@ -28,7 +28,7 @@ export default function Watchlist() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">❤️ Watchlist</h1>
+      <h1 className="text-xl font-semibold mb-1">Watchlist</h1>
       <p className="text-subtle text-sm mb-6">
         Karten, die du im Auge behältst, ohne sie schon in deiner Sammlung zu haben. Herzchen auf der
         Kartensuche oder einer Kartenseite an- oder abklicken.

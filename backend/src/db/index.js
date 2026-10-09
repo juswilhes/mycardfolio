@@ -563,9 +563,13 @@ db.exec(`
     published    INTEGER NOT NULL DEFAULT 0,
     published_at TEXT NOT NULL,
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    image        TEXT
   )
 `);
+if (!db.prepare(`PRAGMA table_info(articles)`).all().some((c) => c.name === "image")) {
+  db.exec(`ALTER TABLE articles ADD COLUMN image TEXT`);
+}
 
 // Pokemon als erstes unterstütztes Spiel anlegen
 db.prepare(

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Sammelkarten">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe9a0"/>
+      <stop offset="1" stop-color="#f8c93a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1020" cy="110" r="190" fill="#ffffff" opacity="0.18"/>
+  <circle cx="140" cy="560" r="150" fill="#ffffff" opacity="0.16"/>
+  <g transform="translate(600 330)">
+    <g transform="rotate(-14) translate(-130 -190)">
+      <rect width="260" height="380" rx="22" fill="#ffffff" stroke="#1b1d24" stroke-width="6"/>
+      <rect x="22" y="22" width="216" height="190" rx="12" fill="#5a9bff" opacity="0.85"/>
+      <rect x="22" y="236" width="140" height="14" rx="7" fill="#1b1d24" opacity="0.8"/>
+      <rect x="22" y="264" width="216" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+      <rect x="22" y="286" width="190" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+    </g>
+    <g transform="rotate(14) translate(-130 -190)">
+      <rect width="260" height="380" rx="22" fill="#ffffff" stroke="#1b1d24" stroke-width="6"/>
+      <rect x="22" y="22" width="216" height="190" rx="12" fill="#ff6b81" opacity="0.85"/>
+      <rect x="22" y="236" width="120" height="14" rx="7" fill="#1b1d24" opacity="0.8"/>
+      <rect x="22" y="264" width="216" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+      <rect x="22" y="286" width="170" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+    </g>
+    <g transform="translate(-130 -200)">
+      <rect width="260" height="400" rx="22" fill="#ffffff" stroke="#1b1d24" stroke-width="6"/>
+      <rect x="22" y="22" width="216" height="200" rx="12" fill="#35d488" opacity="0.9"/>
+      <path d="M130 70l16 36 38 4-29 26 9 38-34-20-34 20 9-38-29-26 38-4z" fill="#ffffff"/>
+      <rect x="22" y="250" width="150" height="16" rx="8" fill="#1b1d24" opacity="0.85"/>
+      <rect x="22" y="282" width="216" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+      <rect x="22" y="304" width="196" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+      <rect x="22" y="326" width="120" height="10" rx="5" fill="#1b1d24" opacity="0.25"/>
+    </g>
+  </g>
+</svg>

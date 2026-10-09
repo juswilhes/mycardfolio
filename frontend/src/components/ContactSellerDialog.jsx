@@ -51,7 +51,7 @@ export default function ContactSellerDialog({ listing, onClose, onSent }) {
           direkt. Zahlung und Versand regelt ihr untereinander – mycardfolio ist daran nicht beteiligt.
         </p>
         <p className="text-xs mt-2 text-ink">
-          <strong>⚠️ Kein Käuferschutz:</strong> Zahle nur auf eine Weise, bei der du bei Problemen
+          <strong>Kein Käuferschutz:</strong> Zahle nur auf eine Weise, bei der du bei Problemen
           Geld zurückbekommen kannst, und vereinbare versicherten Versand.
         </p>
         {error && <p className="text-rose text-sm mt-2">{error}</p>}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "./Icon.jsx";
 import { Link } from "react-router-dom";
 import { getSealedProducts, updateSealedProduct, deleteSealedProduct, createListing } from "../api.js";
 import SealedProductDialog from "./SealedProductDialog.jsx";
@@ -87,7 +88,7 @@ export default function SealedProductList() {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold">📦 Sealed Produkte</h2>
+        <h2 className="text-sm font-semibold">Sealed Produkte</h2>
         {anyValue && (
           <p className="text-xs text-subtle">
             Wert {eur(totalValue)} · Einstand {eur(totalCost)}
@@ -98,7 +99,7 @@ export default function SealedProductList() {
       {items.length === 0 ? (
         <p className="text-subtle text-sm">
           Noch keine Sealed-Produkte. Auf der Seite eines Sets (unter „Alle Karten") gibt es
-          den Button „📦 Sealed-Produkt hinzufügen".
+          den Button „Sealed-Produkt hinzufügen".
         </p>
       ) : (
         <div className="border border-line rounded-2xl divide-y divide-line overflow-hidden">
@@ -116,7 +117,7 @@ export default function SealedProductList() {
                   />
                 ) : (
                   <span className="w-12 h-12 flex items-center justify-center text-xl rounded-lg border border-line shrink-0 bg-canvas">
-                    📦
+                    <Icon name="box" className="w-6 h-6 text-subtle" />
                   </span>
                 )}
                 <div className="flex-1 min-w-0">
@@ -170,14 +171,14 @@ export default function SealedProductList() {
                     to={p.listing_id ? `/marktplatz/angebot/${p.listing_id}` : "/marktplatz"}
                     className="shrink-0 text-xs text-mint underline"
                   >
-                    🛒 Im Marktplatz
+                    Im Marktplatz
                   </Link>
                 ) : (
                   <button
                     onClick={() => { setListError(null); setListItem(p); }}
                     className="shrink-0 text-xs text-subtle underline hover:text-ink"
                   >
-                    🛒 Verkaufen
+                    Verkaufen
                   </button>
                 )}
                 {confirmId === p.id ? (

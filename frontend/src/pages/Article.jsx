@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getArticle, deleteArticle } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import ArticleEditor from "../components/ArticleEditor.jsx";
+import ArticleCover from "../components/ArticleCover.jsx";
 import Prose from "../components/Prose.jsx";
 import { usePageTitle } from "../hooks/usePageTitle.js";
 import { formatDate } from "../lib/format.js";
@@ -45,7 +46,7 @@ export default function Article() {
       {canEdit && (
         <div className="flex gap-3 mt-4">
           <button onClick={() => setEditing((v) => !v)} className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink">
-            {editing ? "Bearbeiten schließen" : "✏️ Bearbeiten"}
+            {editing ? "Bearbeiten schließen" : "Bearbeiten"}
           </button>
           <button onClick={remove} className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-rose text-rose">
             Löschen
@@ -71,6 +72,7 @@ export default function Article() {
       </p>
       <h1 className="text-2xl sm:text-3xl font-semibold leading-tight mb-3">{article.title}</h1>
       <p className="text-subtle text-lg leading-relaxed mb-6">{article.summary}</p>
+      <ArticleCover article={article} className="rounded-2xl border border-line mb-8" />
       <Prose text={article.body} />
 
       <div className="mt-10 bg-surface border border-line rounded-2xl p-5 text-center">

@@ -67,7 +67,7 @@ export default function PullRatesAnalysis() {
         onClick={() => setEditing((v) => !v)}
         className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink"
       >
-        {editing ? "Pflege schließen" : "✏️ Pull Rates pflegen"}
+        {editing ? "Pflege schließen" : "Pull Rates pflegen"}
       </button>
     </div>
   );
@@ -87,7 +87,7 @@ export default function PullRatesAnalysis() {
       {editorToggle}
       {editing && <PullRateEditor onSaved={load} />}
 
-      <h2 className="text-sm font-medium mb-1">🎯 Pull Rates im Vergleich</h2>
+      <h2 className="text-sm font-medium mb-1">Pull Rates im Vergleich</h2>
       <p className="text-xs text-subtle mb-3">
         Wie wahrscheinlich ist eine bestimmte Karte einer Seltenheit pro Pack? <b>1/205</b> heißt: im Schnitt
         jedes 205. Pack enthält genau diese Karte. Darunter in klein: die Quote für <i>irgendeine</i> Karte dieser

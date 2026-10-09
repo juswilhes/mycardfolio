@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Icon from "./Icon.jsx";
 
 // Kartenbild, das per Klick als Großansicht (Lightbox) aufgeht - damit man
 // Details, Zustand und Text einer Karte genau ansehen kann. Schließen per
@@ -28,7 +29,7 @@ export default function ZoomableCardImage({ src, largeSrc, alt, className = "" }
       >
         <img src={src} alt={alt} className={className} />
         <span className="absolute bottom-2 right-2 bg-ink/70 text-canvas text-xs rounded-full w-7 h-7 flex items-center justify-center opacity-80 group-hover:opacity-100">
-          🔍
+          <Icon name="search" className="w-4 h-4" />
         </span>
       </button>
 

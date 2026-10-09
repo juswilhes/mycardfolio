@@ -156,7 +156,7 @@ export default function AllCards() {
         <SegmentedToggle
           options={[
             { id: "sets", label: "Alle Sets" },
-            { id: "movers", label: "📈 Preisbewegungen" },
+            { id: "movers", label: "Preisbewegungen" },
           ]}
           value={view}
           onChange={setView}
@@ -198,7 +198,7 @@ export default function AllCards() {
                     {card.year ? ` (${card.year})` : ""}
                   </p>
                   <p className="text-subtle text-[11px] mb-2 truncate">
-                    {[card.rarity, card.artist && `✎ ${card.artist}`].filter(Boolean).join(" · ")}
+                    {[card.rarity, card.artist && `${card.artist}`].filter(Boolean).join(" · ")}
                   </p>
                 </Link>
                 <div className="mt-auto flex gap-2">
@@ -313,8 +313,8 @@ function MoversBrowser({ data, loading }) {
         Karten hinweg – vielleicht einen Blick wert.
       </p>
       <div className="grid sm:grid-cols-2 gap-x-8 gap-y-6">
-        <MoverColumn title="📈 Größte Gewinner" items={gainers} positive />
-        <MoverColumn title="📉 Größte Verlierer" items={losers} positive={false} />
+        <MoverColumn title="Größte Gewinner" items={gainers} positive />
+        <MoverColumn title="Größte Verlierer" items={losers} positive={false} />
       </div>
     </div>
   );

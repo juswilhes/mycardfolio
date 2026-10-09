@@ -93,6 +93,8 @@ export function metaFor(rawPath) {
       // Markenzusatz nur, wenn der Titel dann nicht zu lang für die Suchergebnisse wird
       title: a.title.length + SITE_NAME.length + 3 <= 70 ? `${a.title} | ${SITE_NAME}` : shorten(a.title, 70),
       description: shorten(a.summary, 200),
+      // Link-Vorschauen (WhatsApp, Discord ...) können kein SVG: dann das Logo
+      image: a.image && !a.image.endsWith(".svg") ? `${SITE_URL}${a.image}` : DEFAULT_IMAGE,
       type: "article",
     };
   }

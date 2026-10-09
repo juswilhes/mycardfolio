@@ -13,7 +13,7 @@ export default function CardMarketListings({ listings }) {
   return (
     <section id="angebote" className="mt-10 scroll-mt-6">
       <h2 className="text-sm font-semibold mb-3">
-        🛒 Im Marktplatz angeboten ({listings.length})
+        Im Marktplatz angeboten ({listings.length})
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {listings.map((l) => (
@@ -37,7 +37,7 @@ export default function CardMarketListings({ listings }) {
               <span className="text-xs text-subtle truncate">{l.seller_name || "mycardfolio-Nutzer"}</span>
               <StarRating rating={l.seller_rating} count={l.seller_review_count} />
             </div>
-            {l.photo_url && <span className="text-[10px] text-subtle mt-1">📷 Foto vom Verkäufer</span>}
+            {l.photo_url && <span className="text-[10px] text-subtle mt-1">Foto vom Verkäufer</span>}
           </Link>
         ))}
       </div>

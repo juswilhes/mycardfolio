@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Waage: viele Booster gegen eine einzelne Karte">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff2c4"/>
+      <stop offset="1" stop-color="#ffd35c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1070" cy="80" r="180" fill="#ffffff" opacity="0.2"/>
+
+  <!-- Waage: links schwerer (viele Booster), rechts leichter (eine Karte) -->
+  <g stroke="#1b1d24" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M600 580v-30M540 580h120"/>
+    <path d="M600 550V170"/>
+    <path d="M300 250L900 120"/>
+    <circle cx="600" cy="185" r="22" fill="#f8c93a"/>
+    <!-- linke Schale -->
+    <path d="M300 250L210 390M300 250L390 390"/>
+    <path d="M180 390h240q-10 50-120 50t-120-50z" fill="#ffffff"/>
+    <!-- rechte Schale -->
+    <path d="M900 120L810 260M900 120L990 260"/>
+    <path d="M780 260h240q-10 50-120 50t-120-50z" fill="#ffffff"/>
+  </g>
+
+  <!-- Stapel Booster links -->
+  <g stroke="#1b1d24" stroke-width="5" stroke-linejoin="round">
+    <rect x="200" y="300" width="70" height="90" rx="6" fill="#5a9bff" transform="rotate(-8 235 345)"/>
+    <rect x="270" y="290" width="70" height="100" rx="6" fill="#ff6b81" transform="rotate(4 305 340)"/>
+    <rect x="335" y="305" width="70" height="85" rx="6" fill="#35d488" transform="rotate(10 370 347)"/>
+    <rect x="235" y="215" width="70" height="95" rx="6" fill="#f8c93a" transform="rotate(-4 270 262)"/>
+    <rect x="305" y="220" width="70" height="90" rx="6" fill="#5a9bff" transform="rotate(8 340 265)"/>
+  </g>
+
+  <!-- Einzelne Karte rechts -->
+  <g transform="translate(850 130) rotate(6 50 65)" stroke="#1b1d24" stroke-width="5">
+    <rect width="100" height="130" rx="10" fill="#ffffff"/>
+    <rect x="10" y="10" width="80" height="62" rx="6" fill="#ff6b81" stroke="none"/>
+    <path d="M50 22l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z" fill="#ffffff" stroke="none"/>
+    <rect x="10" y="86" width="56" height="8" rx="4" fill="#1b1d24" stroke="none"/>
+    <rect x="10" y="102" width="80" height="6" rx="3" fill="#1b1d24" opacity="0.3" stroke="none"/>
+  </g>
+</svg>

@@ -51,7 +51,7 @@ export default function Orden() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">🏅 Deine Orden</h1>
+      <h1 className="text-xl font-semibold mb-1">Deine Orden</h1>
       <p className="text-subtle text-sm mb-4">
         Für jeden kleinen und großen Meilenstein deiner Sammelreise gibt es einen Orden.
       </p>

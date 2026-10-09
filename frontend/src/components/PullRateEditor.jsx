@@ -82,7 +82,7 @@ export default function PullRateEditor({ onSaved }) {
 
   return (
     <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
-      <p className="text-sm font-medium mb-3">✏️ Pull Rates pflegen</p>
+      <p className="text-sm font-medium mb-3">Pull Rates pflegen</p>
 
       {sets === null ? (
         <p className="text-subtle text-xs">Lade Sets …</p>

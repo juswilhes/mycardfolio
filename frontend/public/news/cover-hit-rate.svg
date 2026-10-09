@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Booster-Pack und Trefferquote">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f2a44"/>
+      <stop offset="1" stop-color="#121826"/>
+    </linearGradient>
+    <linearGradient id="pack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#f8c93a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1060" cy="90" r="170" fill="#5a9bff" opacity="0.10"/>
+  <circle cx="90" cy="570" r="140" fill="#f8c93a" opacity="0.08"/>
+
+  <!-- Booster-Pack mit gezackten Rändern -->
+  <g transform="translate(250 60) rotate(-6 150 255)">
+    <path d="M0 24l20 -14l20 14l20 -14l20 14l20 -14l20 14l20 -14l20 14l20 -14l20 14l20 -14l20 14l20 -14l20 14l20 -14l20 14V486l-20 14l-20 -14l-20 14l-20 -14l-20 14l-20 -14l-20 14l-20 -14l-20 14l-20 -14l-20 14l-20 -14l-20 14l-20 -14l-20 14l-20 -14Z" fill="url(#pack)" stroke="#fff3c4" stroke-width="4"/>
+    <rect x="40" y="80" width="220" height="250" rx="16" fill="#1b1d24" opacity="0.12"/>
+    <path d="M150 120l22 50 54 6-40 36 12 54-48-28-48 28 12-54-40-36 54-6z" fill="#ffffff"/>
+    <rect x="70" y="380" width="160" height="16" rx="8" fill="#1b1d24" opacity="0.7"/>
+    <rect x="95" y="410" width="110" height="10" rx="5" fill="#1b1d24" opacity="0.35"/>
+  </g>
+
+  <!-- Funkeln -->
+  <g fill="#ffffff">
+    <path d="M200 150l8 20 20 8-20 8-8 20-8-20-20-8 20-8z"/>
+    <path d="M610 90l6 14 14 6-14 6-6 14-6-14-14-6 14-6z" opacity="0.7"/>
+    <path d="M560 540l6 14 14 6-14 6-6 14-6-14-14-6 14-6z" opacity="0.6"/>
+  </g>
+
+  <!-- Ringdiagramm: etwa jedes fünfte Pack -->
+  <g transform="translate(900 315)">
+    <circle r="150" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="44"/>
+    <circle r="150" fill="none" stroke="#f8c93a" stroke-width="44" stroke-linecap="round"
+            stroke-dasharray="188 943" transform="rotate(-90)"/>
+    <text y="14" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-size="78" font-weight="700" fill="#ffffff">1 : 5</text>
+    <text y="62" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-size="26" fill="#ffffff" fill-opacity="0.7">ein Treffer pro Pack</text>
+  </g>
+</svg>

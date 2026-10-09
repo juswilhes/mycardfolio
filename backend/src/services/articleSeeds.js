@@ -4,6 +4,7 @@
 export const STARTER_ARTICLES = [
   {
     slug: "hit-rate-erklaert",
+    image: "/news/cover-hit-rate.svg",
     title: "Hit Rate erklärt: Wie oft steckt wirklich ein Treffer im Booster?",
     summary:
       "Etwa jedes fünfte Pack enthält eine besondere Karte – zumindest bei den aktuellen Sets. Wie wir das ausrechnen und was die Zahl (nicht) verrät.",
@@ -31,6 +32,7 @@ Ein Durchschnitt ist keine Garantie. Wer zehn Packs öffnet, kann zwei Treffer h
   },
   {
     slug: "ziehen-oder-kaufen",
+    image: "/news/cover-pull-or-buy.svg",
     title: "Ziehen oder kaufen? Eine Rechnung, die dem Geldbeutel wehtut",
     summary:
       "Die Chase-Karte selbst aus Boostern ziehen oder einfach einzeln kaufen? Wir haben nachgerechnet – das Ergebnis ist eindeutig.",
@@ -60,6 +62,7 @@ Alle Karten und ihre Kosten findest du in der [Analyse](/analyse) unter „Ziehe
   },
   {
     slug: "preis-ausreisser",
+    image: "/news/cover-outlier.svg",
     title: "Warum ein Kartenpreis manchmal verrücktspielt – und was wir dagegen tun",
     summary:
       "Von 36 € auf 85 € über Nacht und wieder zurück? Das ist meistens kein Markt, sondern ein Ausreißer. So gehen wir damit um.",

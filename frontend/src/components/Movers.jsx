@@ -25,7 +25,7 @@ function Row({ m, positive }) {
 // Dashboard-Look (Sets im Blick / Ordenkoffer). Zeigt auch einen klaren
 // Leer-Zustand statt einfach zu verschwinden, wenn (noch) nichts in
 // Bewegung ist.
-export default function Movers({ data, title = "📈 Top-Bewegungen (7 Tage)" }) {
+export default function Movers({ data, title = "Top-Bewegungen (7 Tage)" }) {
   const gainers = data?.gainers ?? [];
   const losers = data?.losers ?? [];
 

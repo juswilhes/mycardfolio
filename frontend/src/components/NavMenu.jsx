@@ -25,14 +25,14 @@ export default function NavMenu({ user, loading }) {
 
   const items = [
     { to: "/sets", label: "Alle Karten" },
-    { to: "/marktplatz", label: "🛒 Marktplatz" },
-    { to: "/news", label: "📰 News" },
+    { to: "/marktplatz", label: "Marktplatz" },
+    { to: "/news", label: "News" },
     ...(user
       ? [
           { to: "/", label: "Sammlung", end: true },
           { to: "/analyse", label: "Analyse" },
-          { to: "/watchlist", label: "❤️ Watchlist" },
-          { to: "/orden", label: "🏅 Orden" },
+          { to: "/watchlist", label: "Watchlist" },
+          { to: "/orden", label: "Orden" },
         ]
       : []),
     // "Anmelden" steht auf dem Handy nicht zusätzlich im Header (zu wenig

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import Icon from "../components/Icon.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { matchImportRows, commitImport, searchCards } from "../api.js";
 import { parseImport, normCondition, normLanguage, normVariant } from "../lib/parseImport.js";
@@ -360,7 +361,7 @@ export default function Import() {
                         )}
                         {m.confidence === "low" && (
                           <span className="inline-block mt-1 bg-amber-100 text-amber-700 border border-amber-400 rounded-full px-2 py-0.5 whitespace-nowrap">
-                            ⚠ Prüfungsbedarf
+                            Prüfungsbedarf
                           </span>
                         )}
                       </td>
@@ -447,7 +448,7 @@ export default function Import() {
                           title="Zeile entfernen"
                           className="text-subtle hover:text-rose"
                         >
-                          🗑
+                          <Icon name="trash" className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>

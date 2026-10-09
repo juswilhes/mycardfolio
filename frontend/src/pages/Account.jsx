@@ -103,7 +103,7 @@ export default function Account() {
 
       {sellerStatus && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold mb-1">🛒 Marktplatz-Verkäuferkonto</h2>
+          <h2 className="text-sm font-semibold mb-1">Marktplatz-Verkäuferkonto</h2>
           <p className="text-xs text-subtle mb-2">
             {sellerStatus.onboardingComplete
               ? "Eingerichtet – du kannst Karten & Sealed-Produkte anbieten."

@@ -21,7 +21,7 @@ export default function ArtistCards() {
   return (
     <div>
       <Link to="/sets" className="text-sm text-subtle hover:text-ink">← Alle Karten</Link>
-      <h1 className="text-xl font-semibold mt-4 mb-1">🖌️ {artist}</h1>
+      <h1 className="text-xl font-semibold mt-4 mb-1">{artist}</h1>
       <p className="text-subtle text-sm mb-6">
         {cards === null ? "Lade Karten …" : `${cards.length} Karte${cards.length === 1 ? "" : "n"} von diesem Illustrator.`}
       </p>

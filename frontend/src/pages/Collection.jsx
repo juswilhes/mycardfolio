@@ -404,7 +404,7 @@ export default function Collection() {
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
         <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium">🧩 Sets im Blick</p>
+            <p className="text-sm font-medium">Sets im Blick</p>
             <Link to="/sets" className="text-xs text-subtle hover:text-ink underline">
               Alle Sets
             </Link>
@@ -434,7 +434,7 @@ export default function Collection() {
 
         <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium">🏅 Ordenkoffer</p>
+            <p className="text-sm font-medium">Ordenkoffer</p>
             <Link to="/orden" className="text-xs text-subtle hover:text-ink underline">
               Ansehen
             </Link>

@@ -126,7 +126,7 @@ export default function SetDetail() {
               onClick={() => setSealedOpen(true)}
               className="shrink-0 text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink"
             >
-              📦 Sealed-Produkt hinzufügen
+              Sealed-Produkt hinzufügen
             </button>
           )}
         </div>

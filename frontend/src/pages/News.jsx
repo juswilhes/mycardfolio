@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getArticles } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import ArticleEditor from "../components/ArticleEditor.jsx";
+import ArticleCover from "../components/ArticleCover.jsx";
 import { formatDate } from "../lib/format.js";
 
 // Route: /news – alle Artikel, öffentlich. Der Betreiber sieht zusätzlich
@@ -20,14 +21,14 @@ export default function News() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-xl font-semibold mb-1">📰 News & Artikel</h1>
+      <h1 className="text-xl font-semibold mb-1">News & Artikel</h1>
       <p className="text-subtle text-sm mb-6">
         Wissenswertes rund ums Sammeln – Auswertungen, Erklärungen und Neuigkeiten von mycardfolio.
       </p>
 
       {canEdit && !writing && (
         <button onClick={() => setWriting(true)} className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink mb-6">
-          ✏️ Neuer Artikel
+          Neuer Artikel
         </button>
       )}
       {writing && (
@@ -50,14 +51,17 @@ export default function News() {
             <Link
               key={a.id}
               to={`/news/${a.slug}`}
-              className="block bg-surface border border-line rounded-2xl p-5 shadow-sm hover:border-ink transition"
+              className="sm:flex bg-surface border border-line rounded-2xl overflow-hidden shadow-sm hover:border-ink transition"
             >
-              <p className="text-[11px] text-subtle mb-1">
-                {a.category} · {formatDate(a.published_at)}
-                {!a.published && <span className="text-rose"> · Entwurf</span>}
-              </p>
-              <h2 className="font-medium mb-1">{a.title}</h2>
-              <p className="text-subtle text-sm leading-relaxed">{a.summary}</p>
+              <ArticleCover article={a} className="sm:w-64 sm:shrink-0 sm:aspect-auto sm:h-auto" />
+              <div className="p-5">
+                <p className="text-[11px] text-subtle mb-1">
+                  {a.category} · {formatDate(a.published_at)}
+                  {!a.published && <span className="text-rose"> · Entwurf</span>}
+                </p>
+                <h2 className="font-medium mb-1">{a.title}</h2>
+                <p className="text-subtle text-sm leading-relaxed">{a.summary}</p>
+              </div>
             </Link>
           ))}
         </div>

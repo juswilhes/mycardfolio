@@ -86,7 +86,7 @@ export default function SetRanking() {
 
   return (
     <div className="mb-10">
-      <h2 className="text-sm font-medium mb-1">🏆 Set-Rangliste</h2>
+      <h2 className="text-sm font-medium mb-1">Set-Rangliste</h2>
       <p className="text-xs text-subtle mb-3">
         Alle Sets mit hinterlegten Pull Rates im direkten Vergleich. Ein Klick auf eine Spaltenüberschrift sortiert
         danach, ein zweiter Klick dreht die Reihenfolge um. Grün ist jeweils der beste Wert der Spalte. „% vom

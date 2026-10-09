@@ -65,7 +65,7 @@ export default function PullOrBuyAnalysis() {
 
   return (
     <div className="mb-10">
-      <h2 className="text-sm font-medium mb-1">🎲 Ziehen oder kaufen?</h2>
+      <h2 className="text-sm font-medium mb-1">Ziehen oder kaufen?</h2>
       <p className="text-xs text-subtle mb-3">
         Eine Karte mit der Quote <b>1/480</b> steckt im Schnitt in jedem 480. Pack. Das Ziehen kostet dann im Schnitt
         480 Booster zum Boosterpreis. Hier steht daneben, was die Karte einzeln kostet. Der <b>Faktor</b> zeigt, wie
