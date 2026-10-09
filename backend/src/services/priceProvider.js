@@ -314,20 +314,30 @@ async function pokemonTcgFallback(externalId) {
 // manchmal allen dasselbe Cardmarket-Produkt zu (z. B. Ponyta Nr. 46 und 72 bekommen
 // den Preis der glänzenden SH11). Teilt sich die Karte ihr Produkt mit einer anderen
 // Karte DESSELBEN Sets, wird der TCGdex-Trend mit dem TCGplayer-Marktpreis von
-// pokemontcg.io (gehört eindeutig zur Karte) verglichen. Ist er mehr als dreimal so
-// hoch (und mindestens 2 EUR darüber), gilt die Zuordnung als falsch: dann zählen
-// die Werte von pokemontcg.io (Cardmarket, auch wenn älter, sonst TCGplayer).
+// pokemontcg.io (gehört eindeutig zur Karte) verglichen:
+//  - hat pokemontcg.io für die Karte einen eigenen Cardmarket-Wert und weicht der
+//    TCGdex-Trend um mehr als den Faktor 1,8 (und mehr als 1 EUR) davon ab, gilt die
+//    Zuordnung als falsch (z. B. neun Arceus-Karten AR1-AR9 mit identischen 30 EUR,
+//    obwohl jede ihren eigenen Wert hat)
+//  - sonst: ist der TCGdex-Trend mehr als dreimal so hoch wie der TCGplayer-Marktpreis
+//    (und mindestens 2 EUR darüber), gilt sie ebenfalls als falsch
+// Dann zählen die Werte von pokemontcg.io (Cardmarket, auch wenn älter, sonst TCGplayer).
 const sharedProductStmt = db.prepare(
   `SELECT 1 FROM cards WHERE cardmarket_product_id = ? AND set_id = ? AND external_id != ? LIMIT 1`
 );
 async function correctSharedProduct(row, cm) {
   if (!cm.idProduct || !sharedProductStmt.get(cm.idProduct, row.set_id, row.external_id)) return null;
   const raw = await paced(() => getRawPricesById(row.external_id));
-  const prices = raw?.tcgplayer?.prices;
-  const ref = prices && (prices.normal?.market > 0 ? prices.normal : Object.values(prices).find((v) => v?.market > 0));
-  if (!ref) return null;
-  const refEur = ref.market * (await usdToEur());
-  if (!(cm.trend > 3 * refEur && cm.trend - refEur >= 2)) return null;
+  const cmOwn = raw?.cardmarket?.prices?.trendPrice;
+  if (cmOwn > 0) {
+    if (Math.max(cm.trend / cmOwn, cmOwn / cm.trend) <= 1.8 || Math.abs(cm.trend - cmOwn) < 1) return null;
+  } else {
+    const prices = raw?.tcgplayer?.prices;
+    const ref = prices && (prices.normal?.market > 0 ? prices.normal : Object.values(prices).find((v) => v?.market > 0));
+    if (!ref) return null;
+    const refEur = ref.market * (await usdToEur());
+    if (!(cm.trend > 3 * refEur && cm.trend - refEur >= 2)) return null;
+  }
   const fixed = await pricesFromRaw(raw, Infinity);
   if (!fixed.prices.length) return null;
   // Produkt-ID bleibt gespeichert (damit die Mehrfachvergabe weiter erkannt wird)

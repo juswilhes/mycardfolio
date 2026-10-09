@@ -58,7 +58,7 @@ export function catchUpMissingPrices() {
   // beide gleichzeitig: die Abrufe bei pokemontcg.io teilen sich ohnehin die Pause zwischen den Starts
   setTimeout(() => {
     if (!marker("missing_prices_fallback_v1")) backfillAllMissingPrices().then(() => setMarker("missing_prices_fallback_v1"));
-    if (!marker("shared_product_check_v1")) recheckSharedProductCards().then(() => setMarker("shared_product_check_v1"));
+    if (!marker("shared_product_check_v2")) recheckSharedProductCards().then(() => setMarker("shared_product_check_v2"));
   }, 60_000);
 }
 
