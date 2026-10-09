@@ -21,15 +21,49 @@ const missingPriceCardsStmt = db.prepare(`
 
 let sweepRunning = false;
 
-// Einmalig nach dem Deploy der Rückfallquelle im Hintergrund: Karten, die bisher
-// gar keinen Preis hatten, sollen nicht erst bis zum nächsten Nachtlauf warten
-// (danach hält der Nachtlauf um 1 Uhr alles aktuell).
+// Einmalig nach einem Deploy im Hintergrund (jeweils mit Marker, erst nach Abschluss gesetzt):
+//  1. Karten, die bisher gar keinen Preis hatten, über die Rückfallquelle bepreisen
+//  2. Karten, die sich ein Cardmarket-Produkt mit einer Karte desselben Sets teilen, neu
+//     abfragen - dabei greift die Gegenprüfung auf falsche Zuordnungen (priceProvider.js)
+// Danach hält der Nachtlauf um 1 Uhr alles aktuell; so muss niemand bis zum nächsten
+// Nachtlauf auf die Korrektur warten.
+const sharedProductCardsStmt = db.prepare(`
+  SELECT c.id, c.external_id FROM cards c
+  WHERE c.cardmarket_product_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM cards o WHERE o.cardmarket_product_id = c.cardmarket_product_id AND o.set_id = c.set_id AND o.id != c.id)
+`);
+
+async function recheckSharedProductCards() {
+  const cards = sharedProductCardsStmt.all();
+  console.log(`[priceBackfill] Gegenprüfung: ${cards.length} Karten mit geteiltem Cardmarket-Produkt ...`);
+  let i = 0;
+  async function worker() {
+    while (i < cards.length) {
+      const card = cards[i++];
+      try {
+        const { prices, meta } = await getCardmarketPrices(card.external_id, { force: true });
+        if (prices.length) recordPrices(card.id, prices, meta);
+      } catch {
+        /* eine fehlgeschlagene Karte darf den Durchlauf nicht stoppen */
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  console.log("[priceBackfill] Gegenprüfung fertig.");
+}
+
 export function catchUpMissingPrices() {
-  const done = db.prepare(`SELECT value FROM app_meta WHERE key = 'missing_prices_fallback_v1'`).get();
-  if (done) return;
+  const marker = (key) => db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(key);
+  const setMarker = (key) => db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, '1')`).run(key);
   setTimeout(async () => {
-    await backfillAllMissingPrices();
-    db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('missing_prices_fallback_v1', '1')`).run();
+    if (!marker("missing_prices_fallback_v1")) {
+      await backfillAllMissingPrices();
+      setMarker("missing_prices_fallback_v1");
+    }
+    if (!marker("shared_product_check_v1")) {
+      await recheckSharedProductCards();
+      setMarker("shared_product_check_v1");
+    }
   }, 60_000);
 }
 
