@@ -150,7 +150,8 @@ app.get("/sitemap.xml", (_req, res) => {
 });
 
 if (fs.existsSync(path.join(frontendDist, "index.html"))) {
-  app.use(express.static(frontendDist, { maxAge: "1h", index: false }));
+  // redirect: false - sonst leitet der Ordner public/news (Titelbilder) die Seite /news auf /news/ um
+  app.use(express.static(frontendDist, { maxAge: "1h", index: false, redirect: false }));
   const indexHtml = fs.readFileSync(path.join(frontendDist, "index.html"), "utf8");
   // SPA-Fallback: alles, was keine Datei ist, liefert index.html - aber nur
   // mit Status 200, wenn es auch eine echte Route der App ist. Sonst (alte

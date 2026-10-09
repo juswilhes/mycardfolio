@@ -47,8 +47,10 @@ const STATIC_PATHS = new Set([
   "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/marktplatz", "/news",
 ]);
 const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/marktplatz/", "/verkaeufer/", "/news/"];
-export const isKnownRoute = (path) =>
-  STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
+export const isKnownRoute = (rawPath) => {
+  const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
+  return STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
+};
 
 // Besucher-Hash: nicht umkehrbar, wechselt täglich, nur zum Zählen.
 const visitorHash = (ip, day) =>
