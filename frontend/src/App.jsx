@@ -106,7 +106,6 @@ export default function App() {
               <>
                 <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
                 <NavLink to="/analyse" className={navCls}>Analyse</NavLink>
-                <NavLink to="/watchlist" className={navCls}>Watchlist</NavLink>
                 <NavLink to="/orden" id="nav-orden" className={navCls}>Orden</NavLink>
               </>
             )}

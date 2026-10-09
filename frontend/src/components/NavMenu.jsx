@@ -31,7 +31,6 @@ export default function NavMenu({ user, loading }) {
       ? [
           { to: "/", label: "Sammlung", end: true },
           { to: "/analyse", label: "Analyse" },
-          { to: "/watchlist", label: "Watchlist" },
           { to: "/orden", label: "Orden" },
         ]
       : []),
