@@ -1,7 +1,7 @@
 import { RANGES } from "../lib/chartRange.js";
 
-// Zeitraum-Umschalter für Graphen (7 Tage … 12 Monate). `options` schränkt
-// die Auswahl ein, z. B. bei Monatsständen, wo 7 Tage keinen Sinn ergeben.
+// Zeitraum-Umschalter für Graphen (1 Monat … 12 Monate). `options` schränkt
+// die Auswahl ein, z. B. bei Monatsständen, wo 1 Monat keinen Sinn ergibt.
 export default function RangeSelect({ value, onChange, options = RANGES }) {
   return (
     <div className="max-w-full overflow-x-auto">

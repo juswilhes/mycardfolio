@@ -16,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import db from "../db/index.js";
 import { getRawPricesById } from "./pokemonTcgApi.js";
+import { resolveProduct } from "./cardmarketGuide.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_FILE = path.join(__dirname, "..", "..", "vendor", "tcgdex-price-cache.json");
@@ -97,7 +98,7 @@ export async function fetchJson(url, tries = 2) {
 }
 
 const cardRow = db.prepare(`
-  SELECT c.external_id, c.number, c.name, c.set_id, s.name AS set_name
+  SELECT c.external_id, c.number, c.name, c.set_id, s.name AS set_name, c.abilities, c.attacks, c.price_valid_from
   FROM cards c LEFT JOIN card_sets s ON s.id = c.set_id
   WHERE c.external_id = ? AND c.game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
@@ -178,17 +179,6 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
       const cm = full?.pricing?.cardmarket;
       const tp = full?.pricing?.tcgplayer;
 
-      const eur = (variant, priceType, price) =>
-        price != null && price > 0
-          ? {
-              source: "cardmarket",
-              variant,
-              price_type: priceType,
-              currency: "EUR",
-              price: Math.round(price * 100) / 100,
-            }
-          : null;
-
       // TCGdex liefert für die zweite Preisspalte nur EIN "-holo"-Suffix,
       // das aber je Karte entweder echtes Holo ODER Reverse Holo meint -
       // welches davon steht im variants-Feld (Commons/Uncommons haben fast
@@ -198,23 +188,14 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
       const v = full?.variants ?? {};
       const specialVariant = v.reverse && !v.holo ? "reverse" : "holo";
 
-      const cmRows = cm
-        ? [
-            eur("normal", "trend", cm.trend),
-            eur("normal", "low", cm.low),
-            eur("normal", "avg30", cm.avg30),
-            eur(specialVariant, "trend", cm["trend-holo"]),
-            eur(specialVariant, "low", cm["low-holo"]),
-            eur(specialVariant, "avg30", cm["avg30-holo"]),
-          ].filter(Boolean)
-        : [];
+      const cmRows = cm ? cardmarketRows(cm, specialVariant) : [];
 
       if (cmRows.length) {
         value = {
           prices: cmRows,
           meta: { basis: "cardmarket", productId: cm.idProduct ?? null, updated: cm.updated ?? null },
         };
-        value = (await correctSharedProduct(row, cm).catch((e) => { console.warn(`[preise] Gegenprüfung ${externalId}: ${e.message}`); return null; })) ?? value; // nicht erreichbar: TCGdex-Werte behalten
+        value = (await correctSharedProduct(row, cm, specialVariant).catch((e) => { console.warn(`[preise] Gegenprüfung ${externalId}: ${e.message}`); return null; })) ?? value; // nicht erreichbar: TCGdex-Werte behalten
       } else if (tp) {
         // Fallback: TCGplayer-Marktpreis (USD) -> EUR umgerechnet
         const variant = tp.holofoil ?? tp.normal ?? tp.reverseHolofoil ?? Object.values(tp).find((v) => v?.marketPrice);
@@ -273,6 +254,19 @@ const paced = async (fn) => {
   if (start > Date.now()) await new Promise((r) => setTimeout(r, start - Date.now()));
   return fn();
 };
+// Preiszeilen aus einem Cardmarket-Datensatz (TCGdex oder Cardmarkets Preisliste:
+// gleiche Feldnamen, die zweite Spalte endet auf "-holo").
+function cardmarketRows(cm, specialVariant) {
+  return [
+    eurRow("normal", "trend", cm.trend),
+    eurRow("normal", "low", cm.low),
+    eurRow("normal", "avg30", cm.avg30),
+    eurRow(specialVariant, "trend", cm["trend-holo"]),
+    eurRow(specialVariant, "low", cm["low-holo"]),
+    eurRow(specialVariant, "avg30", cm["avg30-holo"]),
+  ].filter(Boolean);
+}
+
 const eurRow = (variant, priceType, price) =>
   price > 0 ? { source: "cardmarket", variant, price_type: priceType, currency: "EUR", price: Math.round(price * 100) / 100 } : null;
 
@@ -314,7 +308,9 @@ async function pokemonTcgFallback(externalId) {
 // manchmal allen dasselbe Cardmarket-Produkt zu (z. B. Ponyta Nr. 46 und 72 bekommen
 // den Preis der glänzenden SH11). Teilt sich die Karte ihr Produkt mit einer anderen
 // Karte DESSELBEN Sets, wird der TCGdex-Trend mit dem TCGplayer-Marktpreis von
-// pokemontcg.io (gehört eindeutig zur Karte) verglichen:
+// Zuerst wird versucht, das richtige Produkt in Cardmarkets eigener Preisliste zu finden
+// (cardmarketGuide.js: gleicher Name, gleiche Fähigkeiten/Angriffe) - das liefert den
+// frischen Cardmarket-Wert der Karte. Gelingt das nicht, wird mit pokemontcg.io verglichen:
 //  - hat pokemontcg.io für die Karte einen eigenen Cardmarket-Wert und weicht der
 //    TCGdex-Trend um mehr als den Faktor 1,8 (und mehr als 1 EUR) davon ab, gilt die
 //    Zuordnung als falsch (z. B. neun Arceus-Karten AR1-AR9 mit identischen 30 EUR,
@@ -325,8 +321,21 @@ async function pokemonTcgFallback(externalId) {
 const sharedProductStmt = db.prepare(
   `SELECT 1 FROM cards WHERE cardmarket_product_id = ? AND set_id = ? AND external_id != ? LIMIT 1`
 );
-async function correctSharedProduct(row, cm) {
-  if (!cm.idProduct || !sharedProductStmt.get(cm.idProduct, row.set_id, row.external_id)) return null;
+async function correctSharedProduct(row, cm, specialVariant) {
+  const shared = cm.idProduct && sharedProductStmt.get(cm.idProduct, row.set_id, row.external_id);
+  if (!shared && !row.price_valid_from) return null; // Karte ist unauffällig
+
+  // 1) Cardmarkets eigene Preisliste: das Produkt mit denselben Fähigkeiten/Angriffen
+  const hit = await resolveProduct(row, cm.idProduct).catch(() => null);
+  if (hit) {
+    return {
+      prices: cardmarketRows(hit.cm, specialVariant),
+      meta: { basis: "cardmarket", productId: hit.idProduct, updated: hit.cm.updated ?? null, corrected: true },
+    };
+  }
+  if (!shared) return null;
+
+  // 2) Vergleich mit pokemontcg.io
   const raw = await paced(() => getRawPricesById(row.external_id));
   const cmOwn = raw?.cardmarket?.prices?.trendPrice;
   if (cmOwn > 0) {

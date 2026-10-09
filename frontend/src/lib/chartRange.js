@@ -1,7 +1,6 @@
 // Gemeinsame Bausteine für alle Verlaufs-Graphen: wählbarer Zeitraum und
 // Tooltip-Sortierung (höherer Wert steht oben).
 export const RANGES = [
-  { id: "7d", label: "7 Tage", days: 7 },
   { id: "1m", label: "1 Monat", days: 30 },
   { id: "3m", label: "3 Monate", days: 90 },
   { id: "6m", label: "6 Monate", days: 180 },
