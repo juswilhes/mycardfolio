@@ -74,7 +74,7 @@ export const expansionOfProduct = (guide, productId) => guide.products.get(produ
 //    Klammer-Zusatz
 // Nur ein EINDEUTIGER Treffer zählt (sonst null).
 // Rückgabe: { idProduct, cm } mit den Preisfeldern der Preisliste (trend, low, avg30 ...).
-export function resolveInExpansion(guide, card, expansionId) {
+export function resolveInExpansion(guide, card, expansionId, { preferOldest = false } = {}) {
   if (!expansionId) return null;
   const ours = [...parseList(card.abilities), ...parseList(card.attacks)].map((a) => norm(a.name)).filter(Boolean);
   const wanted = norm(card.name);
@@ -93,9 +93,12 @@ export function resolveInExpansion(guide, card, expansionId) {
   if (!hits.length) return null;
   const best = Math.min(...hits.map((h) => h.extra));
   const top = hits.filter((h) => h.extra === best);
-  if (top.length !== 1) return null;
-  const row = guide.prices.get(top[0].p.id);
-  return row ? { idProduct: top[0].p.id, cm: { ...row, idProduct: top[0].p.id, updated: guide.updated } } : null;
+  // Mehrere völlig gleiche Produkte (z. B. zwei Auflagen derselben Promo): nur wenn wir
+  // sonst gar keine Zuordnung haben, das ÄLTESTE (kleinste ID = erste Auflage) nehmen
+  if (top.length !== 1 && !(preferOldest && top.length)) return null;
+  const chosen = top.reduce((a, b) => (b.p.id < a.p.id ? b : a));
+  const row = guide.prices.get(chosen.p.id);
+  return row ? { idProduct: chosen.p.id, cm: { ...row, idProduct: chosen.p.id, updated: guide.updated } } : null;
 }
 
 // Wie resolveInExpansion, mit der Erweiterung eines (falsch geteilten) Produkts

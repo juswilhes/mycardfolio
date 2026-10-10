@@ -47,7 +47,7 @@ export async function refreshPricesFromGuide() {
 
       if (!pid || shared || c.price_valid_from) {
         const expansion = (pid && expansionOfProduct(guide, pid)) || setExpansion.get(c.set_id);
-        const hit = resolveInExpansion(guide, c, expansion);
+        const hit = resolveInExpansion(guide, c, expansion, { preferOldest: !pid });
         if (hit) {
           pid = hit.idProduct;
           corrected = !!(shared || c.price_valid_from);

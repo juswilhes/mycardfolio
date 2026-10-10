@@ -209,6 +209,16 @@ export function latestTrend(cardId, variant = "normal") {
   return pick ? { ...pick.points[pick.points.length - 1], avg30: avg30Of(pick.points) } : null;
 }
 
+// Bereinigte Tagesreihe (wie im Graphen: Ausführungen, Ausreißer, gültig ab) der Variante,
+// die jemand besitzt - mit denselben Rückfällen wie latestTrend. Für den Portfolio-Verlauf
+// und die Bewegungen der Sammlung, damit eine Reverse-Holo-Karte nie mit dem Holo-Preis
+// gerechnet wird.
+export function variantSeries(cardId, variant = "normal") {
+  const series = priceSeriesFrom(alignToPrintings(cardId, trendAllStmt.all(cardId)));
+  const pick = series.find((s) => s.variant === variant) ?? series.find((s) => s.variant === "normal") ?? series[0];
+  return pick?.points ?? [];
+}
+
 const cmBreakdownRows = db.prepare(`
   SELECT variant, price_type, price, currency, MAX(fetched_at) AS fetched_at
   FROM price_snapshots

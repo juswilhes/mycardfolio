@@ -250,7 +250,8 @@ export default function Collection() {
       g.entries.push(it);
     });
 
-    const gVal = (g) => (g.latest_price?.price ?? 0) * g.entries.reduce((s, e) => s + (e.quantity ?? 1), 0);
+    // Wert und Gewinn je Eintrag mit dem Preis SEINER Variante (Holo/Reverse Holo/Normal)
+    const gVal = (g) => g.entries.reduce((s, e) => s + (e.latest_price?.price ?? 0) * (e.quantity ?? 1), 0);
     const gCost = (g) => {
       const w = g.entries.filter((e) => cost(e) != null);
       return w.length ? w.reduce((s, e) => s + cost(e), 0) : null;
@@ -259,8 +260,7 @@ export default function Collection() {
       const c = gCost(g);
       if (c == null) return null;
       const w = g.entries.filter((e) => cost(e) != null);
-      const q = w.reduce((s, e) => s + (e.quantity ?? 1), 0);
-      return (g.latest_price?.price ?? 0) * q - c;
+      return w.reduce((s, e) => s + (e.latest_price?.price ?? 0) * (e.quantity ?? 1), 0) - c;
     };
     const gGainPct = (g) => {
       const c = gCost(g);

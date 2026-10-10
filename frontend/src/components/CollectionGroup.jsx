@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import CardTile from "./CardTile.jsx";
-import { langLabel, gradeLabel, conditionLabel } from "./CollectionItemDialog.jsx";
+import { langLabel, gradeLabel, conditionLabel, variantLabel } from "./CollectionItemDialog.jsx";
 import { deleteCollectionItem } from "../api.js";
 import { eur } from "../lib/format.js";
 
@@ -24,9 +24,10 @@ export default function CollectionGroup({ group, onChanged }) {
     return <CardTile item={entries[0]} onChanged={onChanged} />;
   }
 
-  const price = entries[0].latest_price?.price ?? null;
+  // Jeder Eintrag mit dem Preis seiner eigenen Variante (Holo, Reverse Holo, Normal ...)
+  const priced = entries.filter((e) => e.latest_price?.price != null);
   const qty = entries.reduce((s, e) => s + (e.quantity ?? 1), 0);
-  const value = price != null ? price * qty : null;
+  const value = priced.length ? priced.reduce((s, e) => s + e.latest_price.price * (e.quantity ?? 1), 0) : null;
 
   const langs = [...new Set(entries.map((e) => langLabel(e.language)).filter(Boolean))];
   const grades = [
@@ -37,8 +38,8 @@ export default function CollectionGroup({ group, onChanged }) {
 
   const withCost = entries.filter((e) => entryCost(e) != null);
   const cost = withCost.reduce((s, e) => s + entryCost(e), 0);
-  const pricedQty = withCost.reduce((s, e) => s + (e.quantity ?? 1), 0);
-  const gain = withCost.length && price != null ? price * pricedQty - cost : null;
+  const valueOfCosted = withCost.reduce((s, e) => s + (e.latest_price?.price ?? 0) * (e.quantity ?? 1), 0);
+  const gain = withCost.length && value != null ? valueOfCosted - cost : null;
 
   async function removeEntry(id) {
     setBusy(true);
@@ -137,7 +138,7 @@ export default function CollectionGroup({ group, onChanged }) {
         <div className="pb-3 pl-16 pr-1 space-y-2">
           {entries.map((e) => {
             const c = entryCost(e);
-            const v = price != null ? price * (e.quantity ?? 1) : null;
+            const v = e.latest_price?.price != null ? e.latest_price.price * (e.quantity ?? 1) : null;
             const g = c != null && v != null ? v - c : null;
             return (
               <div key={e.collection_item_id} className="flex items-center justify-between gap-3 text-xs">
@@ -146,6 +147,7 @@ export default function CollectionGroup({ group, onChanged }) {
                     ? new Date(e.purchase_date).toLocaleDateString("de-DE")
                     : "Datum unbekannt"}
                   {(e.quantity ?? 1) > 1 ? ` · ${e.quantity}×` : ""}
+                  {e.variant && e.variant !== "normal" ? ` · ${variantLabel(e.variant)}` : ""}
                   {` · ${conditionLabel(e.condition)}`}
                   {langLabel(e.language) ? ` · ${langLabel(e.language)}` : ""}
                   {gradeLabel(e.grading_company, e.grade) ? ` · ${gradeLabel(e.grading_company, e.grade)}` : ""}

@@ -211,12 +211,13 @@ export default function CardInfo() {
   ].filter(([, v]) => v);
 
   const price = card.latest_price?.price ?? null;
-  const totalQty = (entries ?? []).reduce((s, e) => s + (e.quantity ?? 1), 0);
+  // Wert je Eintrag mit dem Preis SEINER Variante (Holo, Reverse Holo, Normal ...)
+  const entryValue = (e) => (e.latest_price?.price != null ? e.latest_price.price * (e.quantity ?? 1) : null);
+  const pricedEntries = (entries ?? []).filter((e) => entryValue(e) != null);
   const withCost = (entries ?? []).filter((e) => entryCost(e) != null);
   const totalCost = withCost.reduce((s, e) => s + entryCost(e), 0);
-  const totalValue = price != null ? price * totalQty : null;
-  const valueOfPriced =
-    price != null ? price * withCost.reduce((s, e) => s + (e.quantity ?? 1), 0) : 0;
+  const totalValue = pricedEntries.length ? pricedEntries.reduce((s, e) => s + entryValue(e), 0) : null;
+  const valueOfPriced = withCost.reduce((s, e) => s + (entryValue(e) ?? 0), 0);
   const totalGain = withCost.length ? valueOfPriced - totalCost : null;
 
   return (
@@ -327,7 +328,7 @@ export default function CardInfo() {
           <div className="space-y-3">
             {entries.map((e) => {
               const c = entryCost(e);
-              const v = price != null ? price * (e.quantity ?? 1) : null;
+              const v = entryValue(e);
               const g = c != null && v != null ? v - c : null;
               return (
                 <div key={e.collection_item_id} className="border border-line rounded-2xl p-4">

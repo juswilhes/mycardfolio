@@ -1,5 +1,5 @@
 import db from "../db/index.js";
-import { listCollection, latestTrend, priceHistoryForCard } from "./cardService.js";
+import { listCollection, latestTrend, variantSeries } from "./cardService.js";
 import { listUserIds } from "./authService.js";
 
 const n = (v) => (v == null ? 0 : Number(v) || 0);
@@ -25,7 +25,7 @@ export function recordPortfolioSnapshot(userId) {
   let cost = 0;
   let count = 0;
   for (const r of rows) {
-    const lp = latestTrend(r.card_id);
+    const lp = latestTrend(r.card_id, r.variant || "normal");
     value += n(lp?.price) * r.quantity;
     if (r.purchase_price != null || r.shipping_cost != null) {
       cost += (n(r.purchase_price) + n(r.shipping_cost)) * r.quantity;
@@ -48,15 +48,6 @@ const portfolioHistoryStmt = db.prepare(`
 `);
 export const portfolioHistory = { all: (userId) => portfolioHistoryStmt.all(userId) };
 
-// Alle Trend-Snapshots (Cardmarket bevorzugt) als Tageswerte je Karte/Variante.
-const trendSnapshotsAll = db.prepare(`
-  SELECT card_id, COALESCE(variant, 'normal') AS variant, price,
-         substr(fetched_at, 1, 10) AS day
-  FROM price_snapshots
-  WHERE price_type = 'trend'
-  ORDER BY (source = 'cardmarket') DESC, fetched_at ASC
-`);
-
 // Wert-über-Zeit für eine (optional gefilterte) Teilmenge der Sammlung eines
 // Nutzers - berechnet aus den Preis-Snapshots.
 export function computePortfolioHistory(userId, { set, language, artist } = {}) {
@@ -70,16 +61,20 @@ export function computePortfolioHistory(userId, { set, language, artist } = {}) 
     );
   if (!items.length) return [];
 
-  const cardIds = new Set(items.map((i) => i.card_id));
+  // Tagesreihe je besessener Karte+Variante, bereinigt wie der Graph auf der Kartenseite
   const byKey = new Map();
-  for (const r of trendSnapshotsAll.all()) {
-    if (!cardIds.has(r.card_id)) continue;
-    const key = `${r.card_id}|${r.variant}`;
-    let arr = byKey.get(key);
-    if (!arr) byKey.set(key, (arr = []));
-    const last = arr[arr.length - 1];
-    if (last && last.day === r.day) last.price = r.price;
-    else arr.push({ day: r.day, price: r.price });
+  for (const it of items) {
+    const key = `${it.card_id}|${it.variant || "normal"}`;
+    if (!byKey.has(key)) {
+      const arr = [];
+      for (const pt of variantSeries(it.card_id, it.variant || "normal")) {
+        const day = pt.fetched_at.slice(0, 10);
+        const last = arr[arr.length - 1];
+        if (last && last.day === day) last.price = pt.price;
+        else arr.push({ day, price: pt.price });
+      }
+      byKey.set(key, arr);
+    }
   }
 
   const days = [
@@ -104,9 +99,7 @@ export function computePortfolioHistory(userId, { set, language, artist } = {}) 
     let count = 0;
     for (const it of items) {
       const q = it.quantity || 1;
-      const p =
-        priceOn(`${it.card_id}|${it.variant || "normal"}`, day) ??
-        priceOn(`${it.card_id}|normal`, day);
+      const p = priceOn(`${it.card_id}|${it.variant || "normal"}`, day);
       value += n(p) * q;
       if (it.purchase_price != null || it.shipping_cost != null) {
         cost += (n(it.purchase_price) + n(it.shipping_cost)) * q;
@@ -129,7 +122,7 @@ export function getMovers(userId) {
   const movers = [];
 
   for (const c of listCollection.all(userId)) {
-    const hist = priceHistoryForCard.all(c.card_id);
+    const hist = variantSeries(c.card_id, c.variant || "normal");
     if (hist.length < 2) continue;
 
     const latest = hist[hist.length - 1];
