@@ -78,11 +78,11 @@ export async function refreshPricesFromGuide() {
 // Nachtlauf warten müssen (Marker erst nach Abschluss gesetzt); danach macht das der
 // Nachtlauf um 1 Uhr.
 export function catchUpGuidePrices() {
-  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'guide_prices_v1'`).get()) return;
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'guide_prices_v2'`).get()) return;
   setTimeout(async () => {
     try {
       await refreshPricesFromGuide();
-      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('guide_prices_v1', '1')`).run();
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('guide_prices_v2', '1')`).run();
       rebuildAnalysisCache();
     } catch (e) {
       console.error("[preisliste] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);
