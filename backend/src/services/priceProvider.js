@@ -258,13 +258,26 @@ const paced = async (fn) => {
 // gleiche Feldnamen, die zweite Spalte endet auf "-holo").
 export function cardmarketRows(cm, specialVariant) {
   return [
-    eurRow("normal", "trend", cm.trend),
+    eurRow("normal", "trend", robustPrice(cm, "")),
     eurRow("normal", "low", cm.low),
     eurRow("normal", "avg30", cm.avg30),
-    eurRow(specialVariant, "trend", cm["trend-holo"]),
+    eurRow(specialVariant, "trend", robustPrice(cm, "-holo")),
     eurRow(specialVariant, "low", cm["low-holo"]),
     eurRow(specialVariant, "avg30", cm["avg30-holo"]),
   ].filter(Boolean);
+}
+
+// Cardmarkets "Trend" allein springt bei Karten mit wenigen Verkäufen (z. B. 37 -> 80 EUR in
+// zwei Wochen, während Ø 30 Tage ruhig bei 47 bleibt). Deshalb gilt als Preis der Median aus
+// Trend, Ø 1 Tag, Ø 7 Tage und Ø 30 Tage: der höchste und der niedrigste Wert fallen weg, ein
+// einzelner Ausreißer zählt nicht. (Test an 132 Karten: Median liegt näher an TCGplayer als
+// der Trend allein.) Mit weniger als drei Kennzahlen bleibt es beim Trend.
+export function robustPrice(cm, suffix = "") {
+  const trend = cm[`trend${suffix}`];
+  const vals = ["trend", "avg1", "avg7", "avg30"].map((k) => cm[`${k}${suffix}`]).filter((v) => v > 0).sort((a, b) => a - b);
+  if (vals.length < 3) return trend;
+  const mid = vals.length >> 1;
+  return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
 }
 
 const eurRow = (variant, priceType, price) =>

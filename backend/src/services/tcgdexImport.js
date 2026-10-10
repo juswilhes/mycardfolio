@@ -6,6 +6,7 @@
 
 import db from "../db/index.js";
 import { recordPrices } from "./cardService.js";
+import { robustPrice } from "./priceProvider.js";
 
 const API = "https://api.tcgdex.net/v2/en";
 const gameId = db.prepare(`SELECT id FROM games WHERE slug = 'pokemon'`).get().id;
@@ -190,10 +191,10 @@ function priceRows(c) {
   const v = c.variants ?? {};
   const specialVariant = v.reverse && !v.holo ? "reverse" : "holo";
   return [
-    mk("normal", "trend", cm.trend),
+    mk("normal", "trend", robustPrice(cm, "")),
     mk("normal", "low", cm.low),
     mk("normal", "avg30", cm.avg30),
-    mk(specialVariant, "trend", cm["trend-holo"]),
+    mk(specialVariant, "trend", robustPrice(cm, "-holo")),
     mk(specialVariant, "low", cm["low-holo"]),
     mk(specialVariant, "avg30", cm["avg30-holo"]),
   ].filter(Boolean);
