@@ -3,6 +3,7 @@ import { latestTrendByExternal } from "./cardService.js";
 import { slugOfSet, resolveSetParam, rebuildSetSlugs } from "./setSlugs.js";
 import { getArticleBySlug, listPublishedArticles } from "./articles.js";
 import { slugOfCard, resolveCardParam, rebuildCardSlugs } from "./cardSlugs.js";
+import { analysis } from "./analysisCache.js";
 
 // Meta-Tags pro Seite (Titel, Beschreibung, canonical, Vorschaubild) und die
 // Sitemap. Die App ist eine Single-Page-App: ohne dieses Einsetzen auf dem
@@ -21,14 +22,62 @@ const eur = (n) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maxi
 const shorten = (s, max) => (s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`);
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// Sichtbarer Text im HTML: Suchmaschinen und Link-Vorschauen sehen nur das, was der Server
+// ausliefert - React ersetzt diesen Block, sobald die App geladen ist. Die Klassen stammen aus
+// dem App-Stylesheet (auch ohne JavaScript sieht es ordentlich aus).
+const link = (href, text) => `<a href="${esc(href)}">${esc(text)}</a>`;
+const wrap = (inner) => `<div class="px-6 py-8 max-w-5xl mx-auto">${inner}</div>`;
+const dateDe = (iso) => new Date(iso).toLocaleDateString("de-DE");
+const crumbs = (items) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map(([name, path], i) => ({ "@type": "ListItem", position: i + 1, name, item: SITE_URL + path })),
+});
+// Titel mit Markenzusatz, wenn er in die ~70 Zeichen der Suchergebnisse passt
+const titled = (base) => (base.length + SITE_NAME.length + 3 <= 70 ? `${base} | ${SITE_NAME}` : shorten(base, 70));
+const setLink = (id, name) => link(`/sets/${encodeURIComponent(slugOfSet(id))}`, name);
+const setCardsStmt = db.prepare(`SELECT external_id, name, name_de, number FROM cards WHERE set_id = ? ORDER BY CAST(number AS INTEGER), number`);
+const newestSetsStmt = db.prepare(`SELECT id, name, release_date FROM card_sets ORDER BY release_date DESC LIMIT 12`);
+const allSetsListStmt = db.prepare(`SELECT id, name, release_date, total FROM card_sets ORDER BY release_date DESC`);
+
+// Text und Links für Startseite und Kartenübersicht (Einstieg für Suchroboter in alle Sets)
+function pageExtras(path) {
+  if (path === "/") {
+    const items = newestSetsStmt.all().map((s) => `<li>${setLink(s.id, s.name)}</li>`).join("");
+    return {
+      body: wrap(
+        `<h1>Pokémon-Karten: Wert, Preise und Sammlung im Blick</h1>` +
+          `<p>Wie viel sind deine Pokémon-Karten wert? mycardfolio zeigt für über 20.000 Karten den aktuellen Cardmarket-Preis in Euro, den Preisverlauf und den Wert deiner Sammlung – kostenlos und ohne Anmeldung zum Nachschlagen.</p>` +
+          `<p>${link("/sets", "Alle Karten und Sets durchsuchen")} · ${link("/news", "News und Auswertungen")}</p>` +
+          `<h2>Neueste Sets</h2><ul>${items}</ul>`
+      ),
+    };
+  }
+  if (path === "/sets") {
+    const items = allSetsListStmt
+      .all()
+      .map((s) => `<li>${setLink(s.id, s.name)}${s.release_date ? ` (${s.release_date.slice(0, 4)})` : ""}${s.total ? ` – ${s.total} Karten` : ""}</li>`)
+      .join("");
+    return {
+      body: wrap(`<h1>Alle Pokémon-Karten und Sets – Wert und Preise</h1><p>Suche eine Karte, um ihren aktuellen Wert und Preisverlauf zu sehen, oder wähle ein Set.</p><ul>${items}</ul>`),
+      jsonld: [crumbs([["Start", "/"], ["Alle Karten", "/sets"]])],
+    };
+  }
+  return {};
+}
+
 // Feste Seiten: indexierbar (mit Titel/Beschreibung) bzw. nur für Angemeldete
 // und Formulare (noindex - sollen nicht in der Suche auftauchen).
 const PUBLIC_PAGES = {
-  "/": { title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION },
-  "/sets": {
-    title: "Alle Pokémon-Karten & Sets – Preise und Suche | mycardfolio",
+  "/": {
+    title: "mycardfolio – Pokémon-Karten Wert, Preise & Sammlung im Blick",
     description:
-      "Alle Pokémon-Sets und Karten durchsuchen: aktuelle Cardmarket-Preise in Euro, Seltenheiten, Illustratoren und Preisverlauf – kostenlos und ohne Anmeldung.",
+      "Wie viel sind deine Pokémon-Karten wert? Aktuelle Cardmarket-Preise in Euro für über 20.000 Karten, Preisverlauf, Wert deiner Sammlung und Set-Fortschritt – kostenlos.",
+  },
+  "/sets": {
+    title: "Pokémon-Karten Wert & Preise – alle Sets | mycardfolio",
+    description:
+      "Alle Pokémon-Sets und Karten durchsuchen: aktueller Wert in Euro nach Cardmarket, Seltenheiten, Illustratoren und Preisverlauf – kostenlos und ohne Anmeldung.",
   },
   "/news": {
     title: "News & Artikel für Pokémon-Sammler | mycardfolio",
@@ -44,7 +93,7 @@ const PRIVATE_PAGES = new Set([
 ]);
 
 const cardStmt = db.prepare(`
-  SELECT external_id, name, name_de, set_name, number, rarity, image_large, image_small
+  SELECT external_id, name, name_de, set_id, set_name, number, rarity, artist, image_large, image_small
   FROM cards WHERE external_id = ?
 `);
 const setStmt = db.prepare(`SELECT id, name, total, printed_total, release_date, logo FROM card_sets WHERE id = ?`);
@@ -56,7 +105,7 @@ export function metaFor(rawPath) {
   const canonical = `${SITE_URL}${path === "/" ? "/" : path}`;
   const base = { title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION, image: DEFAULT_IMAGE, canonical, robots: true, type: "website" };
 
-  if (PUBLIC_PAGES[path]) return { ...base, ...PUBLIC_PAGES[path] };
+  if (PUBLIC_PAGES[path]) return { ...base, ...PUBLIC_PAGES[path], ...pageExtras(path) };
   if (PRIVATE_PAGES.has(path)) return { ...base, robots: false };
 
   let m;
@@ -68,15 +117,35 @@ export function metaFor(rawPath) {
     const plain = (n) => n.toLowerCase().replace(/[-s]+/g, " ");
     const german = c.name_de && plain(c.name_de) !== plain(c.name) ? c.name_de : null;
     const label = german ? `${german} (${c.name})` : c.name;
-    const price = latestTrendByExternal(c.external_id)?.price;
-    const parts = [`${label} aus dem Pokémon-Set ${c.set_name}, Nr. ${c.number}${c.rarity ? `, Seltenheit ${c.rarity}` : ""}.`];
-    parts.push(price != null ? `Aktueller Cardmarket-Preis: ${eur(price)} mit Preisverlauf.` : "Mit Kartendaten und Preisverlauf.");
+    const trend = latestTrendByExternal(c.external_id);
+    const price = trend?.price;
+    const setPath = `/sets/${encodeURIComponent(slugOfSet(c.set_id))}`;
+    const description =
+      price != null
+        ? `Wie viel ist ${label} (${c.set_name}, Nr. ${c.number}) wert? Aktueller Cardmarket-Wert: ${eur(price)}${c.rarity ? ` · ${c.rarity}` : ""}. Mit Preisverlauf und Ø 30 Tage.`
+        : `${label} aus dem Pokémon-Set ${c.set_name}, Nr. ${c.number}${c.rarity ? `, Seltenheit ${c.rarity}` : ""}. Mit Kartendaten und Preisverlauf.`;
+    const when = trend?.fetched_at ? ` (Cardmarket, Stand ${dateDe(trend.fetched_at)})` : "";
+    const body = wrap(
+      `<nav>${link("/", "Start")} › ${link("/sets", "Alle Karten")} › ${link(setPath, c.set_name)}</nav>` +
+        `<h1>${esc(label)} – ${esc(c.set_name)} ${esc(c.number)}: Wert und Preis</h1>` +
+        (price != null
+          ? `<p>${esc(label)} aus dem Pokémon-Set ${esc(c.set_name)} (Nr. ${esc(c.number)}) ist aktuell etwa <strong>${esc(eur(price))}</strong> wert${esc(when)}.${
+              trend.avg30 != null ? ` Der Durchschnitt der letzten 30 Tage liegt bei ${esc(eur(trend.avg30))}.` : ""
+            }</p>`
+          : `<p>Für ${esc(label)} aus dem Pokémon-Set ${esc(c.set_name)} liegt aktuell kein Preis vor.</p>`) +
+        `<ul><li>Set: ${link(setPath, c.set_name)}</li><li>Kartennummer: ${esc(c.number)}</li>${c.rarity ? `<li>Seltenheit: ${esc(c.rarity)}</li>` : ""}${
+          c.artist ? `<li>Illustrator: ${link(`/illustrator/${encodeURIComponent(c.artist)}`, c.artist)}</li>` : ""
+        }</ul>` +
+        `<p>Die Preise stammen von Cardmarket und werden jede Nacht aktualisiert. Auf der Seite siehst du den Preisverlauf und kannst die Karte zu deiner Sammlung hinzufügen.</p>`
+    );
     return {
       ...base,
-      title: shorten(`${label} Preis – ${c.set_name} ${c.number} | ${SITE_NAME}`, 70),
-      description: shorten(parts.join(" "), 200),
+      title: titled(`${label} Wert & Preis – ${c.set_name} ${c.number}`),
+      description: shorten(description, 200),
       image: c.image_large || c.image_small || DEFAULT_IMAGE,
       type: "article",
+      body,
+      jsonld: [crumbs([["Start", "/"], ["Alle Karten", "/sets"], [c.set_name, setPath], [label, base.canonical.replace(SITE_URL, "")]])],
     };
   }
   if ((m = path.match(/^\/news\/([^/]+)$/))) {
@@ -98,14 +167,33 @@ export function metaFor(rawPath) {
     base.canonical = `${SITE_URL}/sets/${slugOfSet(s.id)}`;
     const year = s.release_date ? ` (${s.release_date.slice(0, 4)})` : "";
     const total = s.total || s.printed_total;
+    const top = analysis("setTopCards")?.[s.id] ?? [];
+    const cards = setCardsStmt.all(s.id);
+    const best = top[0];
+    const setPath = base.canonical.replace(SITE_URL, "");
+    const body = wrap(
+      `<nav>${link("/", "Start")} › ${link("/sets", "Alle Karten")}</nav>` +
+        `<h1>${esc(s.name)}${esc(year)} – Kartenliste, Wert und Preise</h1>` +
+        `<p>Alle ${total ? `${total} ` : ""}Karten des Pokémon-Sets ${esc(s.name)} mit aktuellem Cardmarket-Wert in Euro.${best ? ` Die wertvollste Karte ist ${esc(best.name)} mit etwa ${esc(eur(best.price))}.` : ""}</p>` +
+        (top.length
+          ? `<h2>Die wertvollsten Karten aus ${esc(s.name)}</h2><ol>${top
+              .map((c) => `<li>${link(`/database/${encodeURIComponent(c.slug)}`, c.name)} – ${esc(eur(c.price))}</li>`)
+              .join("")}</ol>`
+          : "") +
+        `<h2>Alle Karten im Set</h2><ul>${cards
+          .map((c) => `<li>${link(`/database/${encodeURIComponent(slugOfCard(c.external_id))}`, `${c.name_de || c.name} (${c.name_de && c.name_de !== c.name ? c.name + ", " : ""}Nr. ${c.number})`)}</li>`)
+          .join("")}</ul>`
+    );
     return {
       ...base,
-      title: shorten(`${s.name}${year} – Kartenliste & Preise | ${SITE_NAME}`, 70),
+      title: titled(`${s.name}${year} – Kartenliste, Wert & Preise`),
       description: shorten(
-        `Alle ${total ? `${total} ` : ""}Karten des Pokémon-Sets ${s.name}${year}: Kartenliste mit aktuellen Cardmarket-Preisen in Euro, Seltenheiten und Sammelfortschritt.`,
+        `Alle ${total ? `${total} ` : ""}Karten des Pokémon-Sets ${s.name}${year} mit aktuellem Cardmarket-Wert in Euro${best ? `. Wertvollste Karte: ${best.name} (${eur(best.price)})` : ""}. Kartenliste, Seltenheiten und Sammelfortschritt.`,
         200
       ),
       image: s.logo || DEFAULT_IMAGE,
+      body,
+      jsonld: [crumbs([["Start", "/"], ["Alle Karten", "/sets"], [s.name, setPath]])],
     };
   }
   if ((m = path.match(/^\/illustrator\/([^/]+)$/))) {
@@ -164,8 +252,10 @@ export function renderIndex(html, meta) {
     <meta name="twitter:title" content="${t}" />
     <meta name="twitter:description" content="${d}" />
     <meta name="twitter:image" content="${esc(meta.image)}" />
+    ${(meta.jsonld ?? []).map((o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`).join("\n    ")}
     <!--seo:end-->`;
-  return html.replace(SEO_BLOCK, () => block);
+  const out = html.replace(SEO_BLOCK, () => block);
+  return meta.body ? out.replace('<div id="root"></div>', () => `<div id="root">${meta.body}</div>`) : out;
 }
 
 // --- Sitemap ---------------------------------------------------------------

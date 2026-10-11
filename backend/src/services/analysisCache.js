@@ -1,3 +1,4 @@
+import { getSetTopCards } from "./setTopCards.js";
 import {
   getSetValueAnalysis,
   getPullRateOverview,
@@ -23,6 +24,7 @@ const BUILDERS = {
   pullOrBuy: getPullOrBuy,
   siteCounts: getSiteCounts,
   cardTypes: listCardTypes,
+  setTopCards: getSetTopCards, // wertvollste Karten je Set, für den sichtbaren Text der Set-Seiten (seo.js)
 };
 // Setzt sich aus den Auswertungen oben zusammen (wird danach gerechnet).
 const DERIVED = {
