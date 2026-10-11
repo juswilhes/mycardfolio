@@ -2,8 +2,10 @@
 //   npm run report   (per Cron: docker compose exec -T app npm run report)
 import { dailySummary, pruneStats } from "../services/stats.js";
 import { sendAdminMail, mailReady, ADMIN_EMAIL } from "../services/mailer.js";
+import { fetchCommunityTopics } from "../services/communityTopics.js";
 
 const s = dailySummary();
+const topics = await fetchCommunityTopics().catch(() => []); // fällt eine Quelle aus, geht die Mail trotzdem raus
 
 const trendMax = Math.max(1, ...s.trend.map((d) => Math.max(d.hits, d.visitors)));
 const hum = (n) => (n == null ? "–" : n); // vor dem ersten Ping unbekannt
@@ -41,9 +43,18 @@ const text = [
   ``,
   `LETZTE 7 TAGE  (Menschen / Besucher / Aufrufe)`,
   ...s.trend.map((d) => `  ${d.day}  ${bar(d.visitors)}  ${hum(d.humans)} / ${d.visitors} / ${d.hits}`),
+  ``,
+  `ANREGUNGEN FÜR DIE NEWS-SEITE (Schlagzeilen und Community-Themen von heute)`,
+  ...topics.flatMap((t) => [
+    `  ${t.name}`,
+    ...(t.items.length
+      ? t.items.flatMap((i) => [`   - ${i.title}`, ...(i.teaser ? [`     ${i.teaser}`] : []), `     ${i.link}`])
+      : [`   (heute nicht abrufbar: ${t.error})`]),
+  ]),
 ].join("\n");
 
 const c = "#241c15", g = "#6b6b6b";
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const row = (l, v) =>
   `<tr><td style="padding:3px 14px 3px 0;color:${g}">${l}</td><td style="padding:3px 0;font-weight:600">${v}</td></tr>`;
 const sect = (title, rows) =>
@@ -62,6 +73,21 @@ const html = `
     <table style="border-collapse:collapse;font-size:14px">${s.topPages.map((p) => `<tr><td style="padding:2px 14px 2px 0;font-weight:600">${p.hits}</td><td style="padding:2px 0;color:${g}">${p.path}</td></tr>`).join("") || `<tr><td style="color:${g}">(keine)</td></tr>`}</table>
     <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">LETZTE 7 TAGE &nbsp;<span style="font-weight:400">Menschen / Besucher / Aufrufe</span></h3>
     <pre style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:${c};margin:0">${s.trend.map((d) => `${d.day}  ${bar(d.visitors)}  ${hum(d.humans)} / ${d.visitors} / ${d.hits}`).join("\n")}</pre>
+    <h3 style="margin:22px 0 2px;font-size:13px;letter-spacing:.04em;color:${g}">ANREGUNGEN FÜR DIE NEWS-SEITE</h3>
+    <p style="margin:0 0 6px;font-size:12px;color:${g}">Schlagzeilen und Community-Themen von heute – als Ideen für Artikel.</p>
+    ${topics
+      .map(
+        (t) => `<p style="margin:12px 0 2px;font-weight:600">${esc(t.name)}</p>${
+          t.items.length
+            ? t.items
+                .map(
+                  (i) => `<p style="margin:4px 0;font-size:14px"><a href="${esc(i.link)}" style="color:${c}">${esc(i.title)}</a>${i.teaser ? `<br><span style="color:${g};font-size:13px">${esc(i.teaser)}</span>` : ""}</p>`
+                )
+                .join("")
+            : `<p style="margin:4px 0;font-size:13px;color:${g}">(heute nicht abrufbar: ${esc(t.error)})</p>`
+        }`
+      )
+      .join("")}
   </div>
 `;
 
