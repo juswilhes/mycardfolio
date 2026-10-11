@@ -30,6 +30,11 @@ export function dailySummary() {
 
   const hitsOn = (day) => one(`SELECT COALESCE(SUM(hits),0) n FROM daily_hits WHERE day = ?`, day);
   const visOn = (day) => one(`SELECT COUNT(*) n FROM daily_visitors WHERE day = ?`, day);
+  const humOn = (day) => one(`SELECT COUNT(*) n FROM daily_humans WHERE day = ?`, day);
+  const botsOn = (day) => one(`SELECT COALESCE(SUM(n),0) n FROM daily_stat WHERE day = ? AND key = 'bot_hits'`, day);
+  // Menschenzählung gibt es erst ab dem ersten Ping: davor "unbekannt" statt einer falschen 0
+  const humansSince = db.prepare(`SELECT MIN(day) d FROM daily_humans`).get().d;
+  const humOrNull = (day) => (humansSince && day >= humansSince ? humOn(day) : null);
 
   return {
     yesterday,
@@ -46,6 +51,8 @@ export function dailySummary() {
       adminId
     ),
 
+    humans: humOrNull(yesterday),
+    botHits: botsOn(yesterday),
     visitors: visOn(yesterday),
     hits: hitsOn(yesterday),
     logins: one(
@@ -86,7 +93,7 @@ export function dailySummary() {
       .prepare(`SELECT path, hits FROM daily_hits WHERE day = ? ORDER BY hits DESC LIMIT 6`)
       .all(yesterday),
 
-    trend: days7.map((day) => ({ day, hits: hitsOn(day), visitors: visOn(day) })),
+    trend: days7.map((day) => ({ day, hits: hitsOn(day), visitors: visOn(day), humans: humOrNull(day) })),
   };
 }
 
@@ -100,4 +107,5 @@ export function pruneStats() {
   db.prepare(`DELETE FROM daily_hits WHERE day < ?`).run(cut(90));
   db.prepare(`DELETE FROM daily_stat WHERE day < ?`).run(cut(90));
   db.prepare(`DELETE FROM daily_visitors WHERE day < ?`).run(cut(7));
+  db.prepare(`DELETE FROM daily_humans WHERE day < ?`).run(cut(7));
 }

@@ -73,6 +73,30 @@ export default function App() {
     document.title = t ? `${t} | mycardfolio` : SITE_TITLE;
   }, [location.pathname]);
 
+  // "Menschlicher Besucher": meldet einmal pro Tag und Browser-Sitzung, dass auf der Seite etwas
+  // getan wurde (scrollen, klicken, tippen, wischen). Roboter tun das nicht. Kein Cookie, kein Tracker.
+  useEffect(() => {
+    if (navigator.webdriver) return undefined; // automatisierte Browser
+    const key = `mcf-ping-${new Date().toDateString()}`;
+    try {
+      if (sessionStorage.getItem(key)) return undefined;
+    } catch {
+      /* ohne Speicher: einmal pro Seitenaufruf */
+    }
+    const events = ["pointerdown", "keydown", "scroll", "touchstart", "wheel"];
+    const ping = () => {
+      events.forEach((e) => window.removeEventListener(e, ping));
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {
+        /* egal */
+      }
+      fetch("/api/ping", { method: "POST", keepalive: true }).catch(() => {});
+    };
+    events.forEach((e) => window.addEventListener(e, ping, { passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, ping));
+  }, []);
+
   async function doLogout() {
     setLoggingOut(true);
     try {

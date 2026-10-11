@@ -196,6 +196,13 @@ CREATE TABLE IF NOT EXISTS daily_visitors (
   vhash TEXT NOT NULL,
   PRIMARY KEY (day, vhash)
 );
+-- daily_humans: davon die Besucher, die auf der Seite etwas getan haben (gescrollt/geklickt,
+-- meldet das Frontend per /api/ping) - ebenfalls nur der Hash, 7 Tage.
+CREATE TABLE IF NOT EXISTS daily_humans (
+  day   TEXT NOT NULL,
+  vhash TEXT NOT NULL,
+  PRIMARY KEY (day, vhash)
+);
 -- daily_stat: sonstige Tages-Zähler (z.B. Serverfehler 5xx).
 CREATE TABLE IF NOT EXISTS daily_stat (
   day TEXT NOT NULL,
@@ -277,6 +284,7 @@ addColumn("artist_source", "TEXT");    // woher der Illustrator kommt: "dataset"
 addColumn("artist_manual", "INTEGER"); // 1 = vom Nutzer gesetzt, darf beim Re-Import nicht überschrieben werden
 addColumn("cardmarket_product_id", "INTEGER"); // für den Direktlink zu Cardmarket
 addColumn("cardmarket_updated", "TEXT");       // Zeitstempel des letzten Cardmarket-Werts
+addColumn("cardmarket_expansion", "INTEGER");  // Cardmarket-Erweiterung (Set) der Karte, für die Such-Ersatzadresse
 addColumn("cardmarket_page", "TEXT");          // echte Cardmarket-Seite der Karte (NULL = ungeprüft, '' = unbekannt), siehe cardmarketLinks.js
 addColumn("view_count", "INTEGER DEFAULT 0");  // wie oft die Detailseite aufgerufen wurde ("Beliebtheit")
 addColumn("name_de", "TEXT"); // deutscher Kartenname von TCGdex - auch für Trainer-/Item-Karten (nicht nur Pokémon-Namen)

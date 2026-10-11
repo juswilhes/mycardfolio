@@ -1,4 +1,5 @@
 import db from "../db/index.js";
+import { loadGuide, expansionOfProduct } from "./cardmarketGuide.js";
 
 // Der Link "Auf Cardmarket ansehen" muss auf die genaue Karte führen. Cardmarkets echte
 // Adressen enthalten Set- und Kartennamen (.../Singles/Scarlet-Violet/Drowzee-V2-SVI210),
@@ -11,9 +12,32 @@ const REDIRECT_URL = "https://prices.pokemontcg.io/cardmarket/";
 const UTM = "utm_source=mycardfolio&utm_medium=referral"; // damit Cardmarket die Besucher von uns erkennt
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function cardmarketLink({ cardmarket_page, name }) {
+export function cardmarketLink({ cardmarket_page, name, cardmarket_expansion }) {
   if (cardmarket_page) return `${cardmarket_page}?${UTM}`;
-  return name ? `https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=${encodeURIComponent(name)}&${UTM}` : null;
+  if (!name) return null;
+  const q = encodeURIComponent(name);
+  // Ersatz: Suche nach dem Namen, wenn bekannt auf das Set der Karte beschränkt (dann nur wenige Treffer)
+  if (cardmarket_expansion) return `https://www.cardmarket.com/de/Pokemon/Products/Singles?idExpansion=${cardmarket_expansion}&searchString=${q}&${UTM}`;
+  return `https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=${q}&${UTM}`;
+}
+
+// Cardmarket-Erweiterung (Set) je Karte aus der Preisliste, für den Ersatzlink
+export async function fillCardmarketExpansions() {
+  const rows = db.prepare(`SELECT id, cardmarket_product_id AS p FROM cards WHERE cardmarket_expansion IS NULL AND cardmarket_product_id IS NOT NULL`).all();
+  if (!rows.length) return 0;
+  const guide = await loadGuide();
+  const upd = db.prepare(`UPDATE cards SET cardmarket_expansion = ? WHERE id = ?`);
+  let n = 0;
+  db.transaction(() => {
+    for (const r of rows) {
+      const e = expansionOfProduct(guide, r.p);
+      if (e) {
+        upd.run(e, r.id);
+        n++;
+      }
+    }
+  })();
+  return n;
 }
 
 // -> Adresse | '' (kein Treffer) | null (Fehler, später noch einmal)
@@ -67,6 +91,11 @@ export async function fillCardmarketPages({ limit = 5000, retryEmpty = false } =
     }
   }
   await Promise.all(Array.from({ length: 5 }, worker));
+  try {
+    await fillCardmarketExpansions();
+  } catch (e) {
+    console.error("[cardmarket-links] Erweiterungen:", e.message);
+  }
   if (todo.length) console.log(`[cardmarket-links] ${stats.gefunden} Adressen gefunden, ${stats.unbekannt} unbekannt (Suche als Ersatz), ${stats.offen} später erneut.`);
   return stats;
 }
@@ -74,7 +103,7 @@ export async function fillCardmarketPages({ limit = 5000, retryEmpty = false } =
 // Nach dem Deploy einmal im Hintergrund (nur Netzwerk, kaum Rechenlast), danach hält der
 // Nachtlauf neue Karten aktuell.
 export function catchUpCardmarketPages() {
-  const open = db.prepare(`SELECT COUNT(*) n FROM cards WHERE cardmarket_page IS NULL`).get().n;
+  const open = db.prepare(`SELECT COUNT(*) n FROM cards WHERE cardmarket_page IS NULL OR (cardmarket_expansion IS NULL AND cardmarket_product_id IS NOT NULL)`).get().n;
   if (!open) return;
   setTimeout(() => {
     fillCardmarketPages({ limit: 30000 }).catch((e) => console.error("[cardmarket-links] Nachholen fehlgeschlagen:", e.message));

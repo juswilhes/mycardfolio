@@ -66,7 +66,11 @@ export default function Datenschutz() {
           <em>nicht umkehrbaren Hash</em> aus deiner IP-Adresse, dem Datum und
           einem geheimen Zufallswert. Aus dem Hash lässt sich die IP nicht
           zurückrechnen; er wird nur zum Zählen verschiedener Besucher genutzt
-          und nach <strong>spätestens 7 Tagen gelöscht</strong>.
+          und nach <strong>spätestens 7 Tagen gelöscht</strong>. Ebenfalls anonym
+          zählen wir, wie viele dieser Besucher auf der Seite aktiv waren
+          (gescrollt oder geklickt), und bekannte Roboter (z. B. Suchmaschinen)
+          rechnen wir heraus. Die dafür ausgewertete Browserkennung speichern
+          wir nicht.
         </li>
       </ul>
       <p>

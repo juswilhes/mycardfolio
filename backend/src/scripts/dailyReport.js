@@ -6,6 +6,7 @@ import { sendAdminMail, mailReady, ADMIN_EMAIL } from "../services/mailer.js";
 const s = dailySummary();
 
 const trendMax = Math.max(1, ...s.trend.map((d) => Math.max(d.hits, d.visitors)));
+const hum = (n) => (n == null ? "–" : n); // vor dem ersten Ping unbekannt
 const bar = (n) => "▮".repeat(Math.round((n / trendMax) * 12)).padEnd(12, "▯");
 const health = s.errors5xx === 0 ? "keine Serverfehler" : `${s.errors5xx} Serverfehler (5xx)!`;
 
@@ -18,7 +19,9 @@ const text = [
   `  Nutzer:                 ${s.otherUsers}  (${s.verifiedUsers} E-Mail bestätigt)`,
   ``,
   `NUTZUNG GESTERN`,
-  `  Besucher:               ${s.visitors}`,
+  `  MENSCHLICHE BESUCHER:   ${hum(s.humans)}   (haben auf der Seite gescrollt/geklickt)`,
+  `  Besucher insgesamt:     ${s.visitors}   (ohne erkannte Roboter)`,
+  `  Roboter-Zugriffe:       ${s.botHits}   (Suchmaschinen, KI-Crawler, Skripte)`,
   `  Seitenaufrufe:          ${s.hits}`,
   `  Anmeldungen:            ${s.logins}`,
   `  Nutzer mit neuen Karten:${s.activeCollectors}  (${s.cardsAddedYesterday} Karten)`,
@@ -36,8 +39,8 @@ const text = [
     ? s.topPages.map((p) => `  ${String(p.hits).padStart(4)}  ${p.path}`)
     : [`  (keine)`]),
   ``,
-  `LETZTE 7 TAGE  (Besucher / Aufrufe)`,
-  ...s.trend.map((d) => `  ${d.day}  ${bar(d.visitors)}  ${d.visitors} / ${d.hits}`),
+  `LETZTE 7 TAGE  (Menschen / Besucher / Aufrufe)`,
+  ...s.trend.map((d) => `  ${d.day}  ${bar(d.visitors)}  ${hum(d.humans)} / ${d.visitors} / ${d.hits}`),
 ].join("\n");
 
 const c = "#241c15", g = "#6b6b6b";
@@ -51,14 +54,14 @@ const html = `
     <h2 style="margin:0">mycardfolio – Tagesbericht</h2>
     <p style="margin:2px 0 4px;color:${g}">für ${s.yesterday}${s.adminFiltered ? " · ohne deine eigenen Zugriffe" : ""}</p>
     ${sect("WACHSTUM", row("Neue Registrierungen", s.newUsers) + row("Nutzer", `${s.otherUsers} <span style="font-weight:400;color:${g}">(${s.verifiedUsers} bestätigt)</span>`))}
-    ${sect("NUTZUNG GESTERN", row("Besucher", s.visitors) + row("Seitenaufrufe", s.hits) + row("Anmeldungen", s.logins) + row("Nutzer mit neuen Karten", `${s.activeCollectors} <span style="font-weight:400;color:${g}">(${s.cardsAddedYesterday} Karten)</span>`))}
+    ${sect("NUTZUNG GESTERN", row("<b>Menschliche Besucher</b>", `<span style="font-size:18px">${hum(s.humans)}</span> <span style="font-weight:400;color:${g}">(haben gescrollt/geklickt)</span>`) + row("Besucher insgesamt", `${s.visitors} <span style="font-weight:400;color:${g}">(ohne erkannte Roboter)</span>`) + row("Roboter-Zugriffe", s.botHits) + row("Seitenaufrufe", s.hits) + row("Anmeldungen", s.logins) + row("Nutzer mit neuen Karten", `${s.activeCollectors} <span style="font-weight:400;color:${g}">(${s.cardsAddedYesterday} Karten)</span>`))}
     <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">GESUNDHEIT</h3>
     <p style="margin:0;font-weight:600;color:${s.errors5xx === 0 ? "#1a7f4b" : "#c02626"}">${health}</p>
     ${sect("STAND JETZT", row("Aktive Sitzungen", s.activeSessions) + row("Sammler mit Karten", s.collectors) + row("Karten insgesamt", s.totalCards))}
     <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">TOP-SEITEN GESTERN</h3>
     <table style="border-collapse:collapse;font-size:14px">${s.topPages.map((p) => `<tr><td style="padding:2px 14px 2px 0;font-weight:600">${p.hits}</td><td style="padding:2px 0;color:${g}">${p.path}</td></tr>`).join("") || `<tr><td style="color:${g}">(keine)</td></tr>`}</table>
-    <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">LETZTE 7 TAGE &nbsp;<span style="font-weight:400">Besucher / Aufrufe</span></h3>
-    <pre style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:${c};margin:0">${s.trend.map((d) => `${d.day}  ${bar(d.visitors)}  ${d.visitors} / ${d.hits}`).join("\n")}</pre>
+    <h3 style="margin:18px 0 4px;font-size:13px;letter-spacing:.04em;color:${g}">LETZTE 7 TAGE &nbsp;<span style="font-weight:400">Menschen / Besucher / Aufrufe</span></h3>
+    <pre style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:${c};margin:0">${s.trend.map((d) => `${d.day}  ${bar(d.visitors)}  ${hum(d.humans)} / ${d.visitors} / ${d.hits}`).join("\n")}</pre>
   </div>
 `;
 

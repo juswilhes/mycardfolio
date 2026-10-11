@@ -21,7 +21,7 @@ import statsRouter from "./routes/stats.js";
 import articlesRouter from "./routes/articles.js";
 import { authRequired } from "./middleware/auth.js";
 import { isOperatorUser } from "./lib/admin.js";
-import { countPageView, isKnownRoute } from "./middleware/hits.js";
+import { countPageView, isKnownRoute, humanPing } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { seedStarterArticles } from "./services/articles.js";
@@ -100,6 +100,7 @@ app.use(
 );
 
 // Öffentlich: Konten, Karten-Stammdaten, Set-Übersicht.
+app.post("/api/ping", humanPing);
 app.use("/api/auth", authRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/sets", setsRouter);

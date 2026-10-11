@@ -74,7 +74,7 @@ const listCollectionStmt = db.prepare(`
          ci.language, ci.variant, ci.grading_company, ci.grade,
          c.id AS card_id, c.external_id, c.name, c.set_name, c.set_id, c.number, c.rarity,
          c.artist, c.image_small, c.image_large,
-         c.cardmarket_product_id, c.cardmarket_updated, c.cardmarket_page
+         c.cardmarket_product_id, c.cardmarket_updated, c.cardmarket_page, c.cardmarket_expansion
   FROM collection_items ci
   JOIN cards c ON c.id = ci.card_id
   WHERE ci.user_id = ?
@@ -260,7 +260,7 @@ export function cardmarketBreakdownByExternal(externalId) {
 }
 
 export const cardMetaByExternalId = db.prepare(`
-  SELECT id, name, cardmarket_product_id, cardmarket_updated, cardmarket_page, price_valid_from
+  SELECT id, name, cardmarket_product_id, cardmarket_updated, cardmarket_page, cardmarket_expansion, price_valid_from
   FROM cards
   WHERE external_id = ? AND game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
