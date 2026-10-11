@@ -16,7 +16,6 @@ const FEATURES = [
   { icon: "import", title: "Massen-Import", text: "Excel-Tabelle einfügen – mycardfolio erkennt Name, Nummer, Menge und Preis, egal wie deine Tabelle aufgebaut ist." },
   { icon: "search", title: "Karten-Datenbank", text: "Über 20.000 Karten, deutsche Namen inklusive. Zum Nachschlagen brauchst du gar kein Konto." },
   { icon: "chart", title: "Analysen", text: "Hit Rate, Wert pro Pack, Ziehen oder kaufen und eine Set-Rangliste – damit der nächste Booster keine Wundertüte bleibt." },
-  { icon: "bag", title: "Marktplatz", text: "Karten und Sealed-Produkte anbieten oder finden – als Kontaktbörse für Sammler, mit Bewertungen." },
   { icon: "medal", title: "Orden sammeln", text: "Wie in der Arena, nur ohne Kampf: Erreiche Meilensteine mit deiner Sammlung und sammle Orden." },
   { icon: "heart", title: "Watchlist", text: "Karten im Auge behalten, ohne sie zu besitzen – mit aktuellem Preis auf einen Blick." },
 ];

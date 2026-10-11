@@ -6,3 +6,5 @@ backend/vendor/
 .env
 dist/
 .DS_Store
+
+marktplatz-sicherung-*.json

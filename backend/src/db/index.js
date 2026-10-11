@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -207,100 +208,6 @@ CREATE TABLE IF NOT EXISTS app_meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-
--- Marktplatz: Nutzer verkaufen Karten/Sealed-Produkte an andere Nutzer.
--- Zahlungsabwicklung läuft über Stripe Connect (siehe stripeConnect.js) -
--- mycardfolio selbst nimmt nie Geld entgegen, Stripe verwaltet Käuferschutz,
--- KYC der Verkäufer und die Auszahlung; wir orchestrieren nur.
-CREATE TABLE IF NOT EXISTS seller_accounts (
-  user_id              INTEGER PRIMARY KEY REFERENCES users(id),
-  stripe_account_id    TEXT UNIQUE,
-  onboarding_complete  INTEGER NOT NULL DEFAULT 0,
-  created_at           TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS marketplace_listings (
-  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-  seller_user_id      INTEGER NOT NULL REFERENCES users(id),
-  kind                TEXT NOT NULL,   -- 'card' | 'sealed'
-  collection_item_id  INTEGER REFERENCES collection_items(id),
-  sealed_product_id   INTEGER REFERENCES sealed_products(id),
-  external_id         TEXT,            -- Karten-external_id (Bild/Link), NULL bei Sealed
-  title               TEXT NOT NULL,
-  image_url           TEXT,            -- Referenzbild (Kartenbild/Sealed-Foto aus der Sammlung)
-  photo_url           TEXT,            -- vom Verkäufer hochgeladenes Foto DES ECHTEN Exemplars (Vertrauen/Echtheit)
-  price_cents         INTEGER NOT NULL,
-  currency            TEXT NOT NULL DEFAULT 'EUR',
-  quantity            INTEGER NOT NULL DEFAULT 1,
-  condition           TEXT,
-  description         TEXT,
-  status              TEXT NOT NULL DEFAULT 'active', -- active | sold | cancelled
-  created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_listings_status ON marketplace_listings(status);
-CREATE INDEX IF NOT EXISTS idx_listings_seller ON marketplace_listings(seller_user_id);
-
-CREATE TABLE IF NOT EXISTS marketplace_orders (
-  id                          INTEGER PRIMARY KEY AUTOINCREMENT,
-  listing_id                  INTEGER NOT NULL REFERENCES marketplace_listings(id),
-  buyer_user_id               INTEGER NOT NULL REFERENCES users(id),
-  seller_user_id              INTEGER NOT NULL REFERENCES users(id),
-  stripe_checkout_session_id  TEXT UNIQUE,
-  stripe_payment_intent_id    TEXT,
-  amount_cents                INTEGER NOT NULL,
-  fee_cents                   INTEGER NOT NULL DEFAULT 0,
-  currency                    TEXT NOT NULL DEFAULT 'EUR',
-  status                      TEXT NOT NULL DEFAULT 'pending', -- pending | paid | shipped | completed | cancelled | refunded
-  shipping_name               TEXT,
-  shipping_address            TEXT, -- JSON, von Stripe Checkout erfasst
-  tracking_code                TEXT,
-  created_at                  TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at                  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_orders_buyer ON marketplace_orders(buyer_user_id);
-CREATE INDEX IF NOT EXISTS idx_orders_seller ON marketplace_orders(seller_user_id);
-
--- Bewertungen nach einem abgeschlossenen Kauf, in beide Richtungen (Käufer
--- bewertet Verkäufer UND umgekehrt) - Vertrauen ist hier bewusst
--- zweiseitig, nicht nur "Verkäufer-Bewertung" wie bei den meisten Börsen.
-CREATE TABLE IF NOT EXISTS marketplace_reviews (
-  id                INTEGER PRIMARY KEY AUTOINCREMENT,
-  order_id          INTEGER NOT NULL REFERENCES marketplace_orders(id),
-  reviewer_user_id  INTEGER NOT NULL REFERENCES users(id),
-  reviewee_user_id  INTEGER NOT NULL REFERENCES users(id),
-  role              TEXT NOT NULL, -- 'buyer_to_seller' | 'seller_to_buyer'
-  rating            INTEGER NOT NULL, -- 1..5
-  comment           TEXT,
-  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(order_id, role)
-);
-CREATE INDEX IF NOT EXISTS idx_reviews_reviewee ON marketplace_reviews(reviewee_user_id);
-
--- Kontaktanfragen (Stufe 1 ohne Bezahlfunktion): Käufer schreibt dem
--- Verkäufer, die Nachricht geht per Mail raus. Die Tabelle dient dem
--- Spam-Schutz (max. 1 Anfrage/Stunde je Angebot und Käufer) und als
--- Auswahlliste, wenn der Verkäufer "verkauft an ..." markiert.
-CREATE TABLE IF NOT EXISTS marketplace_contacts (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  listing_id     INTEGER NOT NULL REFERENCES marketplace_listings(id),
-  buyer_user_id  INTEGER NOT NULL REFERENCES users(id),
-  message        TEXT NOT NULL,
-  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_contacts_listing ON marketplace_contacts(listing_id);
-
--- Fragen/Kommentare zu einem Angebot - Community-Austausch statt rein
--- transaktionaler Kauf ohne jeden Kontakt vorher.
-CREATE TABLE IF NOT EXISTS marketplace_listing_comments (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  listing_id   INTEGER NOT NULL REFERENCES marketplace_listings(id),
-  user_id      INTEGER NOT NULL REFERENCES users(id),
-  body         TEXT NOT NULL,
-  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_listing_comments_listing ON marketplace_listing_comments(listing_id);
 
 CREATE INDEX IF NOT EXISTS idx_price_card ON price_snapshots(card_id, fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name);
@@ -516,11 +423,19 @@ if (portfolioSnapshotsRebuilt) {
   db.exec(`DROP TABLE portfolio_snapshots_old`);
 }
 
-// marketplace_listings: photo_url (echtes Foto des Exemplars) kam nach dem
-// ersten Deploy des Marktplatzes dazu.
-const mlColumns = new Set(db.prepare(`PRAGMA table_info(marketplace_listings)`).all().map((c) => c.name));
-if (!mlColumns.has("photo_url")) {
-  db.exec(`ALTER TABLE marketplace_listings ADD COLUMN photo_url TEXT`);
+// Der Marktplatz wurde entfernt (Betreiber-Entscheid 11.10.2026). Vorhandene Daten einmalig
+// als JSON neben der Datenbank sichern, dann die Tabellen löschen - sonst blockieren übrig
+// gebliebene Verweise (Fremdschlüssel auf collection_items/users) das Löschen von Einträgen.
+{
+  const have = new Set(db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all().map((t) => t.name));
+  const tables = ["marketplace_listing_comments", "marketplace_contacts", "marketplace_reviews", "marketplace_orders", "marketplace_listings", "seller_accounts"].filter((t) => have.has(t));
+  if (tables.length) {
+    const dump = Object.fromEntries(tables.map((t) => [t, db.prepare(`SELECT * FROM ${t}`).all()]));
+    const file = path.join(path.dirname(dbPath), `marktplatz-sicherung-${new Date().toISOString().slice(0, 10)}.json`);
+    fs.writeFileSync(file, JSON.stringify(dump, null, 1));
+    db.transaction(() => tables.forEach((t) => db.exec(`DROP TABLE ${t}`)))();
+    console.log(`[db] Marktplatz-Tabellen entfernt, Sicherung: ${file} (${Object.entries(dump).map(([t, r]) => t + ": " + r.length).join(", ")})`);
+  }
 }
 
 // Kontosperre nach zu vielen Fehlversuchen (zusätzlich zum IP-Limit).

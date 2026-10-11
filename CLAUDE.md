@@ -34,10 +34,8 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 ## Sammlung: Variante zählt
 - Jeder Sammlungseintrag hat eine Variante (Normal/Holo/Reverse Holo/1st Edition) und wird mit dem Preis **seiner** Variante bewertet (`latestTrend(card_id, variant)`, Portfolio-Verlauf und Bewegungen über `variantSeries` in `cardService.js`). Nie mit einem Preis pro Karte rechnen - Gruppen (mehrere Einträge einer Karte) summieren je Eintrag.
 
-## Marktplatz (Stand)
-- „Stufe 1": läuft **ohne Stripe** als Kontaktbörse (Angebot, Foto Pflicht ab 10 €, Fragen, „Kontakt aufnehmen" per Mail, „Verkauft", Bewertungen). Kein Käuferschutz (Warnhinweis im UI).
-- Bezahlung (Stripe Connect) ist gebaut, schaltet sich mit `STRIPE_SECRET_KEY` ein. **Vor Livegang umbauen:** Verkäufer soll die Stripe-Gebühren tragen (Direct Charges, Konten mit `fees.payer=account`), sonst zahlt die Plattform 2 €/Verkäufer/Monat drauf.
-- Registrierung ist auf dem Server geschlossen (`REGISTRATION_OPEN=false`).
+## Kein Marktplatz (Justus, 11.10.2026)
+- Der Marktplatz (Angebote, Kontakt, Bewertungen, Stripe) wurde **komplett entfernt** - Justus will bei einem Antrag an Cardmarket nicht als Konkurrent wirken. **Nicht wieder einbauen**, keine Verkaufs-/Angebotsfunktion zwischen Nutzern. "Verkauft" in der Sammlung (eigene Verkäufe fürs Portfolio, `/verkauft`) ist etwas anderes und bleibt. Die Marktplatz-Tabellen werden beim ersten Start einmalig als JSON (`marktplatz-sicherung-<Datum>.json`, neben der Datenbank im Volume) gesichert und dann gelöscht (`db/index.js`).
 
 ## UI-Stil
 - **Keine Emojis vor Texten** (Überschriften, Menü, Buttons, Listen) - wirkt unprofessionell (Justus). Symbole als Vektorgrafik über `components/Icon.jsx` (Linien-SVG, erbt die Textfarbe; neues Symbol = Eintrag in `PATHS`). Erlaubte Ausnahmen: Animations-Konfetti, Sterne (★), Herz-Umschalter, Hell/Dunkel-Schalter.
@@ -69,7 +67,7 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - "Pull Rates": Matrix Seltenheit x Set, Daten von Hand (`pull_rates`, `PATCH /api/sets/:id/pull-rates`), Pflege über "Pull Rates pflegen" in der Analyse. Die Hit Rate (Chance auf mind. 1 besondere Karte pro Pack) wird in `marketStats.js` berechnet. Sets, die in fremden Boostern stecken (Classic Collection -> 30th Celebration), stehen in `BOOSTER_OF` und erscheinen in den Analysen nicht als eigene Spalte, sondern zählen zum Booster-Set.
 
 ## Watchlist
-- Es gibt nur EINE Merkliste und sie heißt überall **Watchlist** (Herz-Symbol auf Karten, Seite `/watchlist`, erreichbar über den Button auf "Meine Sammlung"; nicht in der Hauptnavigation). Keine zweite "Wunschliste" anlegen. Neue Marktplatz-Angebote lösen eine Mail an alle aus, die die Karte auf der Watchlist haben.
+- Es gibt nur EINE Merkliste und sie heißt überall **Watchlist** (Herz-Symbol auf Karten, Seite `/watchlist`, erreichbar über den Button auf "Meine Sammlung"; nicht in der Hauptnavigation). Keine zweite "Wunschliste" anlegen.
 
 ## Offene Punkte
-DSGVO-Export um Marktplatzdaten erweitern, Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.
+Frontend-Abhängigkeiten (Vite/React Router) auf neue Hauptversionen heben.

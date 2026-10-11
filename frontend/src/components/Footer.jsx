@@ -11,7 +11,6 @@ export default function Footer() {
           <Link to="/news" className="hover:text-ink">News</Link>
           <Link to="/impressum" className="hover:text-ink">Impressum</Link>
           <Link to="/datenschutz" className="hover:text-ink">Datenschutz</Link>
-          <Link to="/marktplatz-agb" className="hover:text-ink">Marktplatz-AGB</Link>
         </nav>
       </div>
       <p className="max-w-5xl mx-auto mt-4 leading-relaxed">

@@ -60,34 +60,3 @@ export function sendAdminMail(subject, { text, html }) {
   return send({ to: ADMIN_EMAIL, subject, text, html });
 }
 
-// Jemand bietet eine Karte an, die auf der Watchlist eines anderen Nutzers
-// steht - Community-Feature: statt nur selbst zu suchen, wird man
-// automatisch benachrichtigt, sobald "seine" Karte verfügbar wird.
-export function sendWatchlistMatchMail(email, { cardName, price, listingUrl }) {
-  return send({
-    to: email,
-    subject: `mycardfolio – ${cardName} ist im Marktplatz aufgetaucht`,
-    text: `Eine Karte von deiner Watchlist wird gerade im Marktplatz angeboten:\n\n${cardName} – ${price}\n\n${listingUrl}\n\nDu bekommst diese Mail, weil "${cardName}" auf deiner Watchlist steht.`,
-  });
-}
-
-// Kaufinteresse: Nachricht eines Käufers an den Verkäufer. Reply-To ist die
-// Adresse des Käufers, damit beide direkt per Mail weiterschreiben können
-// (Zahlung und Versand regeln sie ohne mycardfolio selbst).
-export function sendListingContactMail(email, { listingTitle, listingUrl, message, buyerName, buyerEmail }) {
-  return send({
-    to: email,
-    replyTo: buyerEmail,
-    subject: `mycardfolio – Interesse an "${listingTitle}"`,
-    text: `${buyerName || buyerEmail} interessiert sich für dein Angebot "${listingTitle}":\n\n${message}\n\nAntworten kannst du direkt auf diese Mail (Antwort geht an ${buyerEmail}).\nAngebot: ${listingUrl}\n\nWenn ihr euch einig seid: Markiere das Angebot bei mycardfolio als verkauft, dann könnt ihr euch gegenseitig bewerten.`,
-  });
-}
-
-// Neue Frage/Kommentar zu einem eigenen Angebot.
-export function sendListingCommentMail(email, { listingTitle, listingUrl, authorName }) {
-  return send({
-    to: email,
-    subject: `mycardfolio – Neue Frage zu deinem Angebot "${listingTitle}"`,
-    text: `${authorName || "Jemand"} hat eine Frage zu deinem Angebot "${listingTitle}" gestellt:\n\n${listingUrl}`,
-  });
-}

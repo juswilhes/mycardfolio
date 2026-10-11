@@ -6,12 +6,10 @@ import {
   updateCardArtist,
   addToCollection,
   getWatchlistIds,
-  getListingsForCard,
   getCollection,
   updateCollectionItem,
   deleteCollectionItem,
   sellCollectionItem,
-  createListing,
 } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
@@ -19,11 +17,9 @@ import { usePageTitle } from "../hooks/usePageTitle.js";
 import CollectionItemDialog, { conditionLabel, variantLabel, gradeLabel } from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
-import CardMarketListings from "../components/CardMarketListings.jsx";
 import ZoomableCardImage from "../components/ZoomableCardImage.jsx";
 import SellDialog from "../components/SellDialog.jsx";
 import SaleCelebrationAnimation from "../components/SaleCelebrationAnimation.jsx";
-import SellListingDialog from "../components/SellListingDialog.jsx";
 
 const fmt = (n) => `${Number(n).toFixed(2)} €`;
 
@@ -54,7 +50,6 @@ export default function CardInfo() {
   const [busy, setBusy] = useState(false);
   const [addError, setAddError] = useState(null);
   const [watched, setWatched] = useState(false);
-  const [listings, setListings] = useState(null);
   const navigate = useNavigate();
 
   // Eigene Käufe dieser Karte (nur mit Login) - "Deine Sammlung" unten.
@@ -64,9 +59,6 @@ export default function CardInfo() {
   const [celebration, setCelebration] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [entriesBusy, setEntriesBusy] = useState(false);
-  const [listEntry, setListEntry] = useState(null);
-  const [listError, setListError] = useState(null);
-  const [listed, setListed] = useState(null);
   usePageTitle(card ? `${card.name} (${card.set_name} ${card.number}) – Preis & Verlauf | mycardfolio` : null);
 
   const loadEntries = useCallback(() => {
@@ -84,14 +76,6 @@ export default function CardInfo() {
     if (!user || !externalId) return setWatched(false);
     getWatchlistIds().then((ids) => setWatched(ids.includes(externalId))).catch(() => {});
   }, [externalId, user]);
-
-  useEffect(() => {
-    if (!externalId) return;
-    setListings(null);
-    getListingsForCard(externalId)
-      .then(setListings)
-      .catch(() => setListings([]));
-  }, [externalId]);
 
   useEffect(() => {
     // nach dem Umstellen auf die lesbare Adresse nicht noch einmal laden
@@ -173,29 +157,6 @@ export default function CardInfo() {
 
   const removeEntry = (id) => withEntriesReload(() => deleteCollectionItem(id)).then(() => setConfirmDeleteId(null));
 
-  async function listOnMarketplace(values) {
-    setEntriesBusy(true);
-    setListError(null);
-    try {
-      await createListing({
-        kind: "card",
-        collectionItemId: listEntry.collection_item_id,
-        ...values,
-      });
-      setListEntry(null);
-      setListed(listEntry.collection_item_id);
-      loadEntries();
-    } catch (err) {
-      setListError(
-        err.status === 503
-          ? "Der Marktplatz ist noch nicht eingerichtet."
-          : err.message || "Angebot konnte nicht erstellt werden."
-      );
-    } finally {
-      setEntriesBusy(false);
-    }
-  }
-
   if (error) return <p className="text-rose text-sm">Karteninfo konnte nicht geladen werden.</p>;
   if (!card) return <p className="text-subtle text-sm">Lade Kartendetails …</p>;
 
@@ -257,15 +218,6 @@ export default function CardInfo() {
             >
               {user ? "+ Zum Portfolio hinzufügen" : "Anmelden zum Hinzufügen"}
             </button>
-            <button
-              onClick={() => document.getElementById("angebote")?.scrollIntoView({ behavior: "smooth" })}
-              disabled={!listings || listings.length === 0}
-              className="border border-line px-4 py-2 rounded-full text-sm hover:border-ink disabled:opacity-50 disabled:hover:border-line"
-            >
-              {listings && listings.length > 0
-                ? `${listings.length} ${listings.length === 1 ? "Angebot" : "Angebote"} ansehen`
-                : "Keine Angebote"}
-            </button>
             {user && (
               <WatchlistHeart
                 externalId={externalId}
@@ -292,8 +244,6 @@ export default function CardInfo() {
         card={card}
         history={history}
       />
-
-      <CardMarketListings listings={listings} />
 
       {entries && entries.length > 0 && (
         <div className="mt-10">
@@ -376,21 +326,6 @@ export default function CardInfo() {
                     >
                       Verkauft
                     </button>
-                    {e.listing_id || listed === e.collection_item_id ? (
-                      <Link
-                        to={e.listing_id ? `/marktplatz/angebot/${e.listing_id}` : "/marktplatz"}
-                        className="border border-mint text-mint text-xs px-3 py-1.5 rounded-full"
-                      >
-                        Im Marktplatz angeboten
-                      </Link>
-                    ) : (
-                      <button
-                        onClick={() => { setListError(null); setListEntry(e); }}
-                        className="border border-line text-xs px-3 py-1.5 rounded-full hover:border-ink"
-                      >
-                        Im Marktplatz anbieten
-                      </button>
-                    )}
                     {confirmDeleteId === e.collection_item_id ? (
                       <>
                         <button
@@ -436,16 +371,6 @@ export default function CardInfo() {
         <PortfolioAddedAnimation card={card} onDone={() => { setCelebrate(false); loadEntries(); }} />
       )}
 
-      {listEntry && (
-        <SellListingDialog
-          title={`${card.name} (${card.set_name} #${card.number})`}
-          image={card.image_small}
-          busy={entriesBusy}
-          error={listError}
-          onConfirm={listOnMarketplace}
-          onClose={() => !entriesBusy && setListEntry(null)}
-        />
-      )}
       {editEntry && (
         <CollectionItemDialog
           card={card}

@@ -35,16 +35,8 @@ const PUBLIC_PAGES = {
     description:
       "Artikel rund ums Sammeln: Hit Rates, Pull Rates, Kartenpreise und Auswertungen von mycardfolio – verständlich erklärt.",
   },
-  "/marktplatz": {
-    title: "Marktplatz für Pokémon-Karten | mycardfolio",
-    description: "Pokémon-Karten und Sealed-Produkte von anderen Sammlern: Angebote ansehen und den Verkäufer kontaktieren.",
-  },
   "/impressum": { title: "Impressum | mycardfolio", description: "Impressum und Anbieterkennzeichnung von mycardfolio." },
   "/datenschutz": { title: "Datenschutzerklärung | mycardfolio", description: "So geht mycardfolio mit deinen Daten um." },
-  "/marktplatz-agb": {
-    title: "Marktplatz-Bedingungen | mycardfolio",
-    description: "Nutzungsbedingungen für den Marktplatz von mycardfolio.",
-  },
 };
 const PRIVATE_PAGES = new Set([
   "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen", "/verify", "/import",
@@ -126,7 +118,7 @@ export function metaFor(rawPath) {
       description: `${n} Pokémon-Karte${n === 1 ? "" : "n"} des Illustrators ${name} mit aktuellen Cardmarket-Preisen.`,
     };
   }
-  // Marktplatz-Angebote und Verkäuferprofile sind kurzlebig und persönlich -> nicht indexieren
+  // alles Unbekannte nicht indexieren
   return { ...base, robots: false };
 }
 

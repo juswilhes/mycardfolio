@@ -30,8 +30,7 @@ export default function Datenschutz() {
         technisch beim Seitenaufruf anfallenden Daten, deine Konto- und
         Sammlungsdaten sowie – für die Anzeige der Kartenbilder – eine
         Verbindung deines Browsers zu externen Bild-Servern (siehe Ziffer 8).
-        Nutzt du den Marktplatz, kommt die Zahlungsabwicklung über Stripe
-        hinzu (siehe Ziffer 9). Wir setzen keine Werbe- oder Tracking-Cookies
+        Wir setzen keine Werbe- oder Tracking-Cookies
         ein und nutzen keine Analyse-Dienste.
       </p>
 
@@ -150,70 +149,7 @@ export default function Datenschutz() {
         (Proxy), die diese Übermittlung vermeidet, ist geplant.
       </p>
 
-      <h2>9. Marktplatz: Angebote, Bewertungen und Zahlungsabwicklung</h2>
-      <p>
-        Angebote im Marktplatz (Titel, Preis, Zustand, Beschreibung sowie ein
-        von dir hochgeladenes Foto des Exemplars – ab 10 € Angebotspreis
-        Pflicht, darunter freiwillig) sind öffentlich
-        einsehbar. Ebenso öffentlich sichtbar sind Fragen/Kommentare zu einem
-        Angebot sowie Bewertungen (Sterne + optionaler Text), die sich Käufer
-        und Verkäufer nach einem Kauf gegenseitig geben können – jeweils mit
-        deinem Anzeigenamen. Ein hochgeladenes Foto bleibt gespeichert, bis du
-        das Angebot löschst bzw. dein Konto löschst; Bewertungen und
-        Kommentare bleiben darüber hinaus bestehen, damit die
-        Bewertungshistorie für andere Nutzer nachvollziehbar bleibt (wie bei
-        vergleichbaren Plattformen üblich), werden aber bei Löschung deines
-        Kontos anonymisiert.
-      </p>
-      <p>
-        <strong>Kontaktaufnahme (aktuell ohne Bezahlfunktion):</strong> Schreibst
-        du einem Verkäufer über „Kontakt aufnehmen“, senden wir deine Nachricht
-        per E-Mail an den Verkäufer – zusammen mit deiner E-Mail-Adresse und
-        deinem Anzeigenamen, damit er dir direkt antworten kann. Wir speichern
-        die Nachricht (Angebot, Absender, Text, Zeitpunkt), um Missbrauch
-        (Spam) zu begrenzen und dem Verkäufer beim Abschluss eines Geschäfts
-        die Auswahl der Kontaktpersonen zu ermöglichen. Zahlung und Versand
-        regeln Käufer und Verkäufer selbst. Rechtsgrundlage: Art. 6 Abs. 1
-        lit. b DSGVO (Vermittlung des Kontakts auf deine Anfrage). Die Daten
-        werden mit deinem Konto gelöscht.
-      </p>
-      <p>
-        Sobald die Bezahlfunktion aktiv ist, setzen wir für Käufe und Verkäufe
-        im Marktplatz-Bereich den
-        Zahlungsdienstleister Stripe ein (Stripe Payments Europe, Limited, 1
-        Grand Canal Street Lower, Dublin 2, Irland). Deine Zahlungsdaten
-        (z. B. Kartennummer) gibst du direkt bei Stripe ein – sie laufen nie
-        über unsere Server. Stripe verarbeitet diese Daten dabei als eigener,
-        von mycardfolio unabhängiger Verantwortlicher; es gilt zusätzlich die{" "}
-        <a href="https://stripe.com/de/privacy" target="_blank" rel="noreferrer">
-          Datenschutzerklärung von Stripe
-        </a>
-        .
-      </p>
-      <p>
-        <strong>Als Käufer</strong> übermitteln wir deinen Namen und deine
-        Versandadresse (von Stripe im Bezahlvorgang erfasst) an den
-        Verkäufer, damit dieser die Ware versenden kann.
-      </p>
-      <p>
-        <strong>Als Verkäufer</strong> richtest du über Stripe ein eigenes
-        Verkäuferkonto ein; die dafür nötige Identitäts- und
-        Bankverbindungsprüfung ("Know Your Customer") führt Stripe direkt mit
-        dir durch. mycardfolio erhält davon nur die Stripe-Kontokennung sowie
-        den Status, ob die Einrichtung abgeschlossen ist – keine
-        Ausweis- oder Kontodaten.
-      </p>
-      <p>
-        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO
-        (Erfüllung des Kaufvertrags bzw. der Marktplatz-Nutzungsbedingungen).
-        <br />
-        <strong>Speicherdauer:</strong> Angebots- und Bestelldaten (Titel,
-        Preis, Status, Versandname/-adresse) bleiben gespeichert, solange dein
-        Konto besteht bzw. solange gesetzliche Aufbewahrungspflichten
-        (insbesondere handels-/steuerrechtlich) das erfordern.
-      </p>
-
-      <h2>10. Serverseitig abgerufene Datenquellen</h2>
+      <h2>9. Serverseitig abgerufene Datenquellen</h2>
       <p>
         Zur Ergänzung von Karten- und Preisinformationen ruft unser Server –
         ohne Bezug zu deiner Person – Daten von folgenden Diensten ab: TCGdex,
@@ -221,7 +157,7 @@ export default function Datenschutz() {
         werden keine personenbezogenen Daten von dir übermittelt.
       </p>
 
-      <h2>11. Kontaktaufnahme</h2>
+      <h2>10. Kontaktaufnahme</h2>
       <p>
         Wenn du uns per E-Mail kontaktierst, verarbeiten wir deine Angaben zur
         Bearbeitung der Anfrage (Art. 6 Abs. 1 lit. b bzw. lit. f DSGVO). Die
@@ -229,19 +165,17 @@ export default function Datenschutz() {
         Aufbewahrungspflichten entgegenstehen.
       </p>
 
-      <h2>12. Empfänger deiner Daten</h2>
+      <h2>11. Empfänger deiner Daten</h2>
       <p>
         Empfänger sind unser Hoster (Auftragsverarbeiter, Ziffer 4), ggf. ein
         E-Mail-Versanddienstleister für System-E-Mails (ebenfalls
-        Auftragsverarbeiter) sowie – bei Nutzung des Marktplatzes – Stripe als
-        eigenständiger Verantwortlicher für die Zahlungsabwicklung und der
-        jeweilige Verkäufer als Empfänger deiner Versandadresse (Ziffer 9).
+        Auftragsverarbeiter).
         Eine darüber hinausgehende Übermittlung in Drittländer außerhalb der
         EU/des EWR findet nicht statt bzw. nur auf Grundlage geeigneter
         Garantien nach Art. 44 ff. DSGVO.
       </p>
 
-      <h2>13. Deine Rechte</h2>
+      <h2>12. Deine Rechte</h2>
       <p>Dir stehen gegenüber uns folgende Rechte hinsichtlich deiner Daten zu:</p>
       <ul>
         <li>Auskunft (Art. 15 DSGVO)</li>
@@ -260,7 +194,7 @@ export default function Datenschutz() {
         (Export, Löschung) direkt in den Kontoeinstellungen wahrnehmen.
       </p>
 
-      <h2>14. Beschwerderecht bei der Aufsichtsbehörde</h2>
+      <h2>13. Beschwerderecht bei der Aufsichtsbehörde</h2>
       <p>
         Unabhängig davon hast du das Recht, dich bei einer
         Datenschutz-Aufsichtsbehörde zu beschweren, insbesondere in dem
@@ -268,14 +202,14 @@ export default function Datenschutz() {
         Verstoßes.
       </p>
 
-      <h2>15. Keine automatisierte Entscheidungsfindung</h2>
+      <h2>14. Keine automatisierte Entscheidungsfindung</h2>
       <p>
         Eine automatisierte Entscheidungsfindung oder ein Profiling nach Art. 22
         DSGVO findet nicht statt. Die Wertberechnung deiner Sammlung ist eine
         reine Anzeige und hat keine rechtliche Wirkung.
       </p>
 
-      <h2>16. Änderungen dieser Datenschutzerklärung</h2>
+      <h2>15. Änderungen dieser Datenschutzerklärung</h2>
       <p>
         Wir passen diese Erklärung an, wenn sich die Datenverarbeitung ändert.
         Es gilt die jeweils hier veröffentlichte Fassung.
