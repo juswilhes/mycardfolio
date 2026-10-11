@@ -120,8 +120,8 @@ export default function Landing() {
       </section>
       )}
 
-      {/* Zahlen */}
-      {data && (
+      {/* Zahlen (nur für Besucher ohne Konto) */}
+      {data && !member && (
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-14">
           {[
             [num(data.counts.cards), "Karten in der Datenbank"],
