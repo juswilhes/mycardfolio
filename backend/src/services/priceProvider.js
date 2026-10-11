@@ -51,7 +51,7 @@ try {
 
 // USD -> EUR Tageskurs (frei, ohne Key, EZB-Daten). Nur für den Fallback,
 // wenn Cardmarket für eine Karte gar keinen Preis hat.
-async function usdToEur() {
+export async function usdToEur() {
   const today = new Date().toISOString().slice(0, 10);
   if (cache.fx?.date === today) return cache.fx.rate;
   try {

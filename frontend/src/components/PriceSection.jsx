@@ -154,14 +154,18 @@ export default function PriceSection({ card, history }) {
         <summary className="cursor-pointer hover:text-ink">Wie kommt der Preis zustande?</summary>
         <div className="mt-2 space-y-1.5 leading-relaxed">
           <p>
-            Der <b>Aktuelle Preis</b> ist der neueste Cardmarkt-Tageswert
-            („Trend") – der letzte Punkt im Graphen. Darunter steht als
+            Der <b>Aktuelle Preis</b> ist der neueste Tageswert – der letzte
+            Punkt im Graphen. Er ist ein Mittelwert aus mehreren Cardmarket-Kennzahlen
+            (Trend und Durchschnitt der letzten 1, 7 und 30 Tage), damit einzelne
+            Ausreißer nicht durchschlagen. Bei Karten ab etwa 10 € wird er zusätzlich
+            mit dem TCGplayer-Marktpreis (USA, in Euro umgerechnet) gemittelt, sofern
+            dieser vorliegt und plausibel ist. Darunter steht als
             Zusatzinfo der <b>Durchschnitt der letzten 30 Tage</b>, er glättet
             einzelne Ausreißer. (Den „Tiefstpreis" zeigen wir bewusst nicht
             an – der ist oft nur ein einzelnes Schnäppchen-Angebot.)
           </p>
           <p>
-            Es ist Cardmarkts Marktpreis für diese Karte: <b>ein Wert pro Karte,
+            Die Cardmarket-Werte sind Marktpreise für diese Karte: <b>ein Wert pro Karte,
             nicht nach Sprache (Deutsch/Englisch) und nicht nach Zustand
             aufgeteilt</b>. Eine getrennte Preisquelle für deutsche und englische
             Karten oder einen bestimmten Zustand (z. B. Near Mint) gibt es für
