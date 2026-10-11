@@ -32,7 +32,7 @@ export default function VerifyEmail() {
   return (
     <AuthCard
       title="E-Mail bestätigen"
-      footer={<Link to="/" className="underline hover:text-ink">Zur Sammlung</Link>}
+      footer={<Link to="/sammlung" className="underline hover:text-ink">Zur Sammlung</Link>}
     >
       {state === "pending" && <p className="text-sm text-subtle">Einen Moment …</p>}
       {state === "ok" && (

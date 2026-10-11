@@ -50,6 +50,7 @@ function RequireAuth({ children }) {
 // Tab-Titel der festen Seiten; Karten-, Set- und Illustratorseiten setzen ihren
 // eigenen, sobald die Daten da sind.
 const PAGE_TITLES = {
+  "/sammlung": "Meine Sammlung",
   "/sets": "Alle Karten & Sets",
   "/marktplatz": "Marktplatz",
   "/news": "News & Artikel",
@@ -99,12 +100,13 @@ export default function App() {
         </div>
         <div className="flex items-center gap-4 sm:gap-6">
           <nav className="hidden sm:flex gap-6 text-sm">
+            <NavLink to="/" end className={navCls}>Start</NavLink>
             <NavLink to="/sets" className={navCls}>Alle Karten</NavLink>
             <NavLink to="/marktplatz" className={navCls}>Marktplatz</NavLink>
             <NavLink to="/news" className={navCls}>News</NavLink>
             {user && (
               <>
-                <NavLink to="/" end id="nav-sammlung" className={navCls}>Sammlung</NavLink>
+                <NavLink to="/sammlung" id="nav-sammlung" className={navCls}>Sammlung</NavLink>
                 <NavLink to="/analyse" className={navCls}>Analyse</NavLink>
                 <NavLink to="/orden" id="nav-orden" className={navCls}>Orden</NavLink>
               </>
@@ -171,11 +173,9 @@ export default function App() {
             {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
             <Route path="/add" element={<Navigate to="/sets" replace />} />
 
-            {/* Startseite: öffentliche Landingpage, angemeldet die Sammlung */}
-            <Route
-              path="/"
-              element={loading ? null : user ? <Collection /> : <Landing />}
-            />
+            {/* Start: Landingpage; angemeldet mit Portfolio-Fenster statt Werbeteilen */}
+            <Route path="/" element={loading ? null : <Landing />} />
+            <Route path="/sammlung" element={<RequireAuth><Collection /></RequireAuth>} />
 
             {/* Nur mit Login */}
             <Route path="/import" element={<RequireAuth><Import /></RequireAuth>} />

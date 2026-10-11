@@ -360,7 +360,7 @@ export default function AllCards() {
         />
       )}
       {celebrateCard && (
-        <PortfolioAddedAnimation card={celebrateCard} onDone={() => navigate("/")} />
+        <PortfolioAddedAnimation card={celebrateCard} onDone={() => navigate("/sammlung")} />
       )}
     </div>
   );

@@ -4,12 +4,13 @@ import { Link } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import Icon from "../components/Icon.jsx";
 import ArticleCover from "../components/ArticleCover.jsx";
+import PortfolioWindow from "../components/PortfolioWindow.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getLanding, getArticles } from "../api.js";
 import { eur, formatDate } from "../lib/format.js";
 
 const FEATURES = [
-  { icon: "euro", title: "Cardmarket-Preise in Euro", text: "Trendpreise, jede Nacht frisch – dazu der 30-Tage-Schnitt und ein Preisverlauf mit wählbarem Zeitraum." },
+  { icon: "euro", title: "Cardmarket-Preise in Euro", text: "Jede Nacht frisch aus Cardmarkets Preisdaten – dazu der 30-Tage-Schnitt und ein Preisverlauf mit wählbarem Zeitraum." },
   { icon: "trend", title: "Wertverlauf deines Portfolios", text: "Kaufpreis inkl. Versand erfassen und sehen, wie sich der Wert deiner ganzen Sammlung entwickelt." },
   { icon: "grid", title: "Set-Fortschritt", text: "Pro Set auf einen Blick, wie viele Karten dir noch fehlen – mit Fortschrittsbalken und Filter „Fehlt mir“." },
   { icon: "import", title: "Massen-Import", text: "Excel-Tabelle einfügen – mycardfolio erkennt Name, Nummer, Menge und Preis, egal wie deine Tabelle aufgebaut ist." },
@@ -61,12 +62,14 @@ function MoverRow({ m }) {
   );
 }
 
-// Öffentliche Startseite für nicht angemeldete Besucher (und Suchmaschinen):
-// Überblick über alles, was die Seite kann, mit echten Zahlen aus den
-// Nacht-Auswertungen (GET /api/stats/landing) und den neuesten Artikeln.
+// Startseite ("/"): für Besucher ohne Konto (und Suchmaschinen) der Überblick über alles,
+// was die Seite kann, mit echten Zahlen aus den Nacht-Auswertungen (GET /api/stats/landing)
+// und den neuesten Artikeln. Angemeldet ("member") steht oben das kleine Portfolio-Fenster,
+// Werbeteile (Pitch, So funktioniert's, Funktionen, FAQ) entfallen.
 // Die Suche selbst lebt auf "Alle Karten" – hier nur der Pitch + Link dorthin.
 export default function Landing() {
-  const { registrationOpen } = useAuth();
+  const { user, registrationOpen } = useAuth();
+  const member = !!user;
   const [data, setData] = useState(null);
   const [articles, setArticles] = useState([]);
 
@@ -79,7 +82,15 @@ export default function Landing() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {member && (
+        <section className="pt-2">
+          <h1 className="text-xl font-semibold mb-4">Willkommen zurück</h1>
+          <PortfolioWindow />
+        </section>
+      )}
+
       {/* Hero */}
+      {!member && (
       <section className="text-center pt-6 pb-10">
         <Logo className="h-12 inline-block mb-8" />
         <h1 className="text-3xl sm:text-4xl font-semibold leading-tight">
@@ -107,6 +118,7 @@ export default function Landing() {
           {!registrationOpen && " Neue Anmeldungen sind gerade geschlossen."}
         </p>
       </section>
+      )}
 
       {/* Zahlen */}
       {data && (
@@ -129,6 +141,7 @@ export default function Landing() {
       )}
 
       {/* So geht's */}
+      {!member && (
       <Section title="So funktioniert's">
         <div className="grid sm:grid-cols-3 gap-4">
           {STEPS.map(([title, text], i) => (
@@ -142,6 +155,7 @@ export default function Landing() {
           ))}
         </div>
       </Section>
+      )}
 
       {/* Preisbewegungen */}
       {data && (data.gainers.length > 0 || data.losers.length > 0) && (
@@ -200,14 +214,19 @@ export default function Landing() {
               </tbody>
             </table>
             <p className="text-[11px] text-subtle py-2">
-              Die drei Sets mit dem besten Verhältnis. Die komplette Analyse mit Rangliste und „Ziehen oder kaufen“ gibt es für
-              angemeldete Nutzer.
+              Die drei Sets mit dem besten Verhältnis.{" "}
+              {member ? (
+                <>Die komplette Analyse mit Rangliste und „Ziehen oder kaufen“ findest du unter <Link to="/analyse" className="underline">Analyse</Link>.</>
+              ) : (
+                "Die komplette Analyse mit Rangliste und „Ziehen oder kaufen“ gibt es für angemeldete Nutzer."
+              )}
             </p>
           </div>
         </Section>
       )}
 
       {/* Funktionen */}
+      {!member && (
       <Section title="Alles, was ein Sammlerherz braucht" intro="Von der ersten Karte bis zum Komplettset – ein Platz für deine ganze Sammlung.">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map((f) => (
@@ -221,6 +240,7 @@ export default function Landing() {
           ))}
         </div>
       </Section>
+      )}
 
       {/* News */}
       {articles.length > 0 && (
@@ -251,13 +271,15 @@ export default function Landing() {
       )}
 
       {/* FAQ */}
+      {!member && (
+      <>
       <Section title="Häufige Fragen">
         <div className="space-y-2">
           {[
             ["Kostet mycardfolio etwas?", "Nein. Kartensuche und Datenbank sind kostenlos und ohne Konto nutzbar."],
             [
               "Woher kommen die Preise?",
-              "Von Cardmarket (Trendwert in Euro, aus der öffentlichen Tages-Preisliste). Es ist ein Wert pro Karte – nicht nach Sprache oder Zustand aufgeteilt.",
+              "Von Cardmarket (öffentliche Tages-Preisliste, in Euro). Als Preis nehmen wir den Mittelwert aus Trend und den Durchschnittspreisen der letzten 1, 7 und 30 Tage, damit einzelne Ausreißer nicht durchschlagen. Es ist ein Wert pro Karte – nicht nach Sprache oder Zustand aufgeteilt.",
             ],
             ["Wie aktuell sind die Preise?", "Wir holen alle Preise einmal täglich um 1 Uhr nachts. Die Seiten zeigen den Stand dieser Nacht."],
             ["Sind die Preise verbindlich?", "Nein, es sind Richtwerte ohne Gewähr – keine Kauf- oder Verkaufsempfehlung."],
@@ -289,10 +311,12 @@ export default function Landing() {
           Los geht's
         </Link>
       </section>
+      </>
+      )}
 
       <p className="text-xs text-subtle text-center mt-10">
         Unabhängiges Fan-Projekt – nicht verbunden mit Nintendo, The Pokémon Company, Creatures Inc. oder GAME FREAK inc.
-        Preisangaben sind Cardmarket-Trendwerte, unverbindlich und ohne Gewähr.
+        Preisangaben beruhen auf Cardmarket-Daten, sind unverbindlich und ohne Gewähr.
       </p>
     </div>
   );

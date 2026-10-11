@@ -86,8 +86,8 @@ export default function Impressum() {
       <h2>Preis- und Kartendaten</h2>
       <p>
         Karten-Stammdaten stammen u. a. aus dem quelloffenen Datensatz
-        „pokemon-tcg-data" sowie der TCGdex-API. Preisangaben sind als
-        Cardmarket-Trendwerte über die TCGdex-API abgerufene, unverbindliche
+        „pokemon-tcg-data" sowie der TCGdex-API. Preisangaben sind aus
+        Cardmarket-Preisdaten (u. a. über die TCGdex-API) berechnete, unverbindliche
         Richtwerte und können von tatsächlichen Marktpreisen abweichen. Es wird
         keine Gewähr für Richtigkeit, Vollständigkeit und Aktualität übernommen.
       </p>

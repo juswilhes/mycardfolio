@@ -196,7 +196,7 @@ export default function Import() {
       <div className="py-16 text-center">
         <p className="text-2xl font-semibold mb-2">{result.added} Karten importiert 🎉</p>
         <p className="text-subtle mb-6">Die Preise werden im Hintergrund nachgezogen.</p>
-        <Link to="/" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
+        <Link to="/sammlung" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
           Zur Sammlung
         </Link>
       </div>

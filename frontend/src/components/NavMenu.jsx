@@ -24,12 +24,13 @@ export default function NavMenu({ user, loading }) {
   }, [open]);
 
   const items = [
+    { to: "/", label: "Start", end: true },
     { to: "/sets", label: "Alle Karten" },
     { to: "/marktplatz", label: "Marktplatz" },
     { to: "/news", label: "News" },
     ...(user
       ? [
-          { to: "/", label: "Sammlung", end: true },
+          { to: "/sammlung", label: "Sammlung" },
           { to: "/analyse", label: "Analyse" },
           { to: "/orden", label: "Orden" },
         ]

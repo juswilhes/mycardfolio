@@ -135,7 +135,7 @@ export default function SetDetail() {
       {sealedAdded && (
         <p className="text-mint text-xs mb-4">
           Hinzugefügt – in deiner{" "}
-          <Link to="/" className="underline">Sammlung</Link> sichtbar.
+          <Link to="/sammlung" className="underline">Sammlung</Link> sichtbar.
         </p>
       )}
 

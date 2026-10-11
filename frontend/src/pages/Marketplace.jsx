@@ -320,7 +320,7 @@ function MyListings({ paymentsEnabled }) {
     <div>
       <p className="text-subtle text-sm mb-4">
         Karten oder Sealed-Produkte zum Verkauf anbieten geht direkt in deiner{" "}
-        <a href="/" className="underline">
+        <a href="/sammlung" className="underline">
           Sammlung
         </a>{" "}
         bei jedem Eintrag.
