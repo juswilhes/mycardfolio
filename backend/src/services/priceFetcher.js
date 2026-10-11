@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { recordPrices } from "./cardService.js";
 import { getCardmarketPrices } from "./priceProvider.js";
 import { blendWithTcgplayer } from "./crossCheck.js";
+import { fillCardmarketPages } from "./cardmarketLinks.js";
 import { recordAllPortfolioSnapshots } from "./portfolioService.js";
 import { backfillAllMissingPrices } from "./setPriceBackfill.js";
 import { syncNewCards } from "./newCardsSync.js";
@@ -99,6 +100,8 @@ export async function runDailyPriceJob() {
       ["Preise", refreshAllPrices],
       ["Preise nachholen", backfillAllMissingPrices],
       ["Gegenprobe", blendWithTcgplayer],
+      // neue Karten bekommen ihre Cardmarket-Seite; sonntags auch die bisher unbekannten noch einmal
+      ["Cardmarket-Links", () => fillCardmarketPages({ limit: 5000, retryEmpty: new Date().getDay() === 0 })],
       ["Analysen", async () => rebuildAnalysisCache()],
       ["Monatsstand", async () => recordSetValueSnapshots({ onlyMissing: true })],
       ["Sitemap", async () => rebuildSitemap()],

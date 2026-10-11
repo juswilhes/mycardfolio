@@ -366,8 +366,3 @@ async function correctSharedProduct(row, cm, specialVariant) {
   return { prices: fixed.prices, meta: { ...fixed.meta, productId: cm.idProduct, corrected: true } };
 }
 
-export function cardmarketUrl(productId) {
-  return productId
-    ? `https://www.cardmarket.com/de/Pokemon/Products/Singles?idProduct=${productId}`
-    : null;
-}

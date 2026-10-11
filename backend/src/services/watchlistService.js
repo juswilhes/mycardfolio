@@ -11,7 +11,7 @@ const deleteWatchByExternal = db.prepare(`
 
 const listWatchStmt = db.prepare(`
   SELECT c.id AS card_id, c.external_id, c.name, c.set_name, c.number, c.rarity, c.artist,
-         c.image_small, c.image_large, c.cardmarket_product_id, c.cardmarket_updated,
+         c.image_small, c.image_large, c.cardmarket_product_id, c.cardmarket_updated, c.cardmarket_page,
          wi.created_at
   FROM watchlist_items wi
   JOIN cards c ON c.id = wi.card_id

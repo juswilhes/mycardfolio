@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getCardById } from "../services/pokemonTcgApi.js";
 import { upsertCardRow } from "../services/cardService.js";
 import { getCardByExternalIdLocal } from "../services/cardRepository.js";
-import { cardmarketUrl } from "../services/priceProvider.js";
+import { cardmarketLink } from "../services/cardmarketLinks.js";
 import { addToWatchlist, removeFromWatchlist, listWatchlist, watchedExternalIds } from "../services/watchlistService.js";
 
 const router = Router();
@@ -12,7 +12,7 @@ router.get("/", (req, res) => {
   res.json(
     listWatchlist(req.user.id).map((item) => ({
       ...item,
-      cardmarket_url: cardmarketUrl(item.cardmarket_product_id),
+      cardmarket_url: cardmarketLink(item),
     }))
   );
 });

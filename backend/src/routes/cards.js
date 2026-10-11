@@ -13,7 +13,7 @@ import {
   getCardsByArtistLocal,
   bumpCardView,
 } from "../services/cardRepository.js";
-import { cardmarketUrl } from "../services/priceProvider.js";
+import { cardmarketLink } from "../services/cardmarketLinks.js";
 import { analysis } from "../services/analysisCache.js";
 import { resolveCardParam } from "../services/cardSlugs.js";
 import { authRequired } from "../middleware/auth.js";
@@ -66,8 +66,7 @@ router.get("/external/:externalId", async (req, res) => {
       latest_price: latestTrendByExternal(externalId) ?? null,
       price_breakdown: breakdown,
       cardmarket_updated: dbMeta?.cardmarket_updated ?? null,
-      // kein Link, wenn TCGdex der Karte ein falsches Cardmarket-Produkt zugeordnet hatte
-      cardmarket_url: dbMeta?.price_valid_from ? null : cardmarketUrl(dbMeta?.cardmarket_product_id ?? null),
+      cardmarket_url: cardmarketLink(dbMeta ?? local),
     });
   }
 

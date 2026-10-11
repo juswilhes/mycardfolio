@@ -28,6 +28,7 @@ import { seedStarterArticles } from "./services/articles.js";
 import { catchUpVariantFlags } from "./services/variantFlags.js";
 import { catchUpMissingPrices } from "./services/setPriceBackfill.js";
 import { catchUpGuidePrices } from "./services/guidePrices.js";
+import { catchUpCardmarketPages } from "./services/cardmarketLinks.js";
 import { rebuildAnalysisCache } from "./services/analysisCache.js";
 import { metaFor, renderIndex, sitemap, redirectFor } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
@@ -181,6 +182,7 @@ app.listen(PORT, () => {
   catchUpVariantFlags();
   catchUpMissingPrices();
   catchUpGuidePrices();
+  catchUpCardmarketPages();
   // Auswertungen der Analyse einmal vorrechnen, ohne den Start zu verzögern
   setTimeout(rebuildAnalysisCache, 2000);
   scheduleImageRepair();

@@ -9,7 +9,7 @@ import {
   cardmarketBreakdown,
 } from "../services/cardService.js";
 import { getCardByExternalIdLocal, matchCardForImport } from "../services/cardRepository.js";
-import { cardmarketUrl } from "../services/priceProvider.js";
+import { cardmarketLink } from "../services/cardmarketLinks.js";
 import { recordPortfolioSnapshot, sellCollectionItem } from "../services/portfolioService.js";
 
 const router = Router();
@@ -75,7 +75,7 @@ router.get("/", (req, res) => {
     slug: slugOfCard(item.external_id),
     latest_price: latestTrend(item.card_id, item.variant || "normal"),
     price_breakdown: cardmarketBreakdown(item.card_id),
-    cardmarket_url: cardmarketUrl(item.cardmarket_product_id),
+    cardmarket_url: cardmarketLink(item),
   }));
   res.json(items);
 });

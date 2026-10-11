@@ -277,6 +277,7 @@ addColumn("artist_source", "TEXT");    // woher der Illustrator kommt: "dataset"
 addColumn("artist_manual", "INTEGER"); // 1 = vom Nutzer gesetzt, darf beim Re-Import nicht überschrieben werden
 addColumn("cardmarket_product_id", "INTEGER"); // für den Direktlink zu Cardmarket
 addColumn("cardmarket_updated", "TEXT");       // Zeitstempel des letzten Cardmarket-Werts
+addColumn("cardmarket_page", "TEXT");          // echte Cardmarket-Seite der Karte (NULL = ungeprüft, '' = unbekannt), siehe cardmarketLinks.js
 addColumn("view_count", "INTEGER DEFAULT 0");  // wie oft die Detailseite aufgerufen wurde ("Beliebtheit")
 addColumn("name_de", "TEXT"); // deutscher Kartenname von TCGdex - auch für Trainer-/Item-Karten (nicht nur Pokémon-Namen)
 
