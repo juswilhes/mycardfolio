@@ -7,7 +7,7 @@ import { fetchCommunityTopics } from "../services/communityTopics.js";
 const s = dailySummary();
 const topics = await fetchCommunityTopics().catch(() => []); // fällt eine Quelle aus, geht die Mail trotzdem raus
 
-const trendMax = Math.max(1, ...s.trend.map((d) => Math.max(d.hits, d.visitors)));
+const trendMax = Math.max(1, ...s.trend.map((d) => d.visitors)); // Balken zeigen die Besucher, nicht die Aufrufe
 const hum = (n) => (n == null ? "–" : n); // vor dem ersten Ping unbekannt
 const bar = (n) => "▮".repeat(Math.round((n / trendMax) * 12)).padEnd(12, "▯");
 const health = s.errors5xx === 0 ? "keine Serverfehler" : `${s.errors5xx} Serverfehler (5xx)!`;
@@ -90,6 +90,9 @@ const html = `
       .join("")}
   </div>
 `;
+
+// Zum Ansehen ohne Mailversand: REPORT_HTML_OUT=/pfad/bericht.html npm run report
+if (process.env.REPORT_HTML_OUT) (await import("node:fs")).writeFileSync(process.env.REPORT_HTML_OUT, html);
 
 async function main() {
   if (!ADMIN_EMAIL || !mailReady()) {
