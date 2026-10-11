@@ -213,6 +213,7 @@ export default function CardInfo() {
   const price = card.latest_price?.price ?? null;
   // Wert je Eintrag mit dem Preis SEINER Variante (Holo, Reverse Holo, Normal ...)
   const entryValue = (e) => (e.latest_price?.price != null ? e.latest_price.price * (e.quantity ?? 1) : null);
+  const totalQty = (entries ?? []).reduce((s, e) => s + (e.quantity ?? 1), 0);
   const pricedEntries = (entries ?? []).filter((e) => entryValue(e) != null);
   const withCost = (entries ?? []).filter((e) => entryCost(e) != null);
   const totalCost = withCost.reduce((s, e) => s + entryCost(e), 0);
