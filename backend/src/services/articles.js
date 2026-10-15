@@ -1,6 +1,7 @@
 import db from "../db/index.js";
 import { slugify } from "../lib/slug.js";
 import { STARTER_ARTICLES } from "./articleSeeds.js";
+import { LATER_ARTICLES } from "./articleSeedsLater.js";
 
 // News & Artikel: eigene Texte des Betreibers (kein Fremdinhalt). Der Inhalt
 // ist einfacher Text mit ##-Überschriften, - Listen, **fett** und [Links](...)
@@ -90,6 +91,16 @@ export const deleteArticle = (id) => deleteStmt.run(id).changes > 0;
 // Beim ersten Start ein paar Artikel anlegen, damit der Bereich nicht leer ist.
 // Danach nie wieder (auch nicht, wenn der Betreiber sie löscht).
 const setImageIfMissingStmt = db.prepare(`UPDATE articles SET image = ? WHERE slug = ? AND image IS NULL`);
+
+// Artikel, die per Deploy nachgereicht werden: je Artikel genau einmal (Marker in app_meta), auch
+// wenn schon andere Artikel existieren. Löscht der Betreiber ihn, kommt er nicht wieder.
+export function seedLaterArticles() {
+  for (const { marker, ...a } of LATER_ARTICLES) {
+    if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(marker)) continue;
+    if (!bySlugStmt.get(a.slug)) insertStmt.run({ ...a, published: 1 });
+    db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, '1')`).run(marker);
+  }
+}
 
 export function seedStarterArticles() {
   // Startartikel bekommen ihr Titelbild nachträglich, falls sie schon vor der

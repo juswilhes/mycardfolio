@@ -24,7 +24,7 @@ import { isOperatorUser } from "./lib/admin.js";
 import { countPageView, isKnownRoute, humanPing } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
-import { seedStarterArticles } from "./services/articles.js";
+import { seedStarterArticles, seedLaterArticles } from "./services/articles.js";
 import { catchUpVariantFlags } from "./services/variantFlags.js";
 import { catchUpMissingPrices } from "./services/setPriceBackfill.js";
 import { catchUpGuidePrices } from "./services/guidePrices.js";
@@ -180,6 +180,7 @@ app.listen(PORT, () => {
   schedulePriceFetching();
   catchUpSetValueSnapshots();
   seedStarterArticles();
+  seedLaterArticles();
   catchUpVariantFlags();
   catchUpMissingPrices();
   catchUpGuidePrices();
