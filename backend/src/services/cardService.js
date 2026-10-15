@@ -116,6 +116,23 @@ function despike(points) {
   return out;
 }
 
+// Glättung (Justus: Preise dünn gehandelter Karten sprangen über Nacht um 15-25 %): jeder Tageswert
+// ist der Median aus sich und den beiden Vortagswerten. Ein einzelner Ausreißer-Tag verschwindet,
+// eine echte Preisänderung zeigt sich einen Tag später (wenn zwei von drei Werten sie bestätigen).
+// Nur wenn die drei Punkte höchstens SMOOTH_SPAN_MS auseinander liegen (sonst kein Bezug mehr). Wie
+// despike nur beim Lesen; gespeichert bleiben die Rohdaten. Gilt für Graph, aktuellen Preis,
+// Sammlung, Portfolio und Preisbewegungen gleichermaßen (Eingabe: bereits despike-bereinigt).
+const SMOOTH_SPAN_MS = 4 * DAY_MS;
+function smooth(points) {
+  return points.map((p, i) => {
+    const a = points[i - 1];
+    const b = points[i - 2];
+    if (!a || !b || Date.parse(p.fetched_at) - Date.parse(b.fetched_at) > SMOOTH_SPAN_MS) return p;
+    const median = [a.price, b.price, p.price].sort((x, y) => x - y)[1];
+    return median === p.price ? p : { ...p, price: median };
+  });
+}
+
 // Preisreihe einer Karte = die echten Tageswerte (Cardmarket-Trend). Der
 // Graph zeigt genau diese Reihe, und der "Aktuelle Preis" ist ihr letzter
 // Punkt - deshalb stimmen beide immer überein. Der 30-Tage-Schnitt (avg30)
@@ -131,7 +148,7 @@ function priceSeriesFrom(rows) {
   const series = [];
   for (const [variant, list] of byVariant) {
     const cm = list.filter((r) => r.source === "cardmarket");
-    series.push({ variant, points: despike(cm.length ? cm : list) });
+    series.push({ variant, points: smooth(despike(cm.length ? cm : list)) });
   }
   return series;
 }
@@ -239,7 +256,7 @@ export const priceHistoryForCard = {
   all: (cardId) => {
     const from = flagsStmt.get(cardId)?.price_valid_from;
     const rows = normalTrendStmt.all(cardId);
-    return despike(from ? rows.filter((r) => r.fetched_at >= from) : rows);
+    return smooth(despike(from ? rows.filter((r) => r.fetched_at >= from) : rows));
   },
 };
 

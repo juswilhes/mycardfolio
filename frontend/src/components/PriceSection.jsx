@@ -155,7 +155,7 @@ export default function PriceSection({ card, history }) {
         <div className="mt-2 space-y-1.5 leading-relaxed">
           <p>
             Der <b>Aktuelle Preis</b> ist der neueste Tageswert – der letzte
-            Punkt im Graphen. Er ist ein Mittelwert aus mehreren Cardmarket-Kennzahlen
+            Punkt im Graphen. Jeder Tageswert wird mit den beiden Vortagen geglättet (Median). Er ist ein Mittelwert aus mehreren Cardmarket-Kennzahlen
             (Trend und Durchschnitt der letzten 1, 7 und 30 Tage), damit einzelne
             Ausreißer nicht durchschlagen. Bei Karten ab etwa 10 € wird er zusätzlich
             mit dem TCGplayer-Marktpreis (USA, in Euro umgerechnet) gemittelt, sofern
