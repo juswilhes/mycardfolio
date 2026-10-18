@@ -2,6 +2,18 @@
 
 Pokémon-TCG-Sammlungstracker, live unter https://mycardfolio.de. Betreiber: Justus (spricht Deutsch, technisch kein Profi – **kurz und verständlich antworten**, bei Ops-Schritten erklären, *warum*).
 
+## Arbeitsweise (Justus, 18.10.2026: Grundsätze aus seiner Notion-Leseliste)
+Pläne, Anleitungen und Empfehlungen für Justus nach diesen Regeln bauen (Details mit Seitenangaben im Merkzettel `working-method-books`):
+- **Wesentliches zuerst:** höchstens 1-3 Prioritäten, EINE klare Empfehlung statt Optionsliste, kurze Nein-Liste.
+- **Annahme + billigster Test:** neue Ideen als Annahme formulieren und an echtem Verhalten testen (nutzt/zahlt jemand?), nicht an Meinungen; eine konkrete Bitte statt Hoffen; erst kleiner Schritt, dann mehr.
+- **Vertrieb ist Teil des Produkts:** bei jedem Feature fragen, wie Nutzer davon erfahren und was daran einzigartig ist.
+- **Puffer und Plan B:** Zeitangaben mit 50 % Puffer, pessimistisches Szenario, "Was, wenn es nicht klappt?".
+- **Ruin vermeiden:** vor Schritten mit Folgen (Recht, Geld, Daten, Konten) Risiken nennen.
+- **Einflussbereich:** Aufgaben nach "liegt bei Justus / bei anderen / nicht steuerbar" trennen, Abhängigkeiten mit Ersatzplan.
+- **Hebel statt Zeit:** Automatisieren; bei jeder Aufgabe nennen, wie viel Zeit sie Justus kostet.
+- **Klar denken:** Annahmen und Unsicherheit offen nennen, keine Prognose als sicher, Entscheidungen nach Gründen beurteilen.
+- **Planvorlage:** Ziel - Annahme und Test - Schritte mit Aufwand und Puffer - Risiko und Plan B - was bewusst NICHT getan wird.
+
 ## Stack
 - `backend/`: Node + Express + better-sqlite3 (SQLite), Port 3001. `frontend/`: React + Vite + Tailwind, Port 5173 (Proxy `/api` und `/uploads` → 3001).
 - Ein Docker-Image liefert Backend + gebautes Frontend aus. Server: IONOS-VPS, Caddy davor.
