@@ -58,4 +58,89 @@ Alle Karten und Preise findest du auf der [Seite des Sets](/sets/30th-celebratio
 
 Berichte: [Kotaku](https://kotaku.com/pokemon-tcg-30th-anniversary-set-prices-scalpers-resale-reddit-2000736052) und [Sports Illustrated](https://www.si.com/collectibles/pokemon-celebrations-30th-anniversary-from-retail-resale). Die Pull Rates stammen aus Packöffnungen der Community, nicht von der Pokémon Company. Die Preise sind Cardmarket-Daten in Euro, unverbindlich und ohne Gewähr. Sie ändern sich täglich.`,
   },
+  {
+    marker: "article_karte_wert_v1",
+    slug: "wie-finde-ich-heraus-was-meine-pokemon-karte-wert-ist",
+    title: "Wie finde ich heraus, was meine Pokémon-Karte wert ist?",
+    category: "Ratgeber",
+    image: "/news/cover-karte-wert.png",
+    published_at: "2026-10-18",
+    summary:
+      "Zustand, Version, Preisquelle und Grading: In fünf Schritten findest du den Wert deiner Pokémon-Karte heraus und siehst, wie verlässlich der Preis ist.",
+    body: `## Kurz gesagt
+
+Den Wert einer Pokémon-Karte findest du in vier Schritten heraus:
+
+1. **Karte genau bestimmen:** Name, Set und Kartennummer (steht unten auf der Karte).
+2. **Version prüfen:** Normal, Reverse Holo, Holo oder 1st Edition – das macht oft einen großen Unterschied.
+3. **Zustand einschätzen:** Ehrlich, am besten bei gutem Licht. Schon kleine Kratzer oder weiße Ecken drücken den Preis.
+4. **Aktuellen Marktpreis nachsehen:** Nicht den Wunschpreis eines Verkäufers, sondern das, was Karten tatsächlich kosten.
+
+Das Ergebnis ist immer ein **Richtwert**, kein fester Preis. Was dir jemand tatsächlich zahlt, kann abweichen.
+
+## 1. Welche Karte ist es genau?
+
+Auf jeder Karte stehen unten der Name des Sets (meist als kleines Symbol) und die **Kartennummer**, zum Beispiel 210/198. Mit Name und Nummer findest du die Karte eindeutig. Das ist wichtig, denn viele Pokémon gibt es in dutzenden Ausführungen, und die Preise reichen von wenigen Cent bis zu mehreren hundert Euro.
+
+Bei uns findest du die Karte über die [Kartensuche](/sets): Name eingeben, Set und Nummer vergleichen. Die Kartenseite zeigt dann Preis und Preisverlauf, zum Beispiel bei [Drowzee aus Scarlet & Violet](/database/scarlet-violet-210-drowzee).
+
+## 2. Welche Version ist es?
+
+Dieselbe Karte kann in mehreren Ausführungen existieren:
+
+- **Normal:** die einfache Ausführung ohne Glanzeffekt.
+- **Reverse Holo:** nicht das Bild, sondern der Rest der Karte glänzt.
+- **Holo:** das Bild glänzt.
+- **1st Edition:** die erste Auflage älterer Sets, erkennbar am Stempel links unter dem Bild.
+
+Nicht jede Karte gibt es in jeder Ausführung. Viele Illustration Rares zum Beispiel erscheinen nur in einer. Auf unseren Kartenseiten siehst du deshalb je Ausführung eine eigene Preislinie. Wer eine Karte in seine Sammlung einträgt, wählt die Variante gleich mit, und sie wird mit dem Preis **dieser** Variante bewertet.
+
+## 3. In welchem Zustand ist die Karte?
+
+Der Zustand ist der Punkt, an dem Sammler am häufigsten zu optimistisch sind. Auf Marktplätzen wie Cardmarket gibt es dafür feste Stufen, von **Mint** und **Near Mint** (kaum Gebrauchsspuren) über **Excellent**, **Good** und **Light Played** bis **Played** und **Poor** (deutlich abgenutzt oder beschädigt).
+
+So gehst du vor:
+
+- Leg die Karte bei hellem, schrägem Licht hin und dreh sie hin und her. Kratzer und Dellen sieht man so deutlich besser.
+- Prüfe die **vier Ecken** (weiß oder abgestoßen?), die **Kanten** (Abplatzer?) und die **Oberfläche** (Kratzer, Knicke, Druckstellen?).
+- Sei ehrlich zu dir selbst. Eine Karte, die aus einem frisch geöffneten Pack in eine Hülle kam, ist meist Near Mint. Eine, die in Jackentaschen und Schulranzen war, eher nicht.
+
+Je schlechter der Zustand, desto größer der Abschlag. Bei teuren Karten kann der Unterschied zwischen Near Mint und Played schnell ein Vielfaches ausmachen.
+
+## 4. Woher kommt ein verlässlicher Preis?
+
+Hier lohnt sich ein genauer Blick, denn „der Preis" einer Karte ist keine feste Zahl:
+
+- **Angebotspreise sind keine Verkaufspreise.** Ein Verkäufer kann für eine Karte verlangen, was er will. Ob jemand zahlt, zeigt erst der Verkauf.
+- **Der Tiefstpreis** ist oft eine einzelne, schlecht erhaltene oder ausländische Karte und sagt wenig über deine.
+- **Der Trend** schwankt bei Karten mit wenigen Verkäufen stark. Ein einziger Verkauf kann ihn verschieben.
+
+Wir nutzen deshalb nicht einen einzelnen Wert, sondern den **Median mehrerer Cardmarket-Kennzahlen** (Trend sowie Durchschnitt über 1, 7 und 30 Tage) und glätten kurze Ausschläge. Bei teuren Karten ab 10 € mitteln wir zusätzlich mit dem Marktpreis aus den USA (TCGplayer), sofern beide Werte zusammenpassen.
+
+Wichtig und ehrlich gesagt: Unsere Preise gelten **pro Karte und Version**, aber **nicht getrennt nach Sprache und Zustand**. Eine deutsche und eine englische Karte oder Near Mint und Played haben bei uns denselben Preis. Wenn dein Exemplar abgenutzt ist, wirst du also in der Regel weniger bekommen.
+
+## 5. Lohnt sich eine Bewertung (Grading)?
+
+Bei sehr wertvollen Karten kann es sinnvoll sein, sie von einem Dienst wie **PSA**, **CGC** oder **Beckett** prüfen und in eine Hülle einschweißen zu lassen. Die Karte bekommt dabei eine Note, meist von 1 bis 10. Gute Noten können den Preis deutlich erhöhen, schlechte machen die Kosten oft nicht wett.
+
+Bevor du das erwägst:
+
+- Das Grading **kostet Geld und dauert Wochen oder Monate**.
+- Der Preis hängt stark von der **Note** ab, und die kennst du vorher nicht sicher.
+- Bei Karten im Bereich weniger Euro lohnt es sich fast nie.
+
+Als Faustregel: Erst eine Karte mit hohem Marktwert und **sehr gutem Zustand** ist ein Kandidat. Frag im Zweifel in einer Sammlergruppe nach einer zweiten Meinung.
+
+## So gehst du bei mycardfolio vor
+
+1. Karte über die [Kartensuche](/sets) finden, Set und Nummer vergleichen.
+2. Auf der Kartenseite die passende Version ansehen und den Preisverlauf prüfen. Springt der Preis stark? Dann sind es wohl wenige Verkäufe, und der Wert ist unsicherer.
+3. Die Karte in deine Sammlung eintragen, mit der richtigen Variante. So siehst du den Gesamtwert und die Entwicklung deiner Sammlung über die Zeit.
+
+Wenn du wissen willst, ob sich das Aufreißen neuer Packs lohnt, lies [Ziehen oder kaufen](/news/ziehen-oder-kaufen) und die [Analyse zum 30th Celebration](/news/30th-celebration-warum-die-preise-so-schnell-fallen).
+
+## Hinweis
+
+Alle Preise sind Cardmarket-Daten in Euro (bei teuren Karten zusätzlich TCGplayer), **unverbindlich und ohne Gewähr**. Sie ändern sich täglich und ersetzen keine Beratung. Wer eine teure Karte verkaufen will, sollte vorher aktuelle Verkäufe und Angebote auf dem Marktplatz seiner Wahl ansehen.`,
+  },
 ];

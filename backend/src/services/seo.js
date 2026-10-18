@@ -212,7 +212,15 @@ export function metaFor(rawPath) {
 
 // Alte Adressen (/sets/me1, /database/pl4-60) auf die lesbaren (/sets/mega-evolution,
 // /database/arceus-60-gengar) umleiten.
+// Alte Adressen aus der Zeit vor der neuen Seite, die Google noch kennt: 301 auf den passenden Artikel
+// (nur solange er veröffentlicht ist, sonst bleibt es beim 404).
+const OLD_ARTICLE_PATHS = {
+  "/die-besten-tipps-zur-bewertung-ihrer-trading-cards": "wie-finde-ich-heraus-was-meine-pokemon-karte-wert-ist",
+};
+
 export function redirectFor(rawPath) {
+  const oldSlug = OLD_ARTICLE_PATHS[rawPath.replace(/\/+$/, "")];
+  if (oldSlug && getArticleBySlug(oldSlug)?.published) return `/news/${oldSlug}`;
   const card = rawPath.match(/^\/database\/([^/]+)\/?$/);
   if (card) {
     const param = decodeURIComponent(card[1]);
