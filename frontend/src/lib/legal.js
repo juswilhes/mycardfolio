@@ -38,6 +38,6 @@ export const SITE = {
 
 // Fertig ausgefüllt? Dann hier auf true setzen – blendet den Hinweisbanner
 // auf den Rechtstexten aus.
-// Noch nicht abschließend geprüft (Stand 22.10.2026: technischer Abgleich mit dem Code durch Claude,
-// offene Rechtsfragen liegen bei Justus).
-export const LEGAL_REVIEWED = false;
+// Geprüft und freigegeben von Justus (Jurist) am 22.10.2026 - Impressum, Datenschutzerklärung,
+// Nutzungsbedingungen. Bei inhaltlichen Änderungen erneut von ihm prüfen lassen.
+export const LEGAL_REVIEWED = true;
