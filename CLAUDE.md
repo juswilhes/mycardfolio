@@ -66,6 +66,8 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 ## Kartensuche
 - "Alle Karten": Suchfeld findet Karten UND Sets (passende Sets stehen über den Karten); Auswahl "Kartenart" filtert nach `cards.subtypes` (LV.X = "Level-Up", ex, GX, V, VMAX, Unterstützer ...), auch ohne Suchtext (`GET /api/cards/search?q=&type=`, Liste der Arten `GET /api/cards/types` aus dem Analyse-Speicher).
 
+- **Set-Seite:** Filter "Seltenheit" (nur die im Set vorhandenen, von gewöhnlich nach selten) und Sortierung "Seltenheit (aufsteigend)". Reihenfolge und Schreibweisen (Quelle schreibt mal "Illustration rare", mal "Illustration Rare") in `frontend/src/lib/rarity.js` (`RANK`); neue Seltenheit dort einordnen, sonst steht sie vor Promo am Ende.
+
 ## Suchmaschinen (SEO)
 - Die App ist eine SPA: Titel, Beschreibung, canonical, noindex und Vorschaubild setzt der **Server** pro Seite ein (`backend/src/services/seo.js`, der Block zwischen `<!--seo:start-->` und `<!--seo:end-->` in `frontend/index.html` wird ersetzt - Markierungen nicht entfernen). Neue öffentliche Seite = Eintrag in `PUBLIC_PAGES`/`metaFor`; Seiten nur für Angemeldete stehen in `PRIVATE_PAGES` (noindex).
 - **Set-Adressen sind lesbar** (`/sets/mega-evolution` statt `/sets/me1`): Slug aus dem Set-Namen (`services/setSlugs.js`, bei gleichem Namen mit angehängter ID). Die API und die Seite nehmen Slug ODER ID; alte ID-Adressen leitet der Server per 301 um. Links auf Sets: `set.slug ?? set.id`.

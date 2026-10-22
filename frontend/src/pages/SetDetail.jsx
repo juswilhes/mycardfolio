@@ -7,9 +7,11 @@ import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
 import { eur } from "../lib/format.js";
+import { rarityKey, rarityLabel, rarityRank } from "../lib/rarity.js";
 
 const SORTS = {
   number: "Nummer",
+  rarity: "Seltenheit (aufsteigend)",
   popularity: "Beliebtheit",
   price_desc: "Preis (hoch → niedrig)",
   price_asc: "Preis (niedrig → hoch)",
@@ -29,6 +31,8 @@ export default function SetDetail() {
   const [watchedIds, setWatchedIds] = useState(new Set());
   const [filter, setFilter] = useState("all"); // all | have | missing
   const [sort, setSort] = useState("number");
+  const [rarity, setRarity] = useState("all");
+  useEffect(() => { setRarity("all"); }, [setId]);
   const [sealedOpen, setSealedOpen] = useState(false);
   const [sealedBusy, setSealedBusy] = useState(false);
   const [sealedError, setSealedError] = useState(null);
@@ -62,9 +66,12 @@ export default function SetDetail() {
     let list = cards;
     if (filter === "have") list = list.filter((c) => owned.has(c.external_id));
     else if (filter === "missing") list = list.filter((c) => !owned.has(c.external_id));
+    if (rarity !== "all") list = list.filter((c) => rarityKey(c.rarity) === rarity);
 
+    const byNumber = (a, b) => (a.number ?? "").localeCompare(b.number ?? "", undefined, { numeric: true });
     const cmp = {
-      number: (a, b) => (a.number ?? "").localeCompare(b.number ?? "", undefined, { numeric: true }),
+      number: byNumber,
+      rarity: (a, b) => rarityRank(a.rarity) - rarityRank(b.rarity) || byNumber(a, b),
       popularity: (a, b) => (b.view_count ?? 0) - (a.view_count ?? 0),
       price_desc: (a, b) => (b.price ?? -1) - (a.price ?? -1),
       price_asc: (a, b) => {
@@ -75,7 +82,19 @@ export default function SetDetail() {
       },
     }[sort];
     return [...list].sort(cmp);
-  }, [cards, owned, filter, sort]);
+  }, [cards, owned, filter, sort, rarity]);
+
+  // Nur Seltenheiten, die es in diesem Set gibt, von gewöhnlich nach selten
+  const rarities = useMemo(() => {
+    const m = new Map();
+    for (const c of cards ?? []) {
+      const key = rarityKey(c.rarity);
+      const r = m.get(key) ?? { key, label: rarityLabel(c.rarity, set?.name), rank: rarityRank(c.rarity), n: 0 };
+      r.n += 1;
+      m.set(key, r);
+    }
+    return [...m.values()].sort((a, b) => a.rank - b.rank || a.label.localeCompare(b.label));
+  }, [cards, set]);
 
   const total = cards?.length ?? 0;
   const have = cards ? cards.filter((c) => owned.has(c.external_id)).length : 0;
@@ -171,17 +190,34 @@ export default function SetDetail() {
       )}
 
       {cards && (
-        <div className="flex items-center gap-1.5 mb-4">
-          <span className="text-xs text-subtle">Sortieren:</span>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
-          >
-            {Object.entries(SORTS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+          <label className="flex items-center gap-1.5">
+            <span className="text-xs text-subtle">Sortieren:</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+            >
+              {Object.entries(SORTS).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </label>
+          {rarities.length > 1 && (
+            <label className="flex items-center gap-1.5">
+              <span className="text-xs text-subtle">Seltenheit:</span>
+              <select
+                value={rarity}
+                onChange={(e) => setRarity(e.target.value)}
+                className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+              >
+                <option value="all">Alle ({total})</option>
+                {rarities.map((r) => (
+                  <option key={r.key} value={r.key}>{r.label} ({r.n})</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
 
