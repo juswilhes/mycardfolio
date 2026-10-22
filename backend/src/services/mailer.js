@@ -2,6 +2,7 @@
 // wird die Mail nur ins Log geschrieben (lokale Entwicklung).
 import nodemailer from "nodemailer";
 import db from "../db/index.js";
+import { mailHtml, esc } from "./mailLayout.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const FROM = process.env.MAIL_FROM || process.env.SMTP_USER || "mycardfolio";
@@ -77,28 +78,51 @@ export function sendInactivityWarningMail(email, deleteOn) {
 
 // Willkommens-Mail nach der E-Mail-Bestätigung (Aufbau nach Noah Kagan: persönlich, nachprüfbare
 // Fakten statt Werbesprech, eine konkrete Frage am Ende - Antworten landen beim Betreiber).
-export function sendWelcomeMail(user, unsubscribeLink) {
+// Inhalt getrennt vom Versand, damit er sich als Vorschau anzeigen lässt
+export function buildWelcomeMail(user, unsubscribeLink) {
   const name = user.username?.trim();
   const cards = db.prepare(`SELECT COUNT(*) n FROM cards`).get().n;
   const roughly = (Math.floor(cards / 1000) * 1000).toLocaleString("de-DE");
-  return send({
-    to: user.email,
+  const start = `${FRONTEND_URL}/sets`;
+  const intro =
+    "danke, dass du mycardfolio ausprobierst! Ich bin Justus, Hobby-Pokémon-Sammler, und baue mycardfolio selbst. " +
+    "Ich wollte wissen, was meine Karten wert sind, ohne jede einzeln nachzuschlagen.";
+  const can = [
+    `über ${roughly} Pokémon-Karten aus allen englischen Sets durchsuchen, mit einem Preis, der jede Nacht neu berechnet wird`,
+    "deine Karten eintragen und sehen, was deine Sammlung heute wert ist und wie sich der Wert entwickelt",
+    "Karten, die du noch suchst, auf deine Watchlist setzen",
+  ];
+  const tip = "Mein Tipp für den Start: Trag deine 10 Lieblingskarten ein, das dauert etwa 5 Minuten.";
+  const question =
+    "Und jetzt meine Frage an dich: Was müsste mycardfolio können, damit es dir wirklich hilft? " +
+    "Antworte einfach auf diese Mail – ich lese jede Antwort selbst.";
+  const footer = "Du bekommst diese Mail, weil du bei der Registrierung zugestimmt hast.";
+  return {
     subject: name ? `Willkommen, ${name} – eine kurze Frage` : "Willkommen bei mycardfolio – eine kurze Frage",
-    replyTo: ADMIN_EMAIL || undefined,
     text:
-      `Hallo${name ? ` ${name}` : ""},\n\n` +
-      `danke, dass du mycardfolio ausprobierst! Ich bin Justus, Hobby-Pokémon-Sammler, und baue mycardfolio selbst. ` +
-      `Ich wollte wissen, was meine Karten wert sind, ohne jede einzeln nachzuschlagen.\n\n` +
-      `Was du jetzt schon machen kannst:\n` +
-      `- über ${roughly} Pokémon-Karten aus allen englischen Sets durchsuchen, mit einem Preis, der jede Nacht neu berechnet wird\n` +
-      `- deine Karten eintragen und sehen, was deine Sammlung heute wert ist und wie sich der Wert entwickelt\n` +
-      `- Karten, die du noch suchst, auf deine Watchlist setzen\n\n` +
-      `Mein Tipp für den Start: Trag deine 10 Lieblingskarten ein, das dauert etwa 5 Minuten.\n${FRONTEND_URL}/sets\n\n` +
-      `Und jetzt meine Frage an dich: Was müsste mycardfolio können, damit es dir wirklich hilft? ` +
-      `Antworte einfach auf diese Mail - ich lese jede Antwort selbst.\n\n` +
-      `Viele Grüße\nJustus\nHobby-Pokémon-Sammler und Entwickler von mycardfolio\n\n` +
-      `--\nDu bekommst diese Mail, weil du bei der Registrierung zugestimmt hast. Keine Neuigkeiten mehr: ${unsubscribeLink}`,
-  });
+      `Hallo${name ? ` ${name}` : ""},\n\n${intro}\n\nWas du jetzt schon machen kannst:\n` +
+      can.map((c) => `- ${c}`).join("\n") +
+      `\n\n${tip}\n${start}\n\n${question}\n\nViele Grüße\nJustus\nHobby-Pokémon-Sammler und Entwickler von mycardfolio\n\n` +
+      `--\n${footer} Keine Neuigkeiten mehr: ${unsubscribeLink}`,
+    html: mailHtml({
+      preheader: "Ein paar Tipps für den Start – und eine Frage an dich.",
+      blocks: [
+        { p: `Hallo${name ? ` ${esc(name)}` : ""},` },
+        { p: esc(intro) },
+        { p: "Was du jetzt schon machen kannst:" },
+        { list: can.map(esc) },
+        { p: esc(tip) },
+        { button: { label: "Erste Karten eintragen", href: start } },
+        { p: `<strong>${esc(question)}</strong>` },
+      ],
+      signature: "Viele Grüße<br>Justus<br><span style=\"color:#8a7a63\">Hobby-Pokémon-Sammler und Entwickler von mycardfolio</span>",
+      footer: `${esc(footer)} <a href="${esc(unsubscribeLink)}" style="color:#8a7a63">Keine Neuigkeiten mehr</a>`,
+    }),
+  };
+}
+
+export function sendWelcomeMail(user, unsubscribeLink) {
+  return send({ to: user.email, replyTo: ADMIN_EMAIL || undefined, ...buildWelcomeMail(user, unsubscribeLink) });
 }
 
 // Feedback aus dem Formular an den Betreiber; Antworten gehen direkt an den Absender (falls bekannt).

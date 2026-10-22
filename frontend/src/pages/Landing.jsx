@@ -92,6 +92,21 @@ export default function Landing() {
       {!member && (
       <section className="text-center pt-6 pb-10">
         <Logo className="h-12 inline-block mb-8" />
+        {/* Hinweis für die ersten Testnutzer - nur solange die Registrierung offen ist */}
+        {registrationOpen && (
+          <div className="mb-6">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 text-left sm:text-center text-xs sm:text-sm bg-yellow/10 border border-yellow rounded-2xl sm:rounded-full pl-1.5 pr-4 py-1.5 hover:bg-yellow/20"
+            >
+              <span className="bg-yellow text-yellowInk font-semibold rounded-full px-2.5 py-0.5 text-[11px]">Testphase</span>
+              <span>
+                Jetzt kostenlos registrieren und mitgestalten, was mycardfolio als Nächstes kann
+                <span aria-hidden="true"> →</span>
+              </span>
+            </Link>
+          </div>
+        )}
         <h1 className="text-3xl sm:text-4xl font-semibold leading-tight">
           Deine Pokémon-Sammlung. Immer im Blick, immer aktuell.
         </h1>
