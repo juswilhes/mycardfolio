@@ -46,15 +46,9 @@ export default function Impressum() {
         <a href="/datenschutz">Datenschutzerklärung</a>.
       </p>
 
+      {/* Kein Link mehr auf die EU-OS-Plattform: seit 20.07.2025 abgeschaltet (VO (EU) 2024/3228),
+          ein Verweis darauf gilt als irreführend. */}
       <h2>Verbraucherstreitbeilegung / Universalschlichtungsstelle</h2>
-      <p>
-        Die Europäische Kommission stellt eine Plattform zur
-        Online-Streitbeilegung (OS) bereit:{" "}
-        <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noreferrer">
-          https://ec.europa.eu/consumers/odr/
-        </a>
-        . Unsere E-Mail-Adresse findest du oben.
-      </p>
       <p>
         Wir sind nicht bereit und nicht verpflichtet, an
         Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle

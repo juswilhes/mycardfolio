@@ -34,22 +34,20 @@ export default function Datenschutz() {
         ein und nutzen keine Analyse-Dienste.
       </p>
 
-      <h2>3. Aufruf der Website – Server-Logfiles</h2>
+      <h2>3. Aufruf der Website</h2>
       <p>
-        Beim Aufruf der Website übermittelt dein Browser automatisch Daten an den
-        Server unseres Hosters. Das sind: IP-Adresse, Datum und Uhrzeit des
-        Zugriffs, angefragte Adresse/Datei, HTTP-Statuscode, übertragene
-        Datenmenge, die zuvor besuchte Seite (Referrer) sowie Browser- und
-        Betriebssystem-Kennung. Diese Daten sind für den Betrieb, die Sicherheit
-        und die Stabilität notwendig.
+        Beim Aufruf der Website übermittelt dein Browser automatisch Daten an
+        unseren Server: IP-Adresse, Datum und Uhrzeit des Zugriffs, angefragte
+        Adresse, die zuvor besuchte Seite (Referrer) sowie Browser- und
+        Betriebssystem-Kennung. Diese Daten sind technisch nötig, um dir die
+        Seite auszuliefern. Wir speichern dabei <strong>keine
+        Zugriffsprotokolle mit deiner IP-Adresse</strong>; sie wird nur für die
+        Dauer der Anfrage verarbeitet und für die unten beschriebene Zählung
+        sofort in einen Hash umgewandelt.
       </p>
       <p>
         <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (berechtigtes
         Interesse an einem sicheren, funktionsfähigen Betrieb).
-        <br />
-        <strong>Speicherdauer:</strong> Logdaten werden nach spätestens 14 Tagen
-        gelöscht oder anonymisiert, sofern kein sicherheitsrelevanter Vorfall
-        eine längere Aufbewahrung erfordert.
       </p>
       <p>
         Zusätzlich führen wir eine einfache, eigene Nutzungsstatistik – ohne
@@ -78,6 +76,17 @@ export default function Datenschutz() {
         (berechtigtes Interesse, die Nutzung der eigenen Seite in
         datensparsamer Form nachvollziehen zu können).
       </p>
+      <p>
+        <strong>Fehlerberichte:</strong> Tritt in deinem Browser ein
+        Programmfehler auf, sendet die Seite automatisch einen Fehlerbericht an
+        uns: Fehlermeldung, technische Details zum Fehler, die aufgerufene
+        Adresse, deine Browserkennung und – nur wenn du angemeldet bist – die
+        E-Mail-Adresse deines Kontos. Wir nutzen die Berichte ausschließlich, um
+        Fehler zu finden und zu beheben, und löschen sie nach{" "}
+        <strong>30 Tagen</strong> (bei Löschung deines Kontos sofort).
+        Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
+        einer fehlerfrei funktionierenden Seite).
+      </p>
 
       <h2>4. Hosting</h2>
       <p>
@@ -96,13 +105,14 @@ export default function Datenschutz() {
         <li>
           <strong>Session-Cookie (nur mit Nutzerkonto):</strong> hält dich nach
           dem Login angemeldet. Technisch erforderlich, § 25 Abs. 2 Nr. 2 TDDDG,
-          Art. 6 Abs. 1 lit. b DSGVO. Wird beim Abmelden bzw. nach Ablauf
-          gelöscht.
+          Art. 6 Abs. 1 lit. b DSGVO. Gültig für 30 Tage, wird beim Abmelden
+          gelöscht. Zur Sitzung speichern wir auf dem Server einen Hash des
+          Sitzungsschlüssels, das Ablaufdatum und deine Browserkennung.
         </li>
         <li>
           <strong>Lokaler Speicher (localStorage) deines Browsers:</strong>
-          speichert deine Anzeige-Einstellungen (Hell-/Dunkelmodus, gewählte
-          Sortierung und Filter). Diese Angaben verlassen dein Gerät nicht und
+          speichert, ob du den Hell- oder Dunkelmodus gewählt hast und welche
+          Orden du schon gesehen hast. Diese Angaben verlassen dein Gerät nicht und
           werden nicht an uns übertragen. Rechtsgrundlage § 25 Abs. 2 Nr. 2
           TDDDG (für die von dir gewünschte Funktion unbedingt erforderlich).
         </li>
@@ -115,7 +125,9 @@ export default function Datenschutz() {
         als nicht umkehrbarer kryptografischer Hash gespeichert). Optional
         kannst du einen Anzeigenamen angeben. Die E-Mail-Adresse nutzen wir zur
         Anmeldung, zur Bestätigung des Kontos, für ein Zurücksetzen des Passworts
-        und für zwingend erforderliche Mitteilungen zum Dienst.
+        und für zwingend erforderliche Mitteilungen zum Dienst. Zum Schutz vor
+        dem Erraten von Passwörtern zählen wir fehlgeschlagene Anmeldeversuche
+        und sperren das Konto nach fünf Fehlversuchen vorübergehend.
       </p>
       <p>
         <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Erfüllung
@@ -129,8 +141,9 @@ export default function Datenschutz() {
 
       <h2>7. Deine Sammlungs- und Portfoliodaten</h2>
       <p>
-        Die von dir erfassten Karten, Kaufpreise, Zustände, Verkäufe, Notizen und
-        daraus berechneten Werte speichern wir deinem Konto zugeordnet, um dir
+        Die von dir erfassten Karten, Sealed-Produkte, Kaufpreise, Zustände,
+        Verkäufe, Notizen, deine Watchlist, erreichte Orden und die daraus
+        berechneten Werte speichern wir deinem Konto zugeordnet, um dir
         die Auswertung deiner Sammlung anzuzeigen. Diese Daten werden nicht an
         Dritte weitergegeben und nicht für andere Zwecke ausgewertet.
         Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.
@@ -139,8 +152,9 @@ export default function Datenschutz() {
       <h2>8. Kartenbilder von Drittanbietern</h2>
       <p>
         Die Bilder der Sammelkarten werden nicht von uns, sondern direkt von
-        externen Servern geladen (u. a. <code>images.pokemontcg.io</code>,{" "}
-        <code>assets.tcgdex.net</code>, <code>images.scrydex.com</code>). Dein
+        externen Servern geladen (<code>images.pokemontcg.io</code>,{" "}
+        <code>assets.tcgdex.net</code>, <code>images.scrydex.com</code> und{" "}
+        <code>assets.pokemon.com</code>). Dein
         Browser stellt dazu eine Verbindung zu diesen Anbietern her und
         übermittelt dabei technisch bedingt deine IP-Adresse sowie
         Browserangaben an den jeweiligen Server. Auf diese Verarbeitung durch die
@@ -152,13 +166,20 @@ export default function Datenschutz() {
         Bildmengen). Eine Auslieferung der Bilder über einen eigenen Server
         (Proxy), die diese Übermittlung vermeidet, ist geplant.
       </p>
+      <p>
+        Schriftarten laden wir dagegen von unserem eigenen Server; dabei wird
+        keine Verbindung zu Google oder anderen Schriftanbietern hergestellt.
+      </p>
 
       <h2>9. Serverseitig abgerufene Datenquellen</h2>
       <p>
         Zur Ergänzung von Karten- und Preisinformationen ruft unser Server –
         ohne Bezug zu deiner Person – Daten von folgenden Diensten ab: TCGdex,
-        PokéAPI, Pokémon TCG API sowie Wechselkurse von frankfurter.dev. Dabei
-        werden keine personenbezogenen Daten von dir übermittelt.
+        Pokémon TCG API, die öffentlichen Preislisten von Cardmarket, PokéAPI
+        sowie Wechselkurse von frankfurter.dev. Für eine interne Übersicht des
+        Betreibers liest unser Server außerdem öffentliche News- und Forenbeiträge
+        (Pokézentrum, PokéBeach, Reddit). Dabei werden keine personenbezogenen
+        Daten von dir übermittelt.
       </p>
 
       <h2>10. Kontaktaufnahme</h2>

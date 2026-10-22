@@ -30,6 +30,13 @@ db.transaction(() => {
     }
   }
   db.prepare(`DELETE FROM sessions WHERE expires_at < ?`).run(new Date().toISOString());
+  // Fehlerberichte aus dem Browser (mit E-Mail, Browserkennung) nur 30 Tage aufbewahren - so steht es
+  // in der Datenschutzerklärung. Läuft bei jedem Start, also nach jedem Deploy.
+  db.prepare(`DELETE FROM client_errors WHERE created_at < datetime('now', '-30 days')`).run();
+  // Reste früher gelöschter Konten (die Löschung erfasste diese Tabellen anfangs nicht)
+  for (const t of ["watchlist_items", "sealed_products", "user_achievements"]) {
+    db.prepare(`DELETE FROM ${t} WHERE user_id NOT IN (SELECT id FROM users)`).run();
+  }
 })();
 const normEmail = (e) => String(e ?? "").trim().toLowerCase();
 
@@ -209,8 +216,15 @@ export function setDisplayName(userId, name) {
 }
 
 // --- Konto löschen (DSGVO) -----------------------------------------
+// Alle Tabellen mit Nutzerbezug - neue Tabelle mit user_id = auch hier eintragen (Löschung nach
+// Art. 17 DSGVO, die Datenschutzerklärung verspricht "unwiderruflich entfernt").
 export function deleteAccount(userId) {
+  const email = sUserById.get(userId)?.email;
   const tx = db.transaction(() => {
+    for (const t of ["watchlist_items", "sealed_products", "user_achievements"]) {
+      db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(userId);
+    }
+    if (email) db.prepare(`DELETE FROM client_errors WHERE user_email = ?`).run(email);
     db.prepare(`DELETE FROM collection_items WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM sales WHERE user_id = ?`).run(userId);
     db.prepare(`DELETE FROM portfolio_snapshots WHERE user_id = ?`).run(userId);
@@ -239,6 +253,14 @@ export function exportUserData(userId) {
       )
       .all(userId),
     sales: db.prepare(`SELECT * FROM sales WHERE user_id = ? ORDER BY id`).all(userId),
+    sealed_products: db.prepare(`SELECT * FROM sealed_products WHERE user_id = ? ORDER BY id`).all(userId),
+    watchlist: db
+      .prepare(
+        `SELECT w.*, c.external_id, c.name, c.set_name, c.number
+         FROM watchlist_items w JOIN cards c ON c.id = w.card_id WHERE w.user_id = ?`
+      )
+      .all(userId),
+    achievements: db.prepare(`SELECT achievement_id, earned_at FROM user_achievements WHERE user_id = ?`).all(userId),
     portfolio_history: db
       .prepare(
         `SELECT captured_on, total_value, total_cost, card_count

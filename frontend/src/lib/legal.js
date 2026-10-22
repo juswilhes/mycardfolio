@@ -33,10 +33,11 @@ export const HOSTING = {
 export const SITE = {
   domain: "mycardfolio.de",
   altDomain: "mycardfolio.eu",
-  lastUpdated: "2026-10-11", // Datum der letzten Änderung dieser Texte
+  lastUpdated: "2026-10-22", // Datum der letzten Änderung dieser Texte
 };
 
 // Fertig ausgefüllt? Dann hier auf true setzen – blendet den Hinweisbanner
 // auf den Rechtstexten aus.
-// Noch nicht fachlich geprüft (Stand 11.10.2026, Marktplatz-Abschnitte entfernt).
+// Noch nicht abschließend geprüft (Stand 22.10.2026: technischer Abgleich mit dem Code durch Claude,
+// offene Rechtsfragen liegen bei Justus).
 export const LEGAL_REVIEWED = false;

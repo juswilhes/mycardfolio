@@ -4,6 +4,14 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { reportError } from "./lib/reportError.js";
+// Schriften liegen auf unserem Server statt bei Google (sonst geht die IP jedes Besuchers an Google).
+import "@fontsource/poppins/400.css";
+import "@fontsource/poppins/500.css";
+import "@fontsource/poppins/600.css";
+import "@fontsource/poppins/700.css";
+import "@fontsource/poppins/800.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "./index.css";
 
 // Fängt Fehler ab, die NICHT über eine React-Render-Fehlergrenze laufen
