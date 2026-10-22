@@ -62,7 +62,7 @@ export default function Account() {
           <div className="mt-2 text-xs bg-yellow/10 border border-yellow rounded-lg px-3 py-2">
             E-Mail noch nicht bestätigt.{" "}
             {resent ? (
-              <span className="text-subtle">Neue Bestätigungs-Mail gesendet (siehe Server-Log).</span>
+              <span className="text-subtle">Neue Bestätigungs-Mail gesendet - schau in dein Postfach.</span>
             ) : (
               <button onClick={doResend} className="underline">Erneut senden</button>
             )}

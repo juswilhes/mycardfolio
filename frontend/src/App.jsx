@@ -27,6 +27,7 @@ import Article from "./pages/Article.jsx";
 import ArtistCards from "./pages/ArtistCards.jsx";
 import Footer from "./components/Footer.jsx";
 import FeedbackButton from "./components/FeedbackButton.jsx";
+import VerifyBanner from "./components/VerifyBanner.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import NavMenu from "./components/NavMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -164,6 +165,7 @@ export default function App() {
       </header>
 
       <main className="px-6 py-8 max-w-5xl mx-auto w-full flex-1">
+        <VerifyBanner />
         {/* key=Pfad: fängt ein ein Render-Fehler einer Seite ab, statt dass
             die ganze App hängen bleibt und nur ein manuelles Neuladen hilft -
             bei jedem Seitenwechsel wird frisch gemountet, also eine neue

@@ -6,7 +6,7 @@ import AuthCard, { inputCls, primaryBtn } from "../components/AuthCard.jsx";
 export default function Register() {
   const { register, registrationOpen } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "", displayName: "" });
+  const [form, setForm] = useState({ email: "", password: "", password2: "", displayName: "" });
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -16,6 +16,10 @@ export default function Register() {
   async function submit(e) {
     e.preventDefault();
     if (!accepted) return;
+    if (form.password !== form.password2) {
+      setError("Die beiden Passwörter stimmen nicht überein.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -81,6 +85,16 @@ export default function Register() {
             value={form.password} onChange={set("password")} className={inputCls}
           />
         </label>
+        <label className="block text-xs text-subtle">
+          Passwort wiederholen
+          <input
+            type="password" autoComplete="new-password" required minLength={8}
+            value={form.password2} onChange={set("password2")} className={inputCls}
+          />
+        </label>
+        {form.password2 && form.password !== form.password2 && (
+          <p className="text-rose text-xs">Die beiden Passwörter stimmen nicht überein.</p>
+        )}
         <label className="flex items-start gap-2 text-xs text-subtle">
           <input
             type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)}
@@ -99,7 +113,7 @@ export default function Register() {
           </span>
         </label>
         {error && <p className="text-rose text-xs">{error}</p>}
-        <button type="submit" disabled={busy || !accepted} className={primaryBtn}>
+        <button type="submit" disabled={busy || !accepted || form.password !== form.password2} className={primaryBtn}>
           {busy ? "Wird erstellt …" : "Konto erstellen"}
         </button>
       </form>

@@ -21,7 +21,7 @@ import {
   publicUser,
   recordTermsAcceptance,
 } from "../services/authService.js";
-import { sendVerificationMail, sendPasswordResetMail } from "../services/mailer.js";
+import { sendVerificationMail, sendPasswordResetMail, sendWelcomeMail } from "../services/mailer.js";
 import { authRequired, authOptional, SESSION_COOKIE } from "../middleware/auth.js";
 
 const router = Router();
@@ -103,6 +103,8 @@ router.get("/me", authOptional, (req, res) => {
 router.post("/verify", (req, res) => {
   const { user, error } = confirmEmail(String(req.body?.token ?? ""));
   if (error) return res.status(400).json({ error });
+  // Nur hier, nicht beim Passwort-Zurücksetzen: ein Bestätigungslink gilt genau einmal
+  sendWelcomeMail(user);
   res.json({ user: publicUser(user) });
 });
 

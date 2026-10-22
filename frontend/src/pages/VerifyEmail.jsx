@@ -36,7 +36,7 @@ export default function VerifyEmail() {
     >
       {state === "pending" && <p className="text-sm text-subtle">Einen Moment …</p>}
       {state === "ok" && (
-        <p className="text-sm">Danke – deine E-Mail-Adresse ist jetzt bestätigt. ✅</p>
+        <p className="text-sm">Danke – deine E-Mail-Adresse ist jetzt bestätigt. Wir haben dir eine kurze Willkommens-Mail geschickt.</p>
       )}
       {state === "error" && <p className="text-sm text-rose">{message}</p>}
     </AuthCard>

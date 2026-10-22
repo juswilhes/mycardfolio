@@ -94,6 +94,7 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 
 ## Feedback & Testnutzer
 - **Feedback-Knopf** unten rechts auf jeder Seite (`components/FeedbackButton.jsx`, `POST /api/feedback` in `routes/feedback.js`): Nachricht + Seite (+ E-Mail, wenn angemeldet oder freiwillig angegeben) gehen per Mail an `ADMIN_EMAIL`, Antwort-Adresse = Absender; nichts in der DB (so in Datenschutz Ziff. 10). 10 Nachrichten/Stunde je IP, Lockfeld `website` gegen Spam-Roboter.
+- **Ablauf Registrierung:** E-Mail, Anzeigename (freiwillig), Passwort ZWEIMAL (auch beim Zurücksetzen), Haken Nutzungsbedingungen/Datenschutz -> Konto sofort nutzbar + Bestätigungsmail; oben auf jeder Seite `components/VerifyBanner.jsx` bis zur Bestätigung (mit "Link erneut senden"); nach dem Klick auf den Link EINMAL die Willkommens-Mail (`sendWelcomeMail` in `mailer.js`, Aufbau nach Noah Kagan: persönlich von Justus, nachprüfbare Fakten, eine Frage am Ende, Antworten an `ADMIN_EMAIL`). Keine Newsletter/Folge-Mails ohne Justus.
 - **Registrierung bleibt zu** (`REGISTRATION_OPEN=false` in der Server-.env), bis Justus sagt, dass alles fertig ist - Öffnen ist der LETZTE Schritt (Justus, 22.10.2026).
 
 ## Watchlist
