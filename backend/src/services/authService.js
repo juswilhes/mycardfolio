@@ -108,6 +108,15 @@ export function validatePassword(password, { email, username } = {}) {
   return null;
 }
 
+// Testphase: begrenzte Zahl an Konten (TESTER_LIMIT in der .env, Standard 50). Das Betreiber-Konto zählt nicht mit.
+// Die Grenze ist echt - die Startseite zeigt die freien Plätze, bei 0 schließt die Registrierung.
+export const TESTER_LIMIT = Number(process.env.TESTER_LIMIT) || 50;
+export function testerSpotsLeft() {
+  const op = (process.env.OPERATOR_EMAIL || process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const taken = db.prepare(`SELECT COUNT(*) n FROM users WHERE email != ?`).get(op).n;
+  return Math.max(0, TESTER_LIMIT - taken);
+}
+
 export function validateRegistration({ email, password, username }) {
   if (!EMAIL_RE.test(normEmail(email))) return "Bitte eine gültige E-Mail-Adresse angeben.";
   const nameErr = validateUsername(username);

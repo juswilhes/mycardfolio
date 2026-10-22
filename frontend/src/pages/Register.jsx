@@ -7,7 +7,7 @@ import ResendVerification from "../components/ResendVerification.jsx";
 // Ablauf: Formular -> Konto wird angelegt, Bestätigungslink per E-Mail -> erst der Klick auf den
 // Link meldet an (VerifyEmail.jsx). Ohne bestätigte Adresse ist keine Anmeldung möglich.
 export default function Register() {
-  const { register, registrationOpen } = useAuth();
+  const { register, registrationOpen, testers } = useAuth();
   const [form, setForm] = useState({ email: "", username: "", password: "", password2: "" });
   const [accepted, setAccepted] = useState(false);
   const [welcome, setWelcome] = useState(false);
@@ -50,10 +50,11 @@ export default function Register() {
 
   if (!registrationOpen) {
     return (
-      <AuthCard title="Registrierung geschlossen" footer={footer}>
+      <AuthCard title={testers && testers.left <= 0 ? "Alle Testplätze vergeben" : "Registrierung geschlossen"} footer={footer}>
         <p className="text-sm text-subtle">
-          mycardfolio nimmt gerade keine neuen Anmeldungen an. Schau bald wieder
-          vorbei.
+          {testers && testers.left <= 0
+            ? `Die ${testers.limit} Plätze der Testphase sind vergeben. Schau bald wieder vorbei – danach öffnen wir für alle.`
+            : "mycardfolio nimmt gerade keine neuen Anmeldungen an. Schau bald wieder vorbei."}
         </p>
       </AuthCard>
     );
@@ -78,6 +79,11 @@ export default function Register() {
 
   return (
     <AuthCard title="Konto erstellen" footer={footer}>
+      {testers && (
+        <p className="text-xs bg-yellow/10 border border-yellow rounded-xl px-3 py-2 mb-4">
+          <strong>Testphase:</strong> noch {testers.left} von {testers.limit} Plätzen frei. Kostenlos, deine Wünsche haben Vorrang.
+        </p>
+      )}
       <form onSubmit={submit} className="space-y-3">
         <label className="block text-xs text-subtle">
           E-Mail

@@ -66,8 +66,35 @@ function MoverRow({ m }) {
 // und den neuesten Artikeln. Angemeldet ("member") steht oben das kleine Portfolio-Fenster,
 // Werbeteile (Pitch, So funktioniert's, Funktionen, FAQ) entfallen.
 // Die Suche selbst lebt auf "Alle Karten" – hier nur der Pitch + Link dorthin.
+function TesterInvite({ testers }) {
+  const taken = testers.limit - testers.left;
+  return (
+    <div className="max-w-xl mx-auto mb-8 text-left bg-surface border-2 border-yellow rounded-3xl p-5 sm:p-6 shadow-sm">
+      <span className="inline-block bg-yellow text-yellowInk font-semibold rounded-full px-3 py-0.5 text-xs">
+        Testphase · nur {testers.limit} Plätze
+      </span>
+      <p className="text-lg font-semibold mt-3">Werde einer der ersten {testers.limit} Sammler auf mycardfolio</p>
+      <p className="text-sm text-subtle mt-1">
+        Kostenlos und ohne Werbung. Als Testnutzer bestimmst du mit, was mycardfolio als Nächstes kann –
+        deine Wünsche haben Vorrang.
+      </p>
+      <div className="mt-4 h-2 rounded-full bg-line overflow-hidden" aria-hidden="true">
+        <div className="h-full bg-yellow" style={{ width: `${Math.max(4, (taken / testers.limit) * 100)}%` }} />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-subtle">
+          Noch <strong className="text-ink">{testers.left}</strong> von {testers.limit} Plätzen frei
+        </p>
+        <Link to="/register" className="bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full text-sm">
+          Testplatz sichern
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
-  const { user, registrationOpen } = useAuth();
+  const { user, registrationOpen, testers } = useAuth();
   const member = !!user;
   const [data, setData] = useState(null);
   const [articles, setArticles] = useState([]);
@@ -92,21 +119,8 @@ export default function Landing() {
       {!member && (
       <section className="text-center pt-6 pb-10">
         <Logo className="h-12 inline-block mb-8" />
-        {/* Hinweis für die ersten Testnutzer - nur solange die Registrierung offen ist */}
-        {registrationOpen && (
-          <div className="mb-6">
-            <Link
-              to="/register"
-              className="inline-flex items-center gap-2 text-left sm:text-center text-xs sm:text-sm bg-yellow/10 border border-yellow rounded-2xl sm:rounded-full pl-1.5 pr-4 py-1.5 hover:bg-yellow/20"
-            >
-              <span className="bg-yellow text-yellowInk font-semibold rounded-full px-2.5 py-0.5 text-[11px]">Testphase</span>
-              <span>
-                Jetzt kostenlos registrieren und mitgestalten, was mycardfolio als Nächstes kann
-                <span aria-hidden="true"> →</span>
-              </span>
-            </Link>
-          </div>
-        )}
+        {/* Testphase: begrenzte, echte Zahl an Plätzen (TESTER_LIMIT im Backend) - nur solange Plätze frei sind */}
+        {registrationOpen && testers && <TesterInvite testers={testers} />}
         <h1 className="text-3xl sm:text-4xl font-semibold leading-tight">
           Deine Pokémon-Sammlung. Immer im Blick, immer aktuell.
         </h1>

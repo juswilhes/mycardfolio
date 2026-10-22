@@ -84,38 +84,39 @@ export function buildWelcomeMail(user, unsubscribeLink) {
   const cards = db.prepare(`SELECT COUNT(*) n FROM cards`).get().n;
   const roughly = (Math.floor(cards / 1000) * 1000).toLocaleString("de-DE");
   const start = `${FRONTEND_URL}/sets`;
-  const intro =
-    "danke, dass du mycardfolio ausprobierst! Ich bin Justus, Hobby-Pokémon-Sammler, und baue mycardfolio selbst. " +
-    "Ich wollte wissen, was meine Karten wert sind, ohne jede einzeln nachzuschlagen.";
+  const intro = "danke, dass du mycardfolio ausprobierst! Ich bin Justus, Hobby-Pokémon-Sammler, und baue mycardfolio selbst.";
+  // Justus: die Frage soll im Vordergrund stehen - deshalb direkt nach der Begrüßung
+  const question = "Bevor du loslegst, eine Frage an dich: Was müsste mycardfolio können, damit es dir wirklich hilft?";
+  const answer = "Antworte einfach auf diese Mail – ich lese jede Antwort selbst.";
+  const why = "Ich wollte wissen, was meine Karten wert sind, ohne jede einzeln nachzuschlagen. Das kannst du jetzt schon:";
   const can = [
     `über ${roughly} Pokémon-Karten aus allen englischen Sets durchsuchen, mit einem Preis, der jede Nacht neu berechnet wird`,
     "deine Karten eintragen und sehen, was deine Sammlung heute wert ist und wie sich der Wert entwickelt",
     "Karten, die du noch suchst, auf deine Watchlist setzen",
   ];
   const tip = "Mein Tipp für den Start: Trag deine 10 Lieblingskarten ein, das dauert etwa 5 Minuten.";
-  const question =
-    "Und jetzt meine Frage an dich: Was müsste mycardfolio können, damit es dir wirklich hilft? " +
-    "Antworte einfach auf diese Mail – ich lese jede Antwort selbst.";
+  const outro = "Ich freue mich riesig, dass du mit am Start bist!";
   const footer = "Du bekommst diese Mail, weil du bei der Registrierung zugestimmt hast.";
   return {
     subject: name ? `Willkommen, ${name} – eine kurze Frage` : "Willkommen bei mycardfolio – eine kurze Frage",
     text:
-      `Hallo${name ? ` ${name}` : ""},\n\n${intro}\n\nWas du jetzt schon machen kannst:\n` +
+      `Hallo${name ? ` ${name}` : ""},\n\n${intro}\n\n${question}\n${answer}\n\n${why}\n` +
       can.map((c) => `- ${c}`).join("\n") +
-      `\n\n${tip}\n${start}\n\n${question}\n\nViele Grüße\nJustus\nHobby-Pokémon-Sammler und Entwickler von mycardfolio\n\n` +
+      `\n\n${tip}\n${start}\n\n${outro}\n\nViele Grüße\nJustus\n\n` +
       `--\n${footer} Keine Neuigkeiten mehr: ${unsubscribeLink}`,
     html: mailHtml({
-      preheader: "Ein paar Tipps für den Start – und eine Frage an dich.",
+      preheader: "Eine Frage an dich – und ein paar Tipps für den Start.",
       blocks: [
         { p: `Hallo${name ? ` ${esc(name)}` : ""},` },
         { p: esc(intro) },
-        { p: "Was du jetzt schon machen kannst:" },
+        { highlight: `${esc(question)}<br><span style="font-weight:normal;font-size:15px">${esc(answer)}</span>` },
+        { p: esc(why) },
         { list: can.map(esc) },
         { p: esc(tip) },
         { button: { label: "Erste Karten eintragen", href: start } },
-        { p: `<strong>${esc(question)}</strong>` },
+        { p: esc(outro) },
       ],
-      signature: "Viele Grüße<br>Justus<br><span style=\"color:#8a7a63\">Hobby-Pokémon-Sammler und Entwickler von mycardfolio</span>",
+      signature: "Viele Grüße<br>Justus",
       footer: `${esc(footer)} <a href="${esc(unsubscribeLink)}" style="color:#8a7a63">Keine Neuigkeiten mehr</a>`,
     }),
   };

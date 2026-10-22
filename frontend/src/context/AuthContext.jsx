@@ -7,12 +7,14 @@ export function AuthProvider({ children }) {
   // undefined = wird noch geladen, null = nicht angemeldet, Objekt = angemeldet
   const [user, setUser] = useState(undefined);
   const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [testers, setTesters] = useState(null); // { limit, left } während der Testphase
 
   const refresh = useCallback(async () => {
     try {
       const d = await api.getMe();
       setUser(d.user);
       setRegistrationOpen(d.registrationOpen !== false);
+      setTesters(d.testers ?? null);
     } catch {
       setUser(null);
     }
@@ -25,6 +27,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     registrationOpen,
+    testers,
     loading: user === undefined,
     refresh,
     async login(email, password) {

@@ -23,6 +23,8 @@ import {
   exportUserData,
   publicUser,
   recordTermsAcceptance,
+  testerSpotsLeft,
+  TESTER_LIMIT,
 } from "../services/authService.js";
 import { sendVerificationMail, sendPasswordResetMail, sendWelcomeMail } from "../services/mailer.js";
 import { authRequired, authOptional, SESSION_COOKIE } from "../middleware/auth.js";
@@ -40,7 +42,8 @@ const authLimiter = rateLimit({
 });
 
 // Registrierung offen? Über REGISTRATION_OPEN=false in der .env schließbar.
-const registrationOpen = () => process.env.REGISTRATION_OPEN !== "false";
+const registrationEnabled = () => process.env.REGISTRATION_OPEN !== "false";
+const registrationOpen = () => registrationEnabled() && testerSpotsLeft() > 0;
 
 const cookieOpts = () => ({
   httpOnly: true,
@@ -57,8 +60,11 @@ function startSession(res, user, req) {
 // POST /api/auth/register  { email, password, username, acceptTerms, newsletter? }
 // Legt das Konto an und schickt den Bestätigungslink - angemeldet wird erst nach der Bestätigung.
 router.post("/register", authLimiter, (req, res) => {
-  if (!registrationOpen()) {
+  if (!registrationEnabled()) {
     return res.status(403).json({ error: "Die Registrierung ist gerade geschlossen." });
+  }
+  if (testerSpotsLeft() <= 0) {
+    return res.status(403).json({ error: "Alle Testplätze sind vergeben." });
   }
   const { email, password, username, acceptTerms, newsletter } = req.body ?? {};
   const err = validateRegistration({ email, password, username });
@@ -106,7 +112,8 @@ router.post("/logout", (req, res) => {
 
 // GET /api/auth/me  -> aktueller Nutzer (oder null) + ob Registrierung offen ist
 router.get("/me", authOptional, (req, res) => {
-  res.json({ user: publicUser(req.user), registrationOpen: registrationOpen() });
+  const testers = registrationEnabled() ? { limit: TESTER_LIMIT, left: testerSpotsLeft() } : null;
+  res.json({ user: publicUser(req.user), registrationOpen: registrationOpen(), testers });
 });
 
 // POST /api/auth/verify  { token }

@@ -8,7 +8,7 @@ const C = { canvas: "#fbf3e6", card: "#ffffff", ink: "#241c15", subtle: "#8a7a63
 export const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-// blocks: Liste aus { p: "Text (HTML erlaubt, vorher escapen)" } | { list: ["…"] } | { button: { label, href } }
+// blocks: Liste aus { p: "Text (HTML erlaubt, vorher escapen)" } | { highlight: "…" } | { list: ["…"] } | { button: { label, href } }
 export function mailHtml({ preheader = "", blocks, signature, footer }) {
   const font = "font-family:Helvetica,Arial,sans-serif;";
   const body = blocks
@@ -18,6 +18,9 @@ export function mailHtml({ preheader = "", blocks, signature, footer }) {
         return `<ul style="${font}font-size:16px;line-height:1.6;color:${C.ink};margin:0 0 16px;padding-left:22px">${b.list
           .map((li) => `<li style="margin:0 0 6px">${li}</li>`)
           .join("")}</ul>`;
+      if (b.highlight)
+        return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr><td style="background:#fdf3d3;border-left:4px solid ${C.yellow};border-radius:10px;padding:14px 16px">
+<p style="${font}font-size:17px;line-height:1.55;color:${C.ink};margin:0;font-weight:bold">${b.highlight}</p></td></tr></table>`;
       if (b.button)
         return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 22px"><tr><td style="background:${C.yellow};border-radius:999px">
 <a href="${esc(b.button.href)}" style="${font}display:inline-block;padding:12px 26px;font-size:15px;font-weight:bold;color:${C.yellowInk};text-decoration:none">${esc(b.button.label)}</a>
