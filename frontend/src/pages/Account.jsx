@@ -5,6 +5,7 @@ import { useTheme } from "../hooks/useTheme.js";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import {
   updateProfile,
+  setNewsletter,
   deleteAccount,
   exportDataUrl,
 } from "../api.js";
@@ -33,6 +34,10 @@ export default function Account() {
     } catch (err) {
       setNameErr(err.message);
     }
+  }
+
+  async function toggleNewsletter() {
+    setUser(await setNewsletter(!user.newsletter));
   }
 
   async function doDelete() {
@@ -106,6 +111,29 @@ export default function Account() {
         >
           Daten exportieren
         </a>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold mb-1">E-Mail-Neuigkeiten</h2>
+        <div className="flex items-center justify-between gap-4 max-w-md">
+          <p className="text-xs text-subtle">
+            Gelegentlich Neuigkeiten zu mycardfolio per E-Mail (z. B. neue Funktionen und Aktionen).
+            Abmeldung jederzeit.
+          </p>
+          <button
+            onClick={toggleNewsletter}
+            role="switch"
+            aria-checked={!!user.newsletter}
+            aria-label="E-Mail-Neuigkeiten an oder aus"
+            className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${user.newsletter ? "bg-ink" : "bg-line"}`}
+          >
+            <span
+              className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface shadow transition-transform ${
+                user.newsletter ? "translate-x-[22px]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
       </section>
 
       <section className="mb-8">

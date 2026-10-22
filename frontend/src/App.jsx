@@ -13,6 +13,7 @@ import Import from "./pages/Import.jsx";
 import Impressum from "./pages/Impressum.jsx";
 import Datenschutz from "./pages/Datenschutz.jsx";
 import Nutzungsbedingungen from "./pages/Nutzungsbedingungen.jsx";
+import Unsubscribe from "./pages/Unsubscribe.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
@@ -179,6 +180,7 @@ export default function App() {
             <Route path="/impressum" element={<Impressum />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/nutzungsbedingungen" element={<Nutzungsbedingungen />} />
+            <Route path="/abmelden" element={<Unsubscribe />} />
 
             {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
             <Route path="/sets" element={<AllCards />} />

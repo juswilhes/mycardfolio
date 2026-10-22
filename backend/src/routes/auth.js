@@ -15,6 +15,9 @@ import {
   startPasswordReset,
   completePasswordReset,
   setUsername,
+  setNewsletter,
+  unsubscribeToken,
+  unsubscribeByToken,
   verifyTokenForEmail,
   deleteAccount,
   exportUserData,
@@ -25,6 +28,7 @@ import { sendVerificationMail, sendPasswordResetMail, sendWelcomeMail } from "..
 import { authRequired, authOptional, SESSION_COOKIE } from "../middleware/auth.js";
 
 const router = Router();
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 // Strengeres Limit für alles, was Brute-Force-Ziel sein könnte.
 const authLimiter = rateLimit({
@@ -50,22 +54,22 @@ function startSession(res, user, req) {
   res.cookie(SESSION_COOKIE, token, { ...cookieOpts(), maxAge: expiresMs });
 }
 
-// POST /api/auth/register  { email, password, username, acceptTerms, welcomeMail? }
+// POST /api/auth/register  { email, password, username, acceptTerms, newsletter? }
 // Legt das Konto an und schickt den Bestätigungslink - angemeldet wird erst nach der Bestätigung.
 router.post("/register", authLimiter, (req, res) => {
   if (!registrationOpen()) {
     return res.status(403).json({ error: "Die Registrierung ist gerade geschlossen." });
   }
-  const { email, password, username, acceptTerms, welcomeMail } = req.body ?? {};
+  const { email, password, username, acceptTerms, newsletter } = req.body ?? {};
   const err = validateRegistration({ email, password, username });
   if (err) return res.status(400).json({ error: err });
   if (acceptTerms !== true) return res.status(400).json({ error: "Bitte akzeptiere die Nutzungsbedingungen." });
 
-  const { user, verifyToken, error } = createUser({ email, password, username, welcome: welcomeMail === true });
+  const { user, verifyToken, error } = createUser({ email, password, username, newsletter: newsletter === true });
   if (error) return res.status(409).json({ error });
   recordTermsAcceptance(user.id);
 
-  sendVerificationMail(user.email, verifyToken);
+  sendVerificationMail(user.email, verifyToken, { newsletter: !!user.newsletter_optin_at });
   res.status(201).json({ pending: true, email: user.email });
 });
 
@@ -109,8 +113,10 @@ router.get("/me", authOptional, (req, res) => {
 router.post("/verify", (req, res) => {
   const { user, error, expired } = confirmEmail(String(req.body?.token ?? ""));
   if (error) return res.status(400).json({ error, expired: !!expired });
-  // Nur hier und nur mit Einwilligung (Haken bei der Registrierung); ein Bestätigungslink gilt genau einmal
-  if (user.welcome_optin_at) sendWelcomeMail(user);
+  // Nur hier und nur mit bestätigter Einwilligung (Double-Opt-in); ein Bestätigungslink gilt genau einmal
+  if (user.newsletter_optin_at && user.newsletter_confirmed_at) {
+    sendWelcomeMail(user, `${FRONTEND_URL}/abmelden?t=${encodeURIComponent(unsubscribeToken(user.id))}`);
+  }
   startSession(res, user, req);
   res.json({ user: publicUser(user) });
 });
@@ -119,7 +125,7 @@ router.post("/verify", (req, res) => {
 // Immer gleiche Antwort - verrät nicht, ob es zu der Adresse ein Konto gibt.
 router.post("/resend-verification", authLimiter, (req, res) => {
   const r = verifyTokenForEmail(String(req.body?.email ?? ""));
-  if (r) sendVerificationMail(r.user.email, r.token);
+  if (r) sendVerificationMail(r.user.email, r.token, { newsletter: !!r.user.newsletter_optin_at });
   res.json({ ok: true });
 });
 
@@ -141,11 +147,20 @@ router.post("/reset", authLimiter, (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-// PATCH /api/auth/me  { username }
+// PATCH /api/auth/me  { username } oder { newsletter: true|false }
 router.patch("/me", authRequired, (req, res) => {
+  if (typeof req.body?.newsletter === "boolean") {
+    return res.json({ user: publicUser(setNewsletter(req.user.id, req.body.newsletter)) });
+  }
   const { user, error } = setUsername(req.user.id, req.body?.username);
   if (error) return res.status(400).json({ error });
   res.json({ user: publicUser(user) });
+});
+
+// POST /api/auth/unsubscribe  { token } - Abmeldelink aus E-Mails, ohne Anmeldung
+router.post("/unsubscribe", authLimiter, (req, res) => {
+  if (!unsubscribeByToken(req.body?.token)) return res.status(400).json({ error: "Der Abmeldelink ist ungültig." });
+  res.json({ ok: true });
 });
 
 // GET /api/auth/export  -> vollständiger Datenexport (DSGVO Art. 20)

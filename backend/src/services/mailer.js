@@ -41,12 +41,16 @@ async function send({ to, subject, text, html, replyTo }) {
   }
 }
 
-export function sendVerificationMail(email, token) {
+export function sendVerificationMail(email, token, { newsletter = false } = {}) {
   const link = `${FRONTEND_URL}/verify?token=${encodeURIComponent(token)}`;
+  const doi = newsletter
+    ? `Mit dem Klick bestätigst du auch, dass wir dir eine Willkommens-Mail und gelegentlich Neuigkeiten zu mycardfolio ` +
+      `per E-Mail schicken dürfen (z. B. neue Funktionen und Aktionen). Abmelden kannst du dich jederzeit mit einem Klick.\n\n`
+    : "";
   return send({
     to: email,
     subject: "mycardfolio – E-Mail bestätigen",
-    text: `Bestätige deine E-Mail-Adresse:\n${link}\n\nDer Link ist 24 Stunden gültig. Wenn du dich nicht registriert hast, ignoriere diese Mail.`,
+    text: `Bestätige deine E-Mail-Adresse:\n${link}\n\n${doi}Der Link ist 24 Stunden gültig. Wenn du dich nicht registriert hast, ignoriere diese Mail.`,
   });
 }
 
@@ -73,7 +77,7 @@ export function sendInactivityWarningMail(email, deleteOn) {
 
 // Willkommens-Mail nach der E-Mail-Bestätigung (Aufbau nach Noah Kagan: persönlich, nachprüfbare
 // Fakten statt Werbesprech, eine konkrete Frage am Ende - Antworten landen beim Betreiber).
-export function sendWelcomeMail(user) {
+export function sendWelcomeMail(user, unsubscribeLink) {
   const name = user.username?.trim();
   const cards = db.prepare(`SELECT COUNT(*) n FROM cards`).get().n;
   const roughly = (Math.floor(cards / 1000) * 1000).toLocaleString("de-DE");
@@ -86,13 +90,14 @@ export function sendWelcomeMail(user) {
       `danke, dass du mycardfolio ausprobierst! Ich bin Justus, Hobby-Pokémon-Sammler, und baue mycardfolio selbst. ` +
       `Ich wollte wissen, was meine Karten wert sind, ohne jede einzeln nachzuschlagen.\n\n` +
       `Was du jetzt schon machen kannst:\n` +
-      `- über ${roughly} Pokémon-Karten aus allen Sets durchsuchen, mit einem Preis, der jede Nacht neu berechnet wird\n` +
+      `- über ${roughly} Pokémon-Karten aus allen englischen Sets durchsuchen, mit einem Preis, der jede Nacht neu berechnet wird\n` +
       `- deine Karten eintragen und sehen, was deine Sammlung heute wert ist und wie sich der Wert entwickelt\n` +
       `- Karten, die du noch suchst, auf deine Watchlist setzen\n\n` +
       `Mein Tipp für den Start: Trag deine 10 Lieblingskarten ein, das dauert etwa 5 Minuten.\n${FRONTEND_URL}/sets\n\n` +
       `Und jetzt meine Frage an dich: Was müsste mycardfolio können, damit es dir wirklich hilft? ` +
       `Antworte einfach auf diese Mail - ich lese jede Antwort selbst.\n\n` +
-      `Viele Grüße\nJustus\nHobby-Pokémon-Sammler und Entwickler von mycardfolio`,
+      `Viele Grüße\nJustus\nHobby-Pokémon-Sammler und Entwickler von mycardfolio\n\n` +
+      `--\nDu bekommst diese Mail, weil du bei der Registrierung zugestimmt hast. Keine Neuigkeiten mehr: ${unsubscribeLink}`,
   });
 }
 

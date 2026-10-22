@@ -47,8 +47,9 @@ const sUserById = db.prepare(`SELECT * FROM users WHERE id = ?`);
 const sUserByVerifyToken = db.prepare(`SELECT * FROM users WHERE verify_token = ?`);
 const sUserByResetToken = db.prepare(`SELECT * FROM users WHERE reset_token = ?`);
 const sInsertUser = db.prepare(`
-  INSERT INTO users (email, password_hash, username, email_verified, verify_token, verify_sent_at, welcome_optin_at)
-  VALUES (@email, @hash, @username, 0, @verify_token, datetime('now'), CASE WHEN @welcome THEN datetime('now') END)
+  INSERT INTO users (email, password_hash, username, email_verified, verify_token, verify_sent_at, newsletter_optin_at, newsletter_version)
+  VALUES (@email, @hash, @username, 0, @verify_token, datetime('now'),
+          CASE WHEN @newsletter THEN datetime('now') END, CASE WHEN @newsletter THEN @version END)
 `);
 const sUserByUsername = db.prepare(`SELECT id FROM users WHERE username = ? COLLATE NOCASE`);
 const sSetPassword = db.prepare(
@@ -122,6 +123,7 @@ export function publicUser(u) {
     email: u.email,
     username: u.username || null,
     email_verified: !!u.email_verified,
+    newsletter: !!(u.newsletter_optin_at && u.newsletter_confirmed_at),
     is_operator: isOperatorUser(u),
   };
 }
@@ -130,7 +132,13 @@ export const findUserByEmail = (email) => sUserByEmail.get(normEmail(email));
 export const findUserById = (id) => sUserById.get(Number(id));
 
 // --- Registrierung / Login -------------------------------------------
-export function createUser({ email, password, username, welcome = false }) {
+// Einwilligungstext (Registrierung und Konto). Wird er inhaltlich geändert: Fassung hochsetzen -
+// gespeichert wird je Nutzer, welcher Fassung er zugestimmt hat (Nachweis).
+export const NEWSLETTER_VERSION = "2026-10-22";
+export const NEWSLETTER_TEXT =
+  "Ja, schickt mir eine Willkommens-Mail und gelegentlich Neuigkeiten zu mycardfolio per E-Mail (z. B. neue Funktionen und Aktionen). Abmeldung jederzeit mit einem Klick.";
+
+export function createUser({ email, password, username, newsletter = false }) {
   const e = normEmail(email);
   const n = String(username).trim();
   if (sUserByEmail.get(e)) return { error: "Diese E-Mail-Adresse ist bereits registriert." };
@@ -141,7 +149,8 @@ export function createUser({ email, password, username, welcome = false }) {
     hash: bcrypt.hashSync(password, BCRYPT_ROUNDS),
     username: n,
     verify_token: hashToken(verify_token),
-    welcome: welcome ? 1 : 0,
+    newsletter: newsletter ? 1 : 0,
+    version: NEWSLETTER_VERSION,
   });
   return { user: sUserById.get(info.lastInsertRowid), verifyToken: verify_token };
 }
@@ -235,7 +244,36 @@ export function confirmEmail(verifyToken) {
     return { error: "Der Bestätigungslink ist abgelaufen. Fordere bei der Anmeldung einen neuen an.", expired: true };
   }
   sSetVerified.run(u.id);
+  // Double-Opt-in: der Klick auf den Bestätigungslink bestätigt auch die E-Mail-Einwilligung
+  if (u.newsletter_optin_at && !u.newsletter_confirmed_at) {
+    db.prepare(`UPDATE users SET newsletter_confirmed_at = datetime('now') WHERE id = ?`).run(u.id);
+  }
   return { user: sUserById.get(u.id) };
+}
+
+// Einwilligung im Konto an/aus. Die Adresse ist dort schon bestätigt, Haken = Einwilligung jetzt.
+export function setNewsletter(userId, on) {
+  if (on) {
+    db.prepare(`UPDATE users SET newsletter_optin_at = datetime('now'), newsletter_confirmed_at = datetime('now'), newsletter_version = ? WHERE id = ?`).run(NEWSLETTER_VERSION, userId);
+  } else {
+    db.prepare(`UPDATE users SET newsletter_optin_at = NULL, newsletter_confirmed_at = NULL WHERE id = ?`).run(userId);
+  }
+  return sUserById.get(userId);
+}
+
+// Abmeldelink für E-Mails: <id>.<HMAC> - ohne Anmeldung nutzbar, nicht zu erraten, kein Eintrag in der DB nötig.
+const unsubSecret = () => db.prepare(`SELECT value FROM app_meta WHERE key = 'unsub_secret'`).get()?.value ?? "";
+const unsubSig = (id) => crypto.createHmac("sha256", unsubSecret()).update(`unsub:${id}`).digest("base64url").slice(0, 32);
+export const unsubscribeToken = (userId) => `${userId}.${unsubSig(userId)}`;
+export function unsubscribeByToken(t) {
+  const [id, sig] = String(t ?? "").split(".");
+  const n = Number(id);
+  if (!n || !sig || sig.length !== 32) return false;
+  const expected = unsubSig(n);
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
+  if (!sUserById.get(n)) return false;
+  setNewsletter(n, false);
+  return true;
 }
 
 // Neuer Bestätigungslink per E-Mail-Adresse (ohne Anmeldung). Gibt null zurück, wenn es kein
@@ -315,7 +353,9 @@ export function exportUserData(userId) {
     account: {
       email: u.email,
       username: u.username,
-      welcome_optin_at: u.welcome_optin_at ?? null,
+      newsletter_optin_at: u.newsletter_optin_at ?? null,
+      newsletter_confirmed_at: u.newsletter_confirmed_at ?? null,
+      newsletter_version: u.newsletter_version ?? null,
       email_verified: !!u.email_verified,
       created_at: u.created_at,
       terms_accepted_at: u.terms_accepted_at ?? null,

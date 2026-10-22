@@ -32,7 +32,7 @@ export default function Register() {
         username: form.username.trim(),
         password: form.password,
         acceptTerms: true,
-        welcomeMail: welcome,
+        newsletter: welcome,
       });
       setSentTo(r.email);
     } catch (err) {
@@ -133,8 +133,8 @@ export default function Register() {
             className="mt-0.5 shrink-0"
           />
           <span>
-            Freiwillig: Schickt mir nach der Bestätigung eine Willkommens-Mail mit Tipps für den Start
-            und der Frage, was mycardfolio für mich können sollte. Einmalig, kein Newsletter.
+            Freiwillig: Ja, schickt mir eine Willkommens-Mail und gelegentlich Neuigkeiten zu mycardfolio
+            per E-Mail (z. B. neue Funktionen und Aktionen). Abmeldung jederzeit mit einem Klick.
           </span>
         </label>
         {error && <p className="text-rose text-xs">{error}</p>}

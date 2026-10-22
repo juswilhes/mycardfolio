@@ -41,6 +41,9 @@ export const resetPassword = (token, password) =>
   request("/auth/reset", { method: "POST", body: { token, password } }).then((d) => d.user);
 export const updateProfile = (username) =>
   request("/auth/me", { method: "PATCH", body: { username } }).then((d) => d.user);
+export const setNewsletter = (newsletter) =>
+  request("/auth/me", { method: "PATCH", body: { newsletter } }).then((d) => d.user);
+export const unsubscribe = (token) => request("/auth/unsubscribe", { method: "POST", body: { token } });
 export const deleteAccount = (password) =>
   request("/auth/account", { method: "DELETE", body: { password } });
 export const exportDataUrl = `${BASE}/auth/export`;

@@ -475,8 +475,13 @@ if (!userColumns.has("username")) {
   }
 }
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)`);
-// Willkommens-Mail nur mit Einwilligung (freiwilliger Haken bei der Registrierung)
+// (welcome_optin_at: früherer Haken nur für die Willkommens-Mail, ersetzt durch newsletter_*; Spalte bleibt ungenutzt)
 if (!userColumns.has("welcome_optin_at")) db.exec(`ALTER TABLE users ADD COLUMN welcome_optin_at TEXT`);
+// E-Mail-Einwilligung (Willkommens-Mail + gelegentliche Neuigkeiten/Werbung), freiwillig, mit Double-Opt-in:
+// optin_at = Haken gesetzt, confirmed_at = per Klick auf den Bestätigungslink bestätigt, version = Fassung des Texts.
+for (const col of ["newsletter_optin_at", "newsletter_confirmed_at", "newsletter_version"]) {
+  if (!userColumns.has(col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} TEXT`);
+}
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
@@ -540,6 +545,8 @@ db.prepare(
 ).run();
 
 // Einmaliges Geheimnis für den Besucher-Hash (macht Rückrechnen unmöglich).
+// Geheimer Schlüssel für die Abmeldelinks in E-Mails (services/authService.js unsubscribeToken)
+db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES ('unsub_secret', ?)`).run(crypto.randomBytes(32).toString("hex"));
 db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES ('visitor_salt', ?)`).run(
   crypto.randomBytes(24).toString("hex")
 );

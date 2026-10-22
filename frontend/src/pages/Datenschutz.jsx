@@ -157,12 +157,16 @@ export default function Datenschutz() {
         Daten verschwinden daraus spätestens nach <strong>14 Tagen</strong>.
       </p>
       <p>
-        <strong>Willkommens-Mail:</strong> Nur wenn du es bei der Registrierung
-        ausdrücklich ankreuzt, schicken wir dir nach der Bestätigung einmalig eine
-        Willkommens-Mail mit Tipps für den Start und der Frage, was mycardfolio für
-        dich können sollte. Rechtsgrundlage dafür ist deine Einwilligung (Art. 6
-        Abs. 1 lit. a DSGVO); wir speichern, wann du sie erteilt hast. Du kannst sie
-        jederzeit formlos per E-Mail widerrufen.
+        <strong>Willkommens-Mail und Neuigkeiten:</strong> Nur wenn du es bei der
+        Registrierung oder unter „Konto" ausdrücklich ankreuzt, schicken wir dir eine
+        Willkommens-Mail und gelegentlich Neuigkeiten zu mycardfolio per E-Mail (z. B.
+        neue Funktionen und Aktionen). Bei der Registrierung bestätigst du das mit dem
+        Klick auf den Bestätigungslink (Double-Opt-in). Rechtsgrundlage ist deine
+        Einwilligung (Art. 6 Abs. 1 lit. a DSGVO); wir speichern, wann du sie erteilt
+        und bestätigt hast und welcher Fassung des Texts du zugestimmt hast. Die
+        Einwilligung ist freiwillig und keine Voraussetzung für ein Konto. Du kannst
+        sie jederzeit widerrufen: mit dem Abmeldelink in jeder dieser Mails, unter
+        „Konto" oder formlos per E-Mail.
       </p>
 
       <h2>7. Deine Sammlungs- und Portfoliodaten</h2>

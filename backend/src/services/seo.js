@@ -91,7 +91,7 @@ const PUBLIC_PAGES = {
 };
 const PRIVATE_PAGES = new Set([
   "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen", "/verify", "/import",
-  "/sammlung", "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/add",
+  "/sammlung", "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/add", "/abmelden",
 ]);
 
 const cardStmt = db.prepare(`
