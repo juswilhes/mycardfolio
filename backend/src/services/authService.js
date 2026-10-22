@@ -151,7 +151,14 @@ export function resetFailedLogins(userId) {
 }
 
 // --- Sessions --------------------------------------------------------
+// Höchstens einmal am Tag schreiben; wer wieder aktiv ist, verliert eine Löschwarnung.
+const sTouchUser = db.prepare(
+  `UPDATE users SET last_seen_at = datetime('now'), inactivity_warned_at = NULL
+   WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < datetime('now', '-1 day') OR inactivity_warned_at IS NOT NULL)`
+);
+
 export function createSession(userId, userAgent = "") {
+  sTouchUser.run(userId);
   const t = token(32);
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
   sInsertSession.run(hashToken(t), userId, String(userAgent).slice(0, 255), expires);
@@ -167,6 +174,7 @@ export function userForSession(t) {
     sDeleteSession.run(h);
     return null;
   }
+  sTouchUser.run(s.user_id);
   return sUserById.get(s.user_id) || null;
 }
 

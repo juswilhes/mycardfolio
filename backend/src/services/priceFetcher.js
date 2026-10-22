@@ -12,6 +12,7 @@ import { recordSetValueSnapshots } from "./setValueSnapshots.js";
 import { rebuildSitemap } from "./seo.js";
 import { refreshVariantFlags } from "./variantFlags.js";
 import { refreshPricesFromGuide } from "./guidePrices.js";
+import { runDataRetention } from "./dataRetention.js";
 import db from "../db/index.js";
 
 // ALLE Preise werden nur noch hier geholt: einmal täglich um 1 Uhr nachts
@@ -94,6 +95,7 @@ export async function runDailyPriceJob() {
   running = true;
   try {
     const steps = [
+      ["Löschfristen", runDataRetention],
       ["Neu-Check", syncNewCards],
       ["Ausführungen", refreshVariantFlags],
       ["Preisliste", refreshPricesFromGuide],

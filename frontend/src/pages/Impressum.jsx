@@ -57,13 +57,15 @@ export default function Impressum() {
 
       <h2>Haftung für Inhalte</h2>
       <p>
-        Als Diensteanbieter sind wir gemäß § 7 Abs. 1 DDG für eigene Inhalte auf
-        diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis
-        10 DDG sind wir als Diensteanbieter jedoch nicht verpflichtet,
+        Für eigene Inhalte auf diesen Seiten sind wir nach den allgemeinen
+        Gesetzen verantwortlich. Für fremde Informationen gelten die
+        Haftungsbeschränkungen der Art. 4 bis 6 der Verordnung (EU) 2022/2065
+        (Digital Services Act) in Verbindung mit § 7 DDG; eine allgemeine Pflicht,
         übermittelte oder gespeicherte fremde Informationen zu überwachen oder
         nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit
-        hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von
-        Informationen nach den allgemeinen Gesetzen bleiben hiervon unberührt.
+        hinweisen, besteht nicht (Art. 8 DSA). Verpflichtungen zur Entfernung
+        oder Sperrung von Informationen nach den allgemeinen Gesetzen bleiben
+        unberührt.
         Bei Bekanntwerden von entsprechenden Rechtsverletzungen entfernen wir
         diese Inhalte umgehend.
       </p>

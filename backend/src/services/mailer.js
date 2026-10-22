@@ -24,16 +24,19 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
 
 export const mailReady = () => !!transport;
 
+// Ergebnis: true = an den Mailserver übergeben, false = nicht verschickt
 async function send({ to, subject, text, html, replyTo }) {
-  if (!to) return;
+  if (!to) return false;
   if (!transport) {
     console.log(`\n[mail:LOG] an ${to}\nBetreff: ${subject}\n${text || html}\n`);
-    return;
+    return false;
   }
   try {
     await transport.sendMail({ from: FROM, to, subject, text, html, replyTo });
+    return true;
   } catch (e) {
     console.error(`[mail] Versand an ${to} fehlgeschlagen:`, e.message);
+    return false;
   }
 }
 
@@ -52,6 +55,18 @@ export function sendPasswordResetMail(email, token) {
     to: email,
     subject: "mycardfolio – Passwort zurücksetzen",
     text: `Setze dein Passwort zurück:\n${link}\n\nDer Link ist 1 Stunde gültig. Wenn du das nicht warst, ignoriere diese Mail.`,
+  });
+}
+
+export function sendInactivityWarningMail(email, deleteOn) {
+  return send({
+    to: email,
+    subject: "mycardfolio – dein Konto wird gelöscht",
+    text:
+      `Du hast dein mycardfolio-Konto seit drei Jahren nicht mehr genutzt. Damit keine Daten unnötig gespeichert bleiben, ` +
+      `löschen wir es am ${deleteOn} mit deiner Sammlung.\n\n` +
+      `Du willst es behalten? Melde dich einfach vorher einmal an:\n${FRONTEND_URL}/login\n\n` +
+      `Vorher sichern kannst du deine Daten unter Konto > Daten exportieren.`,
   });
 }
 

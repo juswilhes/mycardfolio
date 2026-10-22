@@ -135,7 +135,23 @@ export default function Datenschutz() {
         <strong>Speicherdauer:</strong> bis zur Löschung des Kontos. Du kannst
         dein Konto jederzeit selbst löschen; dabei werden deine Konto- und
         Sammlungsdaten unwiderruflich entfernt (gesetzliche Aufbewahrungspflichten
-        bleiben unberührt).
+        bleiben unberührt). Außerdem löschen wir automatisch:
+      </p>
+      <ul>
+        <li>
+          Konten, deren E-Mail-Adresse nach <strong>30 Tagen</strong> nicht
+          bestätigt ist und in denen nichts gespeichert wurde.
+        </li>
+        <li>
+          Konten, die <strong>drei Jahre</strong> nicht genutzt wurden. Vorher
+          schicken wir dir eine E-Mail; meldest du dich innerhalb von 30 Tagen
+          an, bleibt das Konto bestehen. Dafür speichern wir, wann du die Seite
+          zuletzt angemeldet genutzt hast (tagesgenau).
+        </li>
+      </ul>
+      <p>
+        Unsere tägliche Datensicherung enthält eine Kopie der Datenbank; gelöschte
+        Daten verschwinden daraus spätestens nach <strong>14 Tagen</strong>.
       </p>
 
       <h2>7. Deine Sammlungs- und Portfoliodaten</h2>

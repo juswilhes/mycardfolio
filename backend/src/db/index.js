@@ -451,6 +451,13 @@ if (portfolioSnapshotsRebuilt) {
 const userColumns = new Set(db.prepare(`PRAGMA table_info(users)`).all().map((c) => c.name));
 if (!userColumns.has("failed_logins")) db.exec(`ALTER TABLE users ADD COLUMN failed_logins INTEGER NOT NULL DEFAULT 0`);
 if (!userColumns.has("locked_until")) db.exec(`ALTER TABLE users ADD COLUMN locked_until TEXT`);
+// Löschfrist für inaktive Konten (services/dataRetention.js). Bestehende Konten starten mit "heute",
+// damit niemand wegen fehlender Altdaten sofort als inaktiv gilt.
+if (!userColumns.has("last_seen_at")) {
+  db.exec(`ALTER TABLE users ADD COLUMN last_seen_at TEXT`);
+  db.exec(`UPDATE users SET last_seen_at = datetime('now') WHERE last_seen_at IS NULL`);
+}
+if (!userColumns.has("inactivity_warned_at")) db.exec(`ALTER TABLE users ADD COLUMN inactivity_warned_at TEXT`);
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
