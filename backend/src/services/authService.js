@@ -150,6 +150,12 @@ export function resetFailedLogins(userId) {
   db.prepare(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?`).run(userId);
 }
 
+// Fassung der Nutzungsbedingungen (frontend/src/pages/Nutzungsbedingungen.jsx); bei inhaltlicher Änderung hochsetzen.
+export const TERMS_VERSION = "2026-10-22";
+export function recordTermsAcceptance(userId) {
+  db.prepare(`UPDATE users SET terms_accepted_at = datetime('now'), terms_version = ? WHERE id = ?`).run(TERMS_VERSION, userId);
+}
+
 // --- Sessions --------------------------------------------------------
 // Höchstens einmal am Tag schreiben; wer wieder aktiv ist, verliert eine Löschwarnung.
 const sTouchUser = db.prepare(
@@ -252,6 +258,8 @@ export function exportUserData(userId) {
       display_name: u.display_name,
       email_verified: !!u.email_verified,
       created_at: u.created_at,
+      terms_accepted_at: u.terms_accepted_at ?? null,
+      terms_version: u.terms_version ?? null,
     },
     collection: db
       .prepare(

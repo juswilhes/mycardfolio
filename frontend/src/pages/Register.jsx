@@ -23,6 +23,7 @@ export default function Register() {
         email: form.email,
         password: form.password,
         displayName: form.displayName.trim() || undefined,
+        acceptTerms: true,
       });
       navigate("/", { replace: true });
     } catch (err) {
@@ -86,7 +87,11 @@ export default function Register() {
             className="mt-0.5 shrink-0"
           />
           <span>
-            Ich habe die{" "}
+            Ich akzeptiere die{" "}
+            <Link to="/nutzungsbedingungen" target="_blank" className="underline hover:text-ink">
+              Nutzungsbedingungen
+            </Link>{" "}
+            und habe die{" "}
             <Link to="/datenschutz" target="_blank" className="underline hover:text-ink">
               Datenschutzerklärung
             </Link>{" "}

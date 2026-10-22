@@ -26,6 +26,14 @@ export default function Impressum() {
         )}
       </p>
 
+      <h2>Kontaktstelle nach Art. 11 und 12 DSA</h2>
+      <p>
+        Zentrale Kontaktstelle für Behörden, die EU-Kommission und Nutzer nach der
+        Verordnung (EU) 2022/2065 (Digital Services Act):{" "}
+        <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a>. Sprachen: Deutsch,
+        Englisch.
+      </p>
+
       {OPERATOR.vatId && (
         <>
           <h2>Umsatzsteuer-Identifikationsnummer</h2>

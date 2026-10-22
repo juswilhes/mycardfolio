@@ -87,6 +87,7 @@ const PUBLIC_PAGES = {
   },
   "/impressum": { title: "Impressum | mycardfolio", description: "Impressum und Anbieterkennzeichnung von mycardfolio." },
   "/datenschutz": { title: "Datenschutzerklärung | mycardfolio", description: "So geht mycardfolio mit deinen Daten um." },
+  "/nutzungsbedingungen": { title: "Nutzungsbedingungen | mycardfolio", description: "Die Bedingungen für die Nutzung von mycardfolio mit einem Konto." },
 };
 const PRIVATE_PAGES = new Set([
   "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen", "/verify", "/import",

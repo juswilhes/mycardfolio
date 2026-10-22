@@ -458,6 +458,9 @@ if (!userColumns.has("last_seen_at")) {
   db.exec(`UPDATE users SET last_seen_at = datetime('now') WHERE last_seen_at IS NULL`);
 }
 if (!userColumns.has("inactivity_warned_at")) db.exec(`ALTER TABLE users ADD COLUMN inactivity_warned_at TEXT`);
+// Nachweis, wann welche Fassung der Nutzungsbedingungen akzeptiert wurde
+if (!userColumns.has("terms_accepted_at")) db.exec(`ALTER TABLE users ADD COLUMN terms_accepted_at TEXT`);
+if (!userColumns.has("terms_version")) db.exec(`ALTER TABLE users ADD COLUMN terms_version TEXT`);
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);

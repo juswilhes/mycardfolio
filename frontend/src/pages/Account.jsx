@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../hooks/useTheme.js";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
@@ -114,6 +114,27 @@ export default function Account() {
         >
           Daten exportieren
         </a>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold mb-1">Rechtliches</h2>
+        <p className="text-xs text-subtle mb-2">
+          Die Bedingungen für dein Konto und wie wir mit deinen Daten umgehen.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/nutzungsbedingungen"
+            className="inline-block text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink"
+          >
+            Nutzungsbedingungen
+          </Link>
+          <Link
+            to="/datenschutz"
+            className="inline-block text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink"
+          >
+            Datenschutzerklärung
+          </Link>
+        </div>
       </section>
 
       <section className="mb-8">

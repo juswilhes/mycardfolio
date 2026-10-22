@@ -44,7 +44,7 @@ const normalize = (path) =>
 // Scanner-Rauschen sonst laufend nachgepflegt werden müsste.
 const STATIC_PATHS = new Set([
   "/", "/login", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen",
-  "/verify", "/impressum", "/datenschutz", "/sets", "/add", "/import",
+  "/verify", "/impressum", "/datenschutz", "/nutzungsbedingungen", "/sets", "/add", "/import",
   "/sammlung", "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/news",
 ]);
 const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/news/"];

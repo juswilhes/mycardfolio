@@ -12,6 +12,7 @@ import Stats from "./pages/Stats.jsx";
 import Import from "./pages/Import.jsx";
 import Impressum from "./pages/Impressum.jsx";
 import Datenschutz from "./pages/Datenschutz.jsx";
+import Nutzungsbedingungen from "./pages/Nutzungsbedingungen.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
@@ -51,6 +52,7 @@ const PAGE_TITLES = {
   "/news": "News & Artikel",
   "/impressum": "Impressum",
   "/datenschutz": "Datenschutzerklärung",
+  "/nutzungsbedingungen": "Nutzungsbedingungen",
   "/login": "Anmelden",
   "/register": "Registrieren",
   "/import": "Import",
@@ -175,6 +177,7 @@ export default function App() {
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/impressum" element={<Impressum />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
+            <Route path="/nutzungsbedingungen" element={<Nutzungsbedingungen />} />
 
             {/* Kartensuche & -datenbank: auch ohne Konto nutzbar */}
             <Route path="/sets" element={<AllCards />} />

@@ -19,6 +19,7 @@ import {
   deleteAccount,
   exportUserData,
   publicUser,
+  recordTermsAcceptance,
 } from "../services/authService.js";
 import { sendVerificationMail, sendPasswordResetMail } from "../services/mailer.js";
 import { authRequired, authOptional, SESSION_COOKIE } from "../middleware/auth.js";
@@ -54,12 +55,14 @@ router.post("/register", authLimiter, (req, res) => {
   if (!registrationOpen()) {
     return res.status(403).json({ error: "Die Registrierung ist gerade geschlossen." });
   }
-  const { email, password, displayName } = req.body ?? {};
+  const { email, password, displayName, acceptTerms } = req.body ?? {};
   const err = validateRegistration({ email, password });
   if (err) return res.status(400).json({ error: err });
+  if (acceptTerms !== true) return res.status(400).json({ error: "Bitte akzeptiere die Nutzungsbedingungen." });
 
   const { user, verifyToken, error } = createUser({ email, password, displayName });
   if (error) return res.status(409).json({ error });
+  recordTermsAcceptance(user.id);
 
   sendVerificationMail(user.email, verifyToken);
   startSession(res, user, req);
