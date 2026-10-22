@@ -30,9 +30,8 @@ export function AuthProvider({ children }) {
     async login(email, password) {
       setUser(await api.login(email, password));
     },
-    async register(payload) {
-      setUser(await api.register(payload));
-    },
+    // Registrierung meldet NICHT an: erst der Bestätigungslink aus der E-Mail tut das
+    register: (payload) => api.register(payload),
     async logout() {
       await api.logout().catch(() => {});
       setUser(null);

@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../hooks/useTheme.js";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import {
-  resendVerification,
   updateProfile,
   deleteAccount,
   exportDataUrl,
@@ -14,9 +13,9 @@ export default function Account() {
   const { user, setUser, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [name, setName] = useState(user?.display_name || "");
+  const [name, setName] = useState(user?.username || "");
   const [savedName, setSavedName] = useState(false);
-  const [resent, setResent] = useState(false);
+  const [nameErr, setNameErr] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [pw, setPw] = useState("");
@@ -25,15 +24,15 @@ export default function Account() {
 
   async function saveName(e) {
     e.preventDefault();
-    const u = await updateProfile(name.trim());
-    setUser(u);
-    setSavedName(true);
-    setTimeout(() => setSavedName(false), 2000);
-  }
-
-  async function doResend() {
-    await resendVerification();
-    setResent(true);
+    setNameErr("");
+    try {
+      const u = await updateProfile(name.trim());
+      setUser(u);
+      setSavedName(true);
+      setTimeout(() => setSavedName(false), 2000);
+    } catch (err) {
+      setNameErr(err.message);
+    }
   }
 
   async function doDelete() {
@@ -57,17 +56,8 @@ export default function Account() {
 
       <section className="mb-8">
         <p className="text-sm text-subtle">Angemeldet als</p>
-        <p className="font-medium">{user.email}</p>
-        {!user.email_verified && (
-          <div className="mt-2 text-xs bg-yellow/10 border border-yellow rounded-lg px-3 py-2">
-            E-Mail noch nicht bestätigt.{" "}
-            {resent ? (
-              <span className="text-subtle">Neue Bestätigungs-Mail gesendet - schau in dein Postfach.</span>
-            ) : (
-              <button onClick={doResend} className="underline">Erneut senden</button>
-            )}
-          </div>
-        )}
+        <p className="font-medium">{user.username || "Noch kein Benutzername"}</p>
+        <p className="text-sm text-subtle">{user.email}</p>
       </section>
 
       <section className="mb-8">
@@ -92,12 +82,14 @@ export default function Account() {
 
       <form onSubmit={saveName} className="mb-8">
         <label className="block text-xs text-subtle">
-          Anzeigename
+          Benutzername (3–20 Zeichen, auf mycardfolio nur einmal vergeben)
           <input
-            type="text" maxLength={60} value={name} onChange={(e) => setName(e.target.value)}
+            type="text" required minLength={3} maxLength={20} pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{2,19}"
+            value={name} onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full border border-line rounded-xl px-3 py-2 text-sm bg-canvas text-ink focus:outline-none focus:border-ink"
           />
         </label>
+        {nameErr && <p className="text-rose text-xs mt-1">{nameErr}</p>}
         <button className="mt-2 text-sm border border-line rounded-full px-4 py-1.5 hover:border-ink">
           {savedName ? "Gespeichert ✓" : "Speichern"}
         </button>

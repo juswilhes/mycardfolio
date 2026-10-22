@@ -20,6 +20,7 @@ async function request(path, { method = "GET", body, headers } = {}) {
   if (!res.ok) {
     const err = new Error(data?.error || `Fehler ${res.status}`);
     err.status = res.status;
+    err.data = data;
     throw err;
   }
   return data;
@@ -28,18 +29,18 @@ async function request(path, { method = "GET", body, headers } = {}) {
 // --- Auth ------------------------------------------------------------
 // { user, registrationOpen }
 export const getMe = () => request("/auth/me");
-export const register = (payload) => request("/auth/register", { method: "POST", body: payload }).then((d) => d.user);
+export const register = (payload) => request("/auth/register", { method: "POST", body: payload });
 export const login = (email, password) =>
   request("/auth/login", { method: "POST", body: { email, password } }).then((d) => d.user);
 export const logout = () => request("/auth/logout", { method: "POST" });
 export const verifyEmail = (token) => request("/auth/verify", { method: "POST", body: { token } }).then((d) => d.user);
-export const resendVerification = () => request("/auth/resend-verification", { method: "POST" });
+export const resendVerification = (email) => request("/auth/resend-verification", { method: "POST", body: { email } });
 export const requestPasswordReset = (email) =>
   request("/auth/request-reset", { method: "POST", body: { email } });
 export const resetPassword = (token, password) =>
   request("/auth/reset", { method: "POST", body: { token, password } }).then((d) => d.user);
-export const updateProfile = (displayName) =>
-  request("/auth/me", { method: "PATCH", body: { displayName } }).then((d) => d.user);
+export const updateProfile = (username) =>
+  request("/auth/me", { method: "PATCH", body: { username } }).then((d) => d.user);
 export const deleteAccount = (password) =>
   request("/auth/account", { method: "DELETE", body: { password } });
 export const exportDataUrl = `${BASE}/auth/export`;

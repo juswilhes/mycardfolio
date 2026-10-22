@@ -121,10 +121,13 @@ export default function Datenschutz() {
       <p>
         Für die Nutzung der Sammlungsverwaltung legst du ein Konto an. Dabei
         verarbeiten wir deine E-Mail-Adresse und dein Passwort (ausschließlich
-        als nicht umkehrbarer kryptografischer Hash gespeichert). Optional
-        kannst du einen Anzeigenamen angeben. Die E-Mail-Adresse nutzen wir zur
-        Anmeldung, zur Bestätigung des Kontos, für ein Zurücksetzen des Passworts
-        und für zwingend erforderliche Mitteilungen zum Dienst. Zum Schutz vor
+        als nicht umkehrbarer kryptografischer Hash gespeichert) sowie den
+        Benutzernamen, den du festlegst und der auf mycardfolio nur einmal
+        vergeben wird. Anmelden kannst du dich erst, nachdem du deine
+        E-Mail-Adresse über den zugeschickten Link bestätigt hast. Die
+        E-Mail-Adresse nutzen wir zur Anmeldung, zur Bestätigung des Kontos, für
+        ein Zurücksetzen des Passworts und für zwingend erforderliche
+        Mitteilungen zum Dienst. Zum Schutz vor
         dem Erraten von Passwörtern zählen wir fehlgeschlagene Anmeldeversuche
         und sperren das Konto nach fünf Fehlversuchen vorübergehend.
       </p>
@@ -140,7 +143,7 @@ export default function Datenschutz() {
       <ul>
         <li>
           Konten, deren E-Mail-Adresse nach <strong>30 Tagen</strong> nicht
-          bestätigt ist und in denen nichts gespeichert wurde.
+          bestätigt ist.
         </li>
         <li>
           Konten, die <strong>drei Jahre</strong> nicht genutzt wurden. Vorher
@@ -152,6 +155,14 @@ export default function Datenschutz() {
       <p>
         Unsere tägliche Datensicherung enthält eine Kopie der Datenbank; gelöschte
         Daten verschwinden daraus spätestens nach <strong>14 Tagen</strong>.
+      </p>
+      <p>
+        <strong>Willkommens-Mail:</strong> Nur wenn du es bei der Registrierung
+        ausdrücklich ankreuzt, schicken wir dir nach der Bestätigung einmalig eine
+        Willkommens-Mail mit Tipps für den Start und der Frage, was mycardfolio für
+        dich können sollte. Rechtsgrundlage dafür ist deine Einwilligung (Art. 6
+        Abs. 1 lit. a DSGVO); wir speichern, wann du sie erteilt hast. Du kannst sie
+        jederzeit formlos per E-Mail widerrufen.
       </p>
 
       <h2>7. Deine Sammlungs- und Portfoliodaten</h2>

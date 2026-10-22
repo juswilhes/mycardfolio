@@ -46,9 +46,10 @@ const sUserById = db.prepare(`SELECT * FROM users WHERE id = ?`);
 const sUserByVerifyToken = db.prepare(`SELECT * FROM users WHERE verify_token = ?`);
 const sUserByResetToken = db.prepare(`SELECT * FROM users WHERE reset_token = ?`);
 const sInsertUser = db.prepare(`
-  INSERT INTO users (email, password_hash, display_name, email_verified, verify_token, verify_sent_at)
-  VALUES (@email, @hash, @display_name, 0, @verify_token, datetime('now'))
+  INSERT INTO users (email, password_hash, username, email_verified, verify_token, verify_sent_at, welcome_optin_at)
+  VALUES (@email, @hash, @username, 0, @verify_token, datetime('now'), CASE WHEN @welcome THEN datetime('now') END)
 `);
+const sUserByUsername = db.prepare(`SELECT id FROM users WHERE username = ? COLLATE NOCASE`);
 const sSetPassword = db.prepare(
   `UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?`
 );
@@ -61,7 +62,7 @@ const sSetVerifyToken = db.prepare(
 const sSetResetToken = db.prepare(
   `UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?`
 );
-const sSetDisplayName = db.prepare(`UPDATE users SET display_name = ? WHERE id = ?`);
+const sSetUsername = db.prepare(`UPDATE users SET username = ? WHERE id = ?`);
 
 const sInsertSession = db.prepare(`
   INSERT INTO sessions (token, user_id, user_agent, expires_at)
@@ -72,8 +73,22 @@ const sDeleteSession = db.prepare(`DELETE FROM sessions WHERE token = ?`);
 const sDeleteUserSessions = db.prepare(`DELETE FROM sessions WHERE user_id = ?`);
 
 // --- Validierung -------------------------------------------------------
-export function validateRegistration({ email, password }) {
+// Benutzername: 3-20 Zeichen, Buchstaben (ohne Umlaute), Ziffern, Punkt, Unterstrich, Bindestrich;
+// beginnt mit Buchstabe oder Ziffer. Einige Namen sind reserviert (Verwechslung mit dem Betreiber).
+const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{2,19}$/;
+const RESERVED = new Set(["admin", "administrator", "mycardfolio", "support", "info", "root", "moderator", "mod", "betreiber", "system", "team", "justus"]);
+export function validateUsername(name) {
+  const n = String(name ?? "").trim();
+  if (!USERNAME_RE.test(n))
+    return "Der Benutzername braucht 3 bis 20 Zeichen: Buchstaben, Ziffern, Punkt, Unterstrich oder Bindestrich (ohne Leerzeichen und Umlaute).";
+  if (RESERVED.has(n.toLowerCase())) return "Dieser Benutzername ist reserviert.";
+  return null;
+}
+
+export function validateRegistration({ email, password, username }) {
   if (!EMAIL_RE.test(normEmail(email))) return "Bitte eine gültige E-Mail-Adresse angeben.";
+  const nameErr = validateUsername(username);
+  if (nameErr) return nameErr;
   if (typeof password !== "string" || password.length < 8)
     return "Das Passwort muss mindestens 8 Zeichen lang sein.";
   if (password.length > 200) return "Das Passwort ist zu lang.";
@@ -86,7 +101,7 @@ export function publicUser(u) {
   return {
     id: u.id,
     email: u.email,
-    display_name: u.display_name || null,
+    username: u.username || null,
     email_verified: !!u.email_verified,
     is_operator: isOperatorUser(u),
   };
@@ -96,15 +111,18 @@ export const findUserByEmail = (email) => sUserByEmail.get(normEmail(email));
 export const findUserById = (id) => sUserById.get(Number(id));
 
 // --- Registrierung / Login -------------------------------------------
-export function createUser({ email, password, displayName }) {
+export function createUser({ email, password, username, welcome = false }) {
   const e = normEmail(email);
+  const n = String(username).trim();
   if (sUserByEmail.get(e)) return { error: "Diese E-Mail-Adresse ist bereits registriert." };
+  if (sUserByUsername.get(n)) return { error: "Dieser Benutzername ist schon vergeben." };
   const verify_token = token(24);
   const info = sInsertUser.run({
     email: e,
     hash: bcrypt.hashSync(password, BCRYPT_ROUNDS),
-    display_name: displayName ? String(displayName).trim().slice(0, 60) || null : null,
+    username: n,
     verify_token: hashToken(verify_token),
+    welcome: welcome ? 1 : 0,
   });
   return { user: sUserById.get(info.lastInsertRowid), verifyToken: verify_token };
 }
@@ -180,18 +198,33 @@ export function userForSession(t) {
     sDeleteSession.run(h);
     return null;
   }
-  sTouchUser.run(s.user_id);
-  return sUserById.get(s.user_id) || null;
+  const u = sUserById.get(s.user_id);
+  // Ohne bestätigte E-Mail-Adresse gibt es keine Anmeldung (auch keine alte Sitzung)
+  if (!u || !u.email_verified) return null;
+  sTouchUser.run(u.id);
+  return u;
 }
 
 export const endSession = (t) => t && sDeleteSession.run(hashToken(t));
 
 // --- E-Mail-Bestätigung --------------------------------------------
+const VERIFY_TTL_DAYS = 7;
 export function confirmEmail(verifyToken) {
   const u = sUserByVerifyToken.get(hashToken(verifyToken));
   if (!u) return { error: "Der Bestätigungslink ist ungültig oder wurde bereits verwendet." };
+  if (!u.verify_sent_at || Date.parse(u.verify_sent_at.replace(" ", "T") + "Z") < Date.now() - VERIFY_TTL_DAYS * 86400000) {
+    return { error: "Der Bestätigungslink ist abgelaufen. Fordere bei der Anmeldung einen neuen an.", expired: true };
+  }
   sSetVerified.run(u.id);
   return { user: sUserById.get(u.id) };
+}
+
+// Neuer Bestätigungslink per E-Mail-Adresse (ohne Anmeldung). Gibt null zurück, wenn es kein
+// unbestätigtes Konto zu der Adresse gibt - die Route antwortet trotzdem immer gleich.
+export function verifyTokenForEmail(email) {
+  const u = sUserByEmail.get(normEmail(email));
+  if (!u || u.email_verified) return null;
+  return { user: u, token: newVerifyToken(u.id) };
 }
 
 export function newVerifyToken(userId) {
@@ -224,9 +257,14 @@ export function completePasswordReset(resetToken, password) {
   return { user: sUserById.get(u.id) };
 }
 
-export function setDisplayName(userId, name) {
-  sSetDisplayName.run(name ? String(name).trim().slice(0, 60) || null : null, userId);
-  return sUserById.get(userId);
+export function setUsername(userId, name) {
+  const err = validateUsername(name);
+  if (err) return { error: err };
+  const n = String(name).trim();
+  const other = sUserByUsername.get(n);
+  if (other && other.id !== userId) return { error: "Dieser Benutzername ist schon vergeben." };
+  sSetUsername.run(n, userId);
+  return { user: sUserById.get(userId) };
 }
 
 // --- Konto löschen (DSGVO) -----------------------------------------
@@ -255,7 +293,8 @@ export function exportUserData(userId) {
     exported_at: new Date().toISOString(),
     account: {
       email: u.email,
-      display_name: u.display_name,
+      username: u.username,
+      welcome_optin_at: u.welcome_optin_at ?? null,
       email_verified: !!u.email_verified,
       created_at: u.created_at,
       terms_accepted_at: u.terms_accepted_at ?? null,

@@ -74,7 +74,7 @@ export function sendInactivityWarningMail(email, deleteOn) {
 // Willkommens-Mail nach der E-Mail-Bestätigung (Aufbau nach Noah Kagan: persönlich, nachprüfbare
 // Fakten statt Werbesprech, eine konkrete Frage am Ende - Antworten landen beim Betreiber).
 export function sendWelcomeMail(user) {
-  const name = user.display_name?.trim();
+  const name = user.username?.trim();
   const cards = db.prepare(`SELECT COUNT(*) n FROM cards`).get().n;
   const roughly = (Math.floor(cards / 1000) * 1000).toLocaleString("de-DE");
   return send({
@@ -83,7 +83,7 @@ export function sendWelcomeMail(user) {
     replyTo: ADMIN_EMAIL || undefined,
     text:
       `Hallo${name ? ` ${name}` : ""},\n\n` +
-      `danke, dass du mycardfolio ausprobierst! Ich bin Justus, Pokémon-Sammler, und baue mycardfolio selbst. ` +
+      `danke, dass du mycardfolio ausprobierst! Ich bin Justus, Hobby-Pokémon-Sammler, und baue mycardfolio selbst. ` +
       `Ich wollte wissen, was meine Karten wert sind, ohne jede einzeln nachzuschlagen.\n\n` +
       `Was du jetzt schon machen kannst:\n` +
       `- über ${roughly} Pokémon-Karten aus allen Sets durchsuchen, mit einem Preis, der jede Nacht neu berechnet wird\n` +
@@ -92,7 +92,7 @@ export function sendWelcomeMail(user) {
       `Mein Tipp für den Start: Trag deine 10 Lieblingskarten ein, das dauert etwa 5 Minuten.\n${FRONTEND_URL}/sets\n\n` +
       `Und jetzt meine Frage an dich: Was müsste mycardfolio können, damit es dir wirklich hilft? ` +
       `Antworte einfach auf diese Mail - ich lese jede Antwort selbst.\n\n` +
-      `Viele Grüße\nJustus\nSammler und Entwickler von mycardfolio`,
+      `Viele Grüße\nJustus\nHobby-Pokémon-Sammler und Entwickler von mycardfolio`,
   });
 }
 

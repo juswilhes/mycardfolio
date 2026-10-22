@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthCard, { inputCls, primaryBtn } from "../components/AuthCard.jsx";
+import ResendVerification from "../components/ResendVerification.jsx";
 
+// Ablauf: Formular -> Konto wird angelegt, Bestätigungslink per E-Mail -> erst der Klick auf den
+// Link meldet an (VerifyEmail.jsx). Ohne bestätigte Adresse ist keine Anmeldung möglich.
 export default function Register() {
   const { register, registrationOpen } = useAuth();
-  const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "", password2: "", displayName: "" });
+  const [form, setForm] = useState({ email: "", username: "", password: "", password2: "" });
   const [accepted, setAccepted] = useState(false);
+  const [welcome, setWelcome] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sentTo, setSentTo] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -23,29 +27,30 @@ export default function Register() {
     setBusy(true);
     setError("");
     try {
-      await register({
+      const r = await register({
         email: form.email,
+        username: form.username.trim(),
         password: form.password,
-        displayName: form.displayName.trim() || undefined,
         acceptTerms: true,
+        welcomeMail: welcome,
       });
-      navigate("/", { replace: true });
+      setSentTo(r.email);
     } catch (err) {
       setError(err.message);
+    } finally {
       setBusy(false);
     }
   }
 
+  const footer = (
+    <>
+      Schon ein Konto? <Link to="/login" className="underline hover:text-ink">Anmelden</Link>
+    </>
+  );
+
   if (!registrationOpen) {
     return (
-      <AuthCard
-        title="Registrierung geschlossen"
-        footer={
-          <>
-            Schon ein Konto? <Link to="/login" className="underline hover:text-ink">Anmelden</Link>
-          </>
-        }
-      >
+      <AuthCard title="Registrierung geschlossen" footer={footer}>
         <p className="text-sm text-subtle">
           mycardfolio nimmt gerade keine neuen Anmeldungen an. Schau bald wieder
           vorbei.
@@ -54,15 +59,25 @@ export default function Register() {
     );
   }
 
+  if (sentTo) {
+    return (
+      <AuthCard title="Fast geschafft" footer={footer}>
+        <p className="text-sm mb-3">
+          Wir haben dir einen Link an <strong>{sentTo}</strong> geschickt. Klick darauf, um deine
+          E-Mail-Adresse zu bestätigen – danach bist du direkt angemeldet.
+        </p>
+        <p className="text-xs text-subtle mb-4">
+          Keine Mail da? Schau auch im Spam-Ordner nach. Der Link ist 7 Tage gültig.
+        </p>
+        <ResendVerification email={sentTo} />
+      </AuthCard>
+    );
+  }
+
+  const mismatch = form.password2 && form.password !== form.password2;
+
   return (
-    <AuthCard
-      title="Konto erstellen"
-      footer={
-        <>
-          Schon ein Konto? <Link to="/login" className="underline hover:text-ink">Anmelden</Link>
-        </>
-      }
-    >
+    <AuthCard title="Konto erstellen" footer={footer}>
       <form onSubmit={submit} className="space-y-3">
         <label className="block text-xs text-subtle">
           E-Mail
@@ -72,10 +87,12 @@ export default function Register() {
           />
         </label>
         <label className="block text-xs text-subtle">
-          Anzeigename (optional)
+          Benutzername (3–20 Zeichen: Buchstaben, Ziffern, Punkt, Unterstrich, Bindestrich)
           <input
-            type="text" autoComplete="nickname" maxLength={60}
-            value={form.displayName} onChange={set("displayName")} className={inputCls}
+            type="text" autoComplete="username" required minLength={3} maxLength={20}
+            pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{2,19}"
+            title="3–20 Zeichen: Buchstaben, Ziffern, Punkt, Unterstrich oder Bindestrich, ohne Leerzeichen und Umlaute"
+            value={form.username} onChange={set("username")} className={inputCls}
           />
         </label>
         <label className="block text-xs text-subtle">
@@ -92,9 +109,7 @@ export default function Register() {
             value={form.password2} onChange={set("password2")} className={inputCls}
           />
         </label>
-        {form.password2 && form.password !== form.password2 && (
-          <p className="text-rose text-xs">Die beiden Passwörter stimmen nicht überein.</p>
-        )}
+        {mismatch && <p className="text-rose text-xs">Die beiden Passwörter stimmen nicht überein.</p>}
         <label className="flex items-start gap-2 text-xs text-subtle">
           <input
             type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)}
@@ -112,8 +127,18 @@ export default function Register() {
             gelesen.
           </span>
         </label>
+        <label className="flex items-start gap-2 text-xs text-subtle">
+          <input
+            type="checkbox" checked={welcome} onChange={(e) => setWelcome(e.target.checked)}
+            className="mt-0.5 shrink-0"
+          />
+          <span>
+            Freiwillig: Schickt mir nach der Bestätigung eine Willkommens-Mail mit Tipps für den Start
+            und der Frage, was mycardfolio für mich können sollte. Einmalig, kein Newsletter.
+          </span>
+        </label>
         {error && <p className="text-rose text-xs">{error}</p>}
-        <button type="submit" disabled={busy || !accepted || form.password !== form.password2} className={primaryBtn}>
+        <button type="submit" disabled={busy || !accepted || mismatch} className={primaryBtn}>
           {busy ? "Wird erstellt …" : "Konto erstellen"}
         </button>
       </form>

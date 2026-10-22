@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { verifyEmail } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import AuthCard from "../components/AuthCard.jsx";
+import AuthCard, { primaryBtn } from "../components/AuthCard.jsx";
+import ResendVerification from "../components/ResendVerification.jsx";
 
+// Ziel des Bestätigungslinks: bestätigt die Adresse und meldet direkt an (der Server setzt die Sitzung).
 export default function VerifyEmail() {
   const [params] = useSearchParams();
   const token = params.get("token") || "";
@@ -32,13 +34,24 @@ export default function VerifyEmail() {
   return (
     <AuthCard
       title="E-Mail bestätigen"
-      footer={<Link to="/sammlung" className="underline hover:text-ink">Zur Sammlung</Link>}
+      footer={<Link to="/login" className="underline hover:text-ink">Zur Anmeldung</Link>}
     >
       {state === "pending" && <p className="text-sm text-subtle">Einen Moment …</p>}
       {state === "ok" && (
-        <p className="text-sm">Danke – deine E-Mail-Adresse ist jetzt bestätigt. Wir haben dir eine kurze Willkommens-Mail geschickt.</p>
+        <>
+          <p className="text-sm mb-4">Danke – deine E-Mail-Adresse ist bestätigt und du bist angemeldet.</p>
+          <Link to="/sets" className={`${primaryBtn} block text-center`}>
+            Erste Karten eintragen
+          </Link>
+        </>
       )}
-      {state === "error" && <p className="text-sm text-rose">{message}</p>}
+      {state === "error" && (
+        <>
+          <p className="text-sm text-rose mb-4">{message}</p>
+          <p className="text-xs text-subtle mb-2">Gib deine E-Mail-Adresse ein, dann schicken wir dir einen neuen Link:</p>
+          <ResendVerification />
+        </>
+      )}
     </AuthCard>
   );
 }

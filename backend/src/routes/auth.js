@@ -12,10 +12,10 @@ import {
   createSession,
   endSession,
   confirmEmail,
-  newVerifyToken,
   startPasswordReset,
   completePasswordReset,
-  setDisplayName,
+  setUsername,
+  verifyTokenForEmail,
   deleteAccount,
   exportUserData,
   publicUser,
@@ -50,23 +50,23 @@ function startSession(res, user, req) {
   res.cookie(SESSION_COOKIE, token, { ...cookieOpts(), maxAge: expiresMs });
 }
 
-// POST /api/auth/register  { email, password, displayName? }
+// POST /api/auth/register  { email, password, username, acceptTerms, welcomeMail? }
+// Legt das Konto an und schickt den Bestätigungslink - angemeldet wird erst nach der Bestätigung.
 router.post("/register", authLimiter, (req, res) => {
   if (!registrationOpen()) {
     return res.status(403).json({ error: "Die Registrierung ist gerade geschlossen." });
   }
-  const { email, password, displayName, acceptTerms } = req.body ?? {};
-  const err = validateRegistration({ email, password });
+  const { email, password, username, acceptTerms, welcomeMail } = req.body ?? {};
+  const err = validateRegistration({ email, password, username });
   if (err) return res.status(400).json({ error: err });
   if (acceptTerms !== true) return res.status(400).json({ error: "Bitte akzeptiere die Nutzungsbedingungen." });
 
-  const { user, verifyToken, error } = createUser({ email, password, displayName });
+  const { user, verifyToken, error } = createUser({ email, password, username, welcome: welcomeMail === true });
   if (error) return res.status(409).json({ error });
   recordTermsAcceptance(user.id);
 
   sendVerificationMail(user.email, verifyToken);
-  startSession(res, user, req);
-  res.status(201).json({ user: publicUser(user) });
+  res.status(201).json({ pending: true, email: user.email });
 });
 
 // POST /api/auth/login  { email, password }
@@ -83,6 +83,12 @@ router.post("/login", authLimiter, (req, res) => {
     return res.status(401).json({ error: "E-Mail oder Passwort ist falsch." });
   }
   resetFailedLogins(user.id);
+  if (!user.email_verified) {
+    return res.status(403).json({
+      error: "Bitte bestätige zuerst deine E-Mail-Adresse. Den Link haben wir dir bei der Registrierung geschickt.",
+      needsVerification: true,
+    });
+  }
   startSession(res, user, req);
   res.json({ user: publicUser(user) });
 });
@@ -101,18 +107,19 @@ router.get("/me", authOptional, (req, res) => {
 
 // POST /api/auth/verify  { token }
 router.post("/verify", (req, res) => {
-  const { user, error } = confirmEmail(String(req.body?.token ?? ""));
-  if (error) return res.status(400).json({ error });
-  // Nur hier, nicht beim Passwort-Zurücksetzen: ein Bestätigungslink gilt genau einmal
-  sendWelcomeMail(user);
+  const { user, error, expired } = confirmEmail(String(req.body?.token ?? ""));
+  if (error) return res.status(400).json({ error, expired: !!expired });
+  // Nur hier und nur mit Einwilligung (Haken bei der Registrierung); ein Bestätigungslink gilt genau einmal
+  if (user.welcome_optin_at) sendWelcomeMail(user);
+  startSession(res, user, req);
   res.json({ user: publicUser(user) });
 });
 
-// POST /api/auth/resend-verification  (angemeldet)
-router.post("/resend-verification", authRequired, (req, res) => {
-  if (req.user.email_verified) return res.json({ ok: true });
-  const t = newVerifyToken(req.user.id);
-  sendVerificationMail(req.user.email, t);
+// POST /api/auth/resend-verification  { email } - neuer Bestätigungslink ohne Anmeldung.
+// Immer gleiche Antwort - verrät nicht, ob es zu der Adresse ein Konto gibt.
+router.post("/resend-verification", authLimiter, (req, res) => {
+  const r = verifyTokenForEmail(String(req.body?.email ?? ""));
+  if (r) sendVerificationMail(r.user.email, r.token);
   res.json({ ok: true });
 });
 
@@ -136,9 +143,10 @@ router.post("/reset", authLimiter, (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-// PATCH /api/auth/me  { displayName }
+// PATCH /api/auth/me  { username }
 router.patch("/me", authRequired, (req, res) => {
-  const user = setDisplayName(req.user.id, req.body?.displayName ?? null);
+  const { user, error } = setUsername(req.user.id, req.body?.username);
+  if (error) return res.status(400).json({ error });
   res.json({ user: publicUser(user) });
 });
 

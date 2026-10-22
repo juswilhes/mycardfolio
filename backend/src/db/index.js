@@ -461,6 +461,22 @@ if (!userColumns.has("inactivity_warned_at")) db.exec(`ALTER TABLE users ADD COL
 // Nachweis, wann welche Fassung der Nutzungsbedingungen akzeptiert wurde
 if (!userColumns.has("terms_accepted_at")) db.exec(`ALTER TABLE users ADD COLUMN terms_accepted_at TEXT`);
 if (!userColumns.has("terms_version")) db.exec(`ALTER TABLE users ADD COLUMN terms_version TEXT`);
+// Benutzername: Pflicht bei der Registrierung, auf der Seite nur einmal vergeben (Groß/Klein egal).
+// Bestehende Konten übernehmen ihren bisherigen Anzeigenamen, wenn er die Regeln erfüllt.
+if (!userColumns.has("username")) {
+  db.exec(`ALTER TABLE users ADD COLUMN username TEXT`);
+  const taken = new Set();
+  for (const u of db.prepare(`SELECT id, display_name FROM users WHERE display_name IS NOT NULL ORDER BY id`).all()) {
+    const n = String(u.display_name).trim();
+    if (/^[A-Za-z0-9][A-Za-z0-9_.-]{2,19}$/.test(n) && !taken.has(n.toLowerCase())) {
+      taken.add(n.toLowerCase());
+      db.prepare(`UPDATE users SET username = ? WHERE id = ?`).run(n, u.id);
+    }
+  }
+}
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)`);
+// Willkommens-Mail nur mit Einwilligung (freiwilliger Haken bei der Registrierung)
+if (!userColumns.has("welcome_optin_at")) db.exec(`ALTER TABLE users ADD COLUMN welcome_optin_at TEXT`);
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ci_user ON collection_items(user_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id)`);
