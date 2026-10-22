@@ -195,12 +195,16 @@ export default function Datenschutz() {
         Daten von dir übermittelt.
       </p>
 
-      <h2>10. Kontaktaufnahme</h2>
+      <h2>10. Kontaktaufnahme und Feedback</h2>
       <p>
-        Wenn du uns per E-Mail kontaktierst, verarbeiten wir deine Angaben zur
-        Bearbeitung der Anfrage (Art. 6 Abs. 1 lit. b bzw. lit. f DSGVO). Die
-        Daten werden gelöscht, sobald sie nicht mehr benötigt werden und keine
-        Aufbewahrungspflichten entgegenstehen.
+        Wenn du uns per E-Mail oder über den Feedback-Knopf kontaktierst,
+        verarbeiten wir deine Angaben zur Bearbeitung der Anfrage (Art. 6 Abs. 1
+        lit. b bzw. lit. f DSGVO). Beim Feedback-Knopf sind das deine Nachricht,
+        die Seite, auf der du gerade warst, und – wenn du angemeldet bist oder sie
+        freiwillig angibst – deine E-Mail-Adresse. Sie werden uns per E-Mail
+        zugestellt (Versand über IONOS, Ziffer 11) und nicht in unserer Datenbank
+        gespeichert. Die Daten werden gelöscht, sobald sie nicht mehr benötigt
+        werden und keine Aufbewahrungspflichten entgegenstehen.
       </p>
 
       <h2>11. Empfänger deiner Daten</h2>

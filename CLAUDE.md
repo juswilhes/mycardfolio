@@ -92,6 +92,10 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - "Ziehen oder kaufen": je Set die Chase-Karten (Seltenheiten mit Quote pro Karte) mit Preis; erwartete Packs = Quote, Kosten = Packs x Boosterpreis, Vergleich mit dem Kaufpreis (`getPullOrBuy` in `marketStats.js`, Rechnung im Frontend).
 - "Pull Rates": Matrix Seltenheit x Set, Daten von Hand (`pull_rates`, `PATCH /api/sets/:id/pull-rates`), Pflege über "Pull Rates pflegen" in der Analyse. Die Hit Rate (Chance auf mind. 1 besondere Karte pro Pack) wird in `marketStats.js` berechnet. Sets, die in fremden Boostern stecken (Classic Collection -> 30th Celebration), stehen in `BOOSTER_OF` und erscheinen in den Analysen nicht als eigene Spalte, sondern zählen zum Booster-Set.
 
+## Feedback & Testnutzer
+- **Feedback-Knopf** unten rechts auf jeder Seite (`components/FeedbackButton.jsx`, `POST /api/feedback` in `routes/feedback.js`): Nachricht + Seite (+ E-Mail, wenn angemeldet oder freiwillig angegeben) gehen per Mail an `ADMIN_EMAIL`, Antwort-Adresse = Absender; nichts in der DB (so in Datenschutz Ziff. 10). 10 Nachrichten/Stunde je IP, Lockfeld `website` gegen Spam-Roboter.
+- **Registrierung bleibt zu** (`REGISTRATION_OPEN=false` in der Server-.env), bis Justus sagt, dass alles fertig ist - Öffnen ist der LETZTE Schritt (Justus, 22.10.2026).
+
 ## Watchlist
 - Es gibt nur EINE Merkliste und sie heißt überall **Watchlist** (Herz-Symbol auf Karten, Seite `/watchlist`, erreichbar über den Button auf "Meine Sammlung"; nicht in der Hauptnavigation). Keine zweite "Wunschliste" anlegen.
 

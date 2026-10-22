@@ -19,6 +19,7 @@ import sealedProductsRouter from "./routes/sealedProducts.js";
 import clientErrorsRouter from "./routes/clientErrors.js";
 import statsRouter from "./routes/stats.js";
 import articlesRouter from "./routes/articles.js";
+import feedbackRouter from "./routes/feedback.js";
 import { authRequired } from "./middleware/auth.js";
 import { isOperatorUser } from "./lib/admin.js";
 import { countPageView, isKnownRoute, humanPing } from "./middleware/hits.js";
@@ -115,6 +116,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/sets", setsRouter);
 app.use("/api/client-error", clientErrorsRouter);
+app.use("/api/feedback", feedbackRouter);
 app.use("/uploads", express.static(uploadsRoot, { maxAge: "7d" }));
 
 // Nur mit Login: alles Nutzerbezogene.

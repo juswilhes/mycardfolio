@@ -43,6 +43,7 @@ export const updateProfile = (displayName) =>
 export const deleteAccount = (password) =>
   request("/auth/account", { method: "DELETE", body: { password } });
 export const exportDataUrl = `${BASE}/auth/export`;
+export const sendFeedback = (payload) => request("/feedback", { method: "POST", body: payload });
 
 // --- Karten-Suche / -Datenbank -------------------------------------
 // type = Kartenart (z. B. "Level-Up" für LV.X, siehe getCardTypes); dann reicht auch ein leeres q

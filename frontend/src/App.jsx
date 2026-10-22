@@ -26,6 +26,7 @@ import News from "./pages/News.jsx";
 import Article from "./pages/Article.jsx";
 import ArtistCards from "./pages/ArtistCards.jsx";
 import Footer from "./components/Footer.jsx";
+import FeedbackButton from "./components/FeedbackButton.jsx";
 import AccountMenu from "./components/AccountMenu.jsx";
 import NavMenu from "./components/NavMenu.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -207,6 +208,7 @@ export default function App() {
       </main>
 
       <Footer />
+      <FeedbackButton />
 
       {confirmLogout && (
         <ConfirmDialog

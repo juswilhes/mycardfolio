@@ -70,6 +70,17 @@ export function sendInactivityWarningMail(email, deleteOn) {
   });
 }
 
+// Feedback aus dem Formular an den Betreiber; Antworten gehen direkt an den Absender (falls bekannt).
+export function sendFeedbackMail({ message, email, loggedIn, page }) {
+  const from = email ? `${email}${loggedIn ? " (angemeldet)" : " (selbst angegeben)"}` : "anonym";
+  return send({
+    to: ADMIN_EMAIL,
+    subject: "mycardfolio – Feedback",
+    text: `Von: ${from}\nSeite: ${page || "-"}\n\n${message}`,
+    replyTo: email || undefined,
+  });
+}
+
 // Interne Mail an den Betreiber (z. B. der Tagesbericht).
 export function sendAdminMail(subject, { text, html }) {
   return send({ to: ADMIN_EMAIL, subject, text, html });
