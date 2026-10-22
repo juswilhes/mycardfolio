@@ -208,11 +208,11 @@ export function userForSession(t) {
 export const endSession = (t) => t && sDeleteSession.run(hashToken(t));
 
 // --- E-Mail-Bestätigung --------------------------------------------
-const VERIFY_TTL_DAYS = 7;
+const VERIFY_TTL_HOURS = 24;
 export function confirmEmail(verifyToken) {
   const u = sUserByVerifyToken.get(hashToken(verifyToken));
   if (!u) return { error: "Der Bestätigungslink ist ungültig oder wurde bereits verwendet." };
-  if (!u.verify_sent_at || Date.parse(u.verify_sent_at.replace(" ", "T") + "Z") < Date.now() - VERIFY_TTL_DAYS * 86400000) {
+  if (!u.verify_sent_at || Date.parse(u.verify_sent_at.replace(" ", "T") + "Z") < Date.now() - VERIFY_TTL_HOURS * 3600000) {
     return { error: "Der Bestätigungslink ist abgelaufen. Fordere bei der Anmeldung einen neuen an.", expired: true };
   }
   sSetVerified.run(u.id);

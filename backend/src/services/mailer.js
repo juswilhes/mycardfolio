@@ -46,7 +46,7 @@ export function sendVerificationMail(email, token) {
   return send({
     to: email,
     subject: "mycardfolio – E-Mail bestätigen",
-    text: `Bestätige deine E-Mail-Adresse:\n${link}\n\nWenn du dich nicht registriert hast, ignoriere diese Mail.`,
+    text: `Bestätige deine E-Mail-Adresse:\n${link}\n\nDer Link ist 24 Stunden gültig. Wenn du dich nicht registriert hast, ignoriere diese Mail.`,
   });
 }
 

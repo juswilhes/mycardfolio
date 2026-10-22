@@ -67,7 +67,7 @@ export default function Register() {
           E-Mail-Adresse zu bestätigen – danach bist du direkt angemeldet.
         </p>
         <p className="text-xs text-subtle mb-4">
-          Keine Mail da? Schau auch im Spam-Ordner nach. Der Link ist 7 Tage gültig.
+          Keine Mail da? Schau auch im Spam-Ordner nach. Der Link ist 24 Stunden gültig.
         </p>
         <ResendVerification email={sentTo} />
       </AuthCard>
