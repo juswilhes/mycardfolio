@@ -2,6 +2,7 @@ import db from "../db/index.js";
 import { latestTrendByExternal } from "./cardService.js";
 import { slugOfSet, resolveSetParam, rebuildSetSlugs } from "./setSlugs.js";
 import { getArticleBySlug, listPublishedArticles } from "./articles.js";
+import { nicknamesOf } from "./cardNicknames.js";
 import { slugOfCard, resolveCardParam, rebuildCardSlugs } from "./cardSlugs.js";
 import { analysis } from "./analysisCache.js";
 
@@ -117,17 +118,21 @@ export function metaFor(rawPath) {
     const plain = (n) => n.toLowerCase().replace(/[-s]+/g, " ");
     const german = c.name_de && plain(c.name_de) !== plain(c.name) ? c.name_de : null;
     const label = german ? `${german} (${c.name})` : c.name;
+    // Sammler suchen oft nach dem Spitznamen ("Moonbreon Preis") - deshalb vorne in Titel und Text
+    const nick = nicknamesOf(c.external_id).join(" / ");
     const trend = latestTrendByExternal(c.external_id);
     const price = trend?.price;
     const setPath = `/sets/${encodeURIComponent(slugOfSet(c.set_id))}`;
     const description =
-      price != null
+      (nick ? `„${nick}": ` : "") +
+      (price != null
         ? `Wie viel ist ${label} (${c.set_name}, Nr. ${c.number}) wert? Aktueller Cardmarket-Wert: ${eur(price)}${c.rarity ? ` · ${c.rarity}` : ""}. Mit Preisverlauf und Ø 30 Tage.`
-        : `${label} aus dem Pokémon-Set ${c.set_name}, Nr. ${c.number}${c.rarity ? `, Seltenheit ${c.rarity}` : ""}. Mit Kartendaten und Preisverlauf.`;
+        : `${label} aus dem Pokémon-Set ${c.set_name}, Nr. ${c.number}${c.rarity ? `, Seltenheit ${c.rarity}` : ""}. Mit Kartendaten und Preisverlauf.`);
     const when = trend?.fetched_at ? ` (Cardmarket, Stand ${dateDe(trend.fetched_at)})` : "";
     const body = wrap(
       `<nav>${link("/", "Start")} › ${link("/sets", "Alle Karten")} › ${link(setPath, c.set_name)}</nav>` +
-        `<h1>${esc(label)} – ${esc(c.set_name)} ${esc(c.number)}: Wert und Preis</h1>` +
+        `<h1>${nick ? `${esc(nick)}: ` : ""}${esc(label)} – ${esc(c.set_name)} ${esc(c.number)}: Wert und Preis</h1>` +
+        (nick ? `<p>Unter Sammlern ist die Karte als „${esc(nick)}" bekannt.</p>` : "") +
         (price != null
           ? `<p>${esc(label)} aus dem Pokémon-Set ${esc(c.set_name)} (Nr. ${esc(c.number)}) ist aktuell etwa <strong>${esc(eur(price))}</strong> wert${esc(when)}.${
               trend.avg30 != null ? ` Der Durchschnitt der letzten 30 Tage liegt bei ${esc(eur(trend.avg30))}.` : ""
@@ -140,7 +145,7 @@ export function metaFor(rawPath) {
     );
     return {
       ...base,
-      title: titled(`${label} Wert & Preis – ${c.set_name} ${c.number}`),
+      title: titled(`${nick ? `${nick}: ` : ""}${label} Wert & Preis – ${c.set_name} ${c.number}`),
       description: shorten(description, 200),
       image: c.image_large || c.image_small || DEFAULT_IMAGE,
       type: "article",

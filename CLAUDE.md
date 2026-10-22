@@ -66,6 +66,7 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 ## Kartensuche
 - "Alle Karten": Suchfeld findet Karten UND Sets (passende Sets stehen über den Karten); Auswahl "Kartenart" filtert nach `cards.subtypes` (LV.X = "Level-Up", ex, GX, V, VMAX, Unterstützer ...), auch ohne Suchtext (`GET /api/cards/search?q=&type=`, Liste der Arten `GET /api/cards/types` aus dem Analyse-Speicher).
 
+- **Spitznamen** ("Moonbreon" = Umbreon VMAX swsh7-215, "Bubble Mew", "Van Gogh Pikachu" ...): Liste in `backend/src/services/cardNicknames.js` (nur belegte Namen, eindeutige Karten-IDs; `aliases` = deutsche Suchhilfen). Die Suche stellt passende Karten nach oben (ganzer Name oder Anfang ab 4 Zeichen), Kartenseite zeigt "Bei Sammlern bekannt als", Titel/Beschreibung für Google beginnen mit dem Spitznamen (`seo.js`).
 - **Set-Seite:** Filter "Seltenheit" (nur die im Set vorhandenen, von gewöhnlich nach selten) und Sortierung "Seltenheit (aufsteigend)". Reihenfolge und Schreibweisen (Quelle schreibt mal "Illustration rare", mal "Illustration Rare") in `frontend/src/lib/rarity.js` (`RANK`); neue Seltenheit dort einordnen, sonst steht sie vor Promo am Ende.
 
 ## Suchmaschinen (SEO)

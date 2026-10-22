@@ -59,7 +59,7 @@ export default function CardInfo() {
   const [celebration, setCelebration] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [entriesBusy, setEntriesBusy] = useState(false);
-  usePageTitle(card ? `${card.name} (${card.set_name} ${card.number}) – Preis & Verlauf | mycardfolio` : null);
+  usePageTitle(card ? `${card.nicknames?.length ? `${card.nicknames.join(" / ")}: ` : ""}${card.name} (${card.set_name} ${card.number}) – Preis & Verlauf | mycardfolio` : null);
 
   const loadEntries = useCallback(() => {
     if (!user || !externalId) return setEntries([]);
@@ -206,6 +206,12 @@ export default function CardInfo() {
             {card.set_name}
             {card.number ? ` · #${card.number}` : ""}
           </p>
+          {card.nicknames?.length > 0 && (
+            <p className="text-sm mt-1">
+              Bei Sammlern bekannt als{" "}
+              <span className="font-medium">{card.nicknames.map((n) => `„${n}“`).join(" / ")}</span>
+            </p>
+          )}
 
           <ArtistLine card={card} externalId={externalId} onSaved={setCard} canEdit={!!user?.is_operator} />
 

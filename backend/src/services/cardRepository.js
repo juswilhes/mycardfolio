@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import db from "../db/index.js";
 import { slugOfSet } from "./setSlugs.js";
 import { slugOfCard } from "./cardSlugs.js";
+import { nicknamesOf, cardIdsForNickname } from "./cardNicknames.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -60,6 +61,7 @@ function rowToCard(row) {
     set_logo: row.set_logo ?? null,
     view_count: row.view_count ?? 0,
     name_de: row.name_de ?? null,
+    nicknames: nicknamesOf(row.external_id),
   };
 }
 
@@ -279,11 +281,20 @@ const byTypeStmt = db.prepare(`
 `);
 
 export function searchCardsLocal(query, { game = "pokemon", limit = 30, type = null } = {}) {
-  if (!type) return searchCardsBase(query, { game, limit });
+  if (!type) return withNicknameHits(query, searchCardsBase(query, { game, limit }), limit);
   if (!query.trim()) return byTypeStmt.all({ game, type, limit }).map(rowToCard);
-  return searchCardsBase(query, { game, limit: 400 })
+  return withNicknameHits(query, searchCardsBase(query, { game, limit: 400 }), 400)
     .filter((r) => r.subtypes.includes(type))
     .slice(0, limit);
+}
+
+// Karten mit passendem Spitznamen ("Moonbreon") stehen vor den normalen Treffern.
+function withNicknameHits(query, rows, limit) {
+  const ids = cardIdsForNickname(query);
+  if (!ids.length) return rows;
+  const nick = ids.map((id) => getCardByExternalIdLocal(id)).filter(Boolean);
+  const seen = new Set(nick.map((c) => c.external_id));
+  return [...nick, ...rows.filter((r) => !seen.has(r.external_id))].slice(0, limit);
 }
 
 // Alle vorkommenden Kartenarten mit Anzahl (für die Auswahl in der Suche)
