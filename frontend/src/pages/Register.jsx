@@ -96,16 +96,16 @@ export default function Register() {
           />
         </label>
         <label className="block text-xs text-subtle">
-          Passwort (mind. 8 Zeichen)
+          Passwort (mind. 10 Zeichen)
           <input
-            type="password" autoComplete="new-password" required minLength={8}
+            type="password" autoComplete="new-password" required minLength={10}
             value={form.password} onChange={set("password")} className={inputCls}
           />
         </label>
         <label className="block text-xs text-subtle">
           Passwort wiederholen
           <input
-            type="password" autoComplete="new-password" required minLength={8}
+            type="password" autoComplete="new-password" required minLength={10}
             value={form.password2} onChange={set("password2")} className={inputCls}
           />
         </label>

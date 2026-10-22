@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
 import bcrypt from "bcryptjs";
 import db from "../db/index.js";
 import { isOperatorUser } from "../lib/admin.js";
@@ -85,14 +86,32 @@ export function validateUsername(name) {
   return null;
 }
 
+// Passwort-Regeln (nach BSI/NIST: Länge statt Sonderzeichen-Pflicht): mindestens 10 Zeichen, nicht in der
+// Liste häufiger Passwörter (data/common-passwords.txt) und nicht gleich E-Mail-Adresse oder Benutzername.
+// Gilt für neue Passwörter (Registrierung, Zurücksetzen); bestehende Passwörter funktionieren weiter.
+export const PASSWORD_MIN = 10;
+const COMMON_PASSWORDS = new Set(
+  fs.readFileSync(new URL("../data/common-passwords.txt", import.meta.url), "utf8")
+    .split(/\r?\n/)
+    .filter((l) => l && !l.startsWith("#"))
+);
+export function validatePassword(password, { email, username } = {}) {
+  if (typeof password !== "string" || password.length < PASSWORD_MIN)
+    return `Das Passwort muss mindestens ${PASSWORD_MIN} Zeichen lang sein.`;
+  if (password.length > 200) return "Das Passwort ist zu lang.";
+  const p = password.toLowerCase();
+  if (COMMON_PASSWORDS.has(p)) return "Dieses Passwort ist sehr verbreitet und leicht zu erraten. Bitte wähle ein anderes.";
+  const mail = normEmail(email);
+  const same = [mail, mail.split("@")[0], String(username ?? "").trim().toLowerCase()].filter((x) => x.length >= 3);
+  if (same.includes(p)) return "Das Passwort darf nicht deine E-Mail-Adresse oder dein Benutzername sein.";
+  return null;
+}
+
 export function validateRegistration({ email, password, username }) {
   if (!EMAIL_RE.test(normEmail(email))) return "Bitte eine gültige E-Mail-Adresse angeben.";
   const nameErr = validateUsername(username);
   if (nameErr) return nameErr;
-  if (typeof password !== "string" || password.length < 8)
-    return "Das Passwort muss mindestens 8 Zeichen lang sein.";
-  if (password.length > 200) return "Das Passwort ist zu lang.";
-  return null;
+  return validatePassword(password, { email, username });
 }
 
 // --- Public-Sicht eines Users (nie Hash/Token nach draußen) -----------
@@ -248,6 +267,8 @@ export function completePasswordReset(resetToken, password) {
   if (!u || !u.reset_expires || new Date(u.reset_expires).getTime() < Date.now()) {
     return { error: "Der Link ist ungültig oder abgelaufen." };
   }
+  const pwErr = validatePassword(password, { email: u.email, username: u.username });
+  if (pwErr) return { error: pwErr };
   const tx = db.transaction(() => {
     sSetPassword.run(bcrypt.hashSync(String(password), BCRYPT_ROUNDS), u.id);
     if (!u.email_verified) sSetVerified.run(u.id); // Reset über Mail belegt die Adresse

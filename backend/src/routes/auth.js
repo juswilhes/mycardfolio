@@ -134,9 +134,7 @@ router.post("/request-reset", authLimiter, (req, res) => {
 // POST /api/auth/reset  { token, password }
 router.post("/reset", authLimiter, (req, res) => {
   const { token, password } = req.body ?? {};
-  if (typeof password !== "string" || password.length < 8) {
-    return res.status(400).json({ error: "Das Passwort muss mindestens 8 Zeichen lang sein." });
-  }
+  if (typeof password !== "string") return res.status(400).json({ error: "Bitte ein neues Passwort angeben." });
   const { user, error } = completePasswordReset(String(token ?? ""), password);
   if (error) return res.status(400).json({ error });
   startSession(res, user, req);

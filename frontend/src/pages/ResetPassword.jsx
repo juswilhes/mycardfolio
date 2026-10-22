@@ -42,16 +42,16 @@ export default function ResetPassword() {
       ) : (
         <form onSubmit={submit} className="space-y-3">
           <label className="block text-xs text-subtle">
-            Neues Passwort (mind. 8 Zeichen)
+            Neues Passwort (mind. 10 Zeichen)
             <input
-              type="password" autoComplete="new-password" required minLength={8}
+              type="password" autoComplete="new-password" required minLength={10}
               value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls}
             />
           </label>
           <label className="block text-xs text-subtle">
             Passwort wiederholen
             <input
-              type="password" autoComplete="new-password" required minLength={8}
+              type="password" autoComplete="new-password" required minLength={10}
               value={password2} onChange={(e) => setPassword2(e.target.value)} className={inputCls}
             />
           </label>
