@@ -189,12 +189,12 @@ export default function Datenschutz() {
 
       <h2>11. Empfänger deiner Daten</h2>
       <p>
-        Empfänger sind unser Hoster (Auftragsverarbeiter, Ziffer 4), ggf. ein
-        E-Mail-Versanddienstleister für System-E-Mails (ebenfalls
-        Auftragsverarbeiter).
-        Eine darüber hinausgehende Übermittlung in Drittländer außerhalb der
-        EU/des EWR findet nicht statt bzw. nur auf Grundlage geeigneter
-        Garantien nach Art. 44 ff. DSGVO.
+        Empfänger ist {HOSTING.provider} ({HOSTING.address}) als
+        Auftragsverarbeiter nach Art. 28 DSGVO: zum einen als Hoster (Ziffer 4),
+        zum anderen für den Versand der System-E-Mails (Kontobestätigung,
+        Zurücksetzen des Passworts) über den E-Mail-Dienst von IONOS. Die
+        Verarbeitung findet in der EU statt; eine Übermittlung in Drittländer
+        außerhalb der EU/des EWR findet nicht statt.
       </p>
 
       <h2>12. Deine Rechte</h2>
