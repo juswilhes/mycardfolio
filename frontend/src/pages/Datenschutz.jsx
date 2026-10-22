@@ -27,10 +27,9 @@ export default function Datenschutz() {
       <p>
         mycardfolio hilft dir, deine Sammelkarten und deren Wert zu verwalten.
         Wir verarbeiten dabei so wenige personenbezogene Daten wie möglich: die
-        technisch beim Seitenaufruf anfallenden Daten, deine Konto- und
-        Sammlungsdaten sowie – für die Anzeige der Kartenbilder – eine
-        Verbindung deines Browsers zu externen Bild-Servern (siehe Ziffer 8).
-        Wir setzen keine Werbe- oder Tracking-Cookies
+        technisch beim Seitenaufruf anfallenden Daten sowie deine Konto- und
+        Sammlungsdaten. Alle Inhalte, auch Kartenbilder und Schriften, kommen von
+        unserem eigenen Server. Wir setzen keine Werbe- oder Tracking-Cookies
         ein und nutzen keine Analyse-Dienste.
       </p>
 
@@ -149,26 +148,24 @@ export default function Datenschutz() {
         Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.
       </p>
 
-      <h2>8. Kartenbilder von Drittanbietern</h2>
+      <h2>8. Kartenbilder und Schriftarten</h2>
       <p>
-        Die Bilder der Sammelkarten werden nicht von uns, sondern direkt von
-        externen Servern geladen (<code>images.pokemontcg.io</code>,{" "}
-        <code>assets.tcgdex.net</code>, <code>images.scrydex.com</code> und{" "}
-        <code>assets.pokemon.com</code>). Dein
-        Browser stellt dazu eine Verbindung zu diesen Anbietern her und
-        übermittelt dabei technisch bedingt deine IP-Adresse sowie
-        Browserangaben an den jeweiligen Server. Auf diese Verarbeitung durch die
-        Drittanbieter haben wir keinen Einfluss.
+        Die Bilder der Sammelkarten stammen von externen Bild-Servern
+        (<code>images.pokemontcg.io</code>, <code>assets.tcgdex.net</code>,{" "}
+        <code>images.scrydex.com</code>, <code>assets.pokemon.com</code>).{" "}
+        <strong>Dein Browser lädt sie aber ausschließlich von unserem Server</strong>:
+        Unser Server holt das Bild beim jeweiligen Anbieter ab, speichert es
+        zwischen und liefert es dir aus. Die Anbieter erhalten dabei keine Daten
+        von dir, insbesondere nicht deine IP-Adresse.
       </p>
       <p>
-        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (berechtigtes
-        Interesse an der Darstellung der Karten ohne eigene Speicherung großer
-        Bildmengen). Eine Auslieferung der Bilder über einen eigenen Server
-        (Proxy), die diese Übermittlung vermeidet, ist geplant.
-      </p>
-      <p>
-        Schriftarten laden wir dagegen von unserem eigenen Server; dabei wird
+        Auch die Schriftarten laden wir von unserem eigenen Server; es wird
         keine Verbindung zu Google oder anderen Schriftanbietern hergestellt.
+      </p>
+      <p>
+        Eine Ausnahme sind Bilder, deren Adresse du selbst bei einem
+        Sealed-Produkt einträgst: Diese lädt dein Browser direkt von der von dir
+        angegebenen Adresse.
       </p>
 
       <h2>9. Serverseitig abgerufene Datenquellen</h2>

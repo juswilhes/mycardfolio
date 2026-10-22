@@ -34,6 +34,7 @@ import { metaFor, renderIndex, sitemap, redirectFor } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
 import { recordAllPortfolioSnapshots } from "./services/portfolioService.js";
 import { uploadsRoot } from "./lib/uploads.js";
+import { imageRouter, rewriteImagesInJson } from "./services/imageProxy.js";
 import db from "./db/index.js";
 
 process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
@@ -97,6 +98,15 @@ app.use(
     legacyHeaders: false,
     message: { error: "Zu viele Anfragen - bitte kurz warten." },
   })
+);
+
+// Kartenbilder über unseren Server (services/imageProxy.js): die API schreibt die Bild-Adressen um,
+// /img liefert sie aus. Eigenes, großzügiges Limit, weil eine Set-Seite viele Bilder auf einmal lädt.
+app.use(rewriteImagesInJson);
+app.use(
+  "/img",
+  rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.IMG_RATE_LIMIT) || 1500, standardHeaders: "draft-7", legacyHeaders: false }),
+  imageRouter
 );
 
 // Öffentlich: Konten, Karten-Stammdaten, Set-Übersicht.
