@@ -1,5 +1,7 @@
+import { useState } from "react";
 import PriceChart from "./PriceChart.jsx";
 import { eur } from "../lib/format.js";
+import { RANGES, rangeDays, withinDays } from "../lib/chartRange.js";
 
 const VARIANT_LABEL = { holo: "Holo", reverse: "Reverse Holo" };
 
@@ -11,26 +13,24 @@ function lastPrice(history, variant) {
   return pts.length ? pts[pts.length - 1].price : null;
 }
 
-// Momentum-Signal: reine Beobachtung ("Preis hat sich seit dem ersten
-// getrackten Tag so verändert"), keine Vorhersage. Bewusst simpel und
-// transparent - zeigt immer auch dazu, auf wie viel Historie das beruht,
-// weil bei frisch getrackten Karten (die meisten - Preis-Tracking läuft
-// erst seit kurzem) 2-3 Tage Datenbasis keine verlässliche Aussage sind.
-function computeMomentum(history) {
+// Veränderung im gewählten Zeitraum (Justus: immer passend zur Auswahl 1 Monat, 3 Monate ...): erster gegen
+// letzten Tageswert innerhalb des Zeitraums - reine Beobachtung, keine Vorhersage. Beginnt die Aufzeichnung
+// später als der Zeitraum, steht das dabei.
+function computeMomentum(history, days) {
   if (!history?.length) return null;
   const byDay = new Map();
-  for (const h of history) {
+  for (const h of withinDays(history, days, (x) => x.fetched_at)) {
     if (h.price == null) continue;
     if ((h.variant ?? "normal") !== "normal") continue; // Momentum nur für die Standard-Variante, nicht mit Holo vermischen
     byDay.set(h.fetched_at.slice(0, 10), h.price);
   }
-  const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  if (days.length < 2) return { days: days.length };
-  const [firstDay, firstPrice] = days[0];
-  const [lastDay, lastPrice] = days[days.length - 1];
-  if (!firstPrice) return { days: days.length };
+  const rows = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  if (rows.length < 2) return { days: rows.length };
+  const [firstDay, firstPrice] = rows[0];
+  const [lastDay, lastPrice] = rows[rows.length - 1];
+  if (!firstPrice) return { days: rows.length };
   return {
-    days: days.length,
+    days: rows.length,
     firstDay,
     lastDay,
     firstPrice,
@@ -39,12 +39,23 @@ function computeMomentum(history) {
   };
 }
 
+// Beschriftung der Veränderung je Zeitraum
+const RANGE_TEXT = { "1m": "im letzten Monat", "3m": "in den letzten 3 Monaten", "6m": "in den letzten 6 Monaten", "12m": "in den letzten 12 Monaten" };
+
 // Einheitliche Preis-Anzeige für Sammlungs- und Datenbank-Detailseite.
 // Alles in EUR. Bevorzugte Quelle: Cardmarket (ein Wert pro Karte, nicht nach Sprache/Zustand getrennt).
 // Preise werden nur einmal täglich um 1 Uhr aktualisiert (kein Abruf beim
 // Öffnen der Seite).
 export default function PriceSection({ card, history }) {
-  const momentum = computeMomentum(history);
+  const [range, setRange] = useState("12m");
+  const days = rangeDays(range);
+  const momentum = computeMomentum(history, days);
+  // Beginnt die Aufzeichnung der Karte erst innerhalb des Zeitraums, steht das dabei (Lücken zählen nicht)
+  const firstTracked = (history ?? []).find((h) => (h.variant ?? "normal") === "normal" && h.price != null)?.fetched_at?.slice(0, 10);
+  const spanDays = momentum?.firstDay
+    ? Math.round((Date.parse(momentum.lastDay) - Date.parse(momentum.firstDay)) / 86400000)
+    : 0;
+  const shorterThanRange = momentum?.firstDay === firstTracked && spanDays < days - 2;
   const breakdown = card.price_breakdown ?? [];
   const pick = (variant) =>
     Object.fromEntries(
@@ -57,10 +68,9 @@ export default function PriceSection({ card, history }) {
   const specialVariant = (history ?? []).find((h) => (h.variant ?? "normal") !== "normal")?.variant ?? null;
   const specialPrice = specialVariant ? lastPrice(history, specialVariant) : null;
   const baseLabel = (history ?? []).find((h) => h.baseLabel)?.baseLabel ?? null;
-  // card.latest_price = letzter Tageswert (cardService.js latestTrend), avg30 =
-  // Zusatzinfo. byType.trend nur als Notnagel, falls der Server mal nichts liefert.
+  // card.latest_price = letzter Tageswert (cardService.js latestTrend). byType.trend nur als Notnagel,
+  // falls der Server mal nichts liefert. Den 30-Tage-Schnitt zeigen wir nicht mehr (Justus 23.10.2026).
   const headline = card.latest_price?.price ?? byType.trend ?? null;
-  const avg30 = card.latest_price?.avg30 ?? null;
   const basis = card.latest_price?.source ?? (breakdown.length ? "cardmarket" : null);
 
   const updated = card.cardmarket_updated
@@ -88,9 +98,6 @@ export default function PriceSection({ card, history }) {
           <p className="text-3xl font-semibold font-mono">
             {headline != null ? eur(headline) : "—"}
           </p>
-          {avg30 != null && (
-            <p className="text-subtle text-xs mt-0.5">Ø 30 Tage: <span className="font-mono">{eur(avg30)}</span></p>
-          )}
         </div>
       </div>
 
@@ -104,12 +111,15 @@ export default function PriceSection({ card, history }) {
                 {momentum.pct.toFixed(1)} %
               </span>{" "}
               <span className="text-subtle text-xs">
-                seit {momentum.days} Tagen ({eur(momentum.firstPrice)} → {eur(momentum.lastPrice)})
+                {shorterThanRange
+                  ? `seit Beginn der Aufzeichnung vor ${spanDays} Tagen`
+                  : RANGE_TEXT[range] ?? RANGES.find((r) => r.id === range)?.label}{" "}
+                ({eur(momentum.firstPrice)} → {eur(momentum.lastPrice)})
               </span>
             </>
           ) : (
             <span className="text-subtle text-xs">
-              Momentum: noch nicht genug Daten (erst {momentum.days} Tag{momentum.days === 1 ? "" : "e"} getrackt)
+              Veränderung: im gewählten Zeitraum noch nicht genug Daten ({momentum.days} Tag{momentum.days === 1 ? "" : "e"})
             </span>
           )}
         </p>
@@ -132,7 +142,7 @@ export default function PriceSection({ card, history }) {
 
       <div className="mt-4">
         <p className="text-sm text-subtle mb-1">Preisentwicklung</p>
-        <PriceChart data={history} />
+        <PriceChart data={history} range={range} onRangeChange={setRange} />
       </div>
 
       {card.cardmarket_url && (
@@ -157,11 +167,9 @@ export default function PriceSection({ card, history }) {
             Der <b>Aktuelle Preis</b> ist der neueste Tageswert – der letzte
             Punkt im Graphen. Jeder Tageswert wird mit den beiden Vortagen geglättet (Median). Er ist ein Mittelwert aus mehreren Cardmarket-Kennzahlen
             (Trend und Durchschnitt der letzten 1, 7 und 30 Tage), damit einzelne
-            Ausreißer nicht durchschlagen. Bei Karten ab etwa 10 € wird er zusätzlich
+            Ausreißer nicht durchschlagen. Bei Karten ab 3 € wird er zusätzlich
             mit dem TCGplayer-Marktpreis (USA, in Euro umgerechnet) gemittelt, sofern
-            dieser vorliegt und plausibel ist. Darunter steht als
-            Zusatzinfo der <b>Durchschnitt der letzten 30 Tage</b>, er glättet
-            einzelne Ausreißer. (Den „Tiefstpreis" zeigen wir bewusst nicht
+            dieser vorliegt und plausibel ist. (Den „Tiefstpreis" zeigen wir bewusst nicht
             an – der ist oft nur ein einzelnes Schnäppchen-Angebot.)
           </p>
           <p>
@@ -189,10 +197,10 @@ export default function PriceSection({ card, history }) {
             keinen kostenlosen Zugang.
           </p>
           <p>
-            <b>Momentum</b> vergleicht nur den ersten mit dem letzten
-            getrackten Preis – eine reine Beobachtung, keine Vorhersage. Die
-            Preis-Historie läuft noch nicht lange, deshalb steht immer dabei,
-            auf wie viele Tage sich das stützt.
+            Die <b>Veränderung</b> vergleicht den ersten mit dem letzten Preis im
+            gewählten Zeitraum (1, 3, 6 oder 12 Monate) – eine reine Beobachtung,
+            keine Vorhersage. Reicht die Aufzeichnung nicht so weit zurück, steht
+            dabei, seit wann sie läuft.
           </p>
         </div>
       </details>

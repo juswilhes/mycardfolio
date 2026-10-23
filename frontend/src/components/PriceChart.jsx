@@ -23,9 +23,11 @@ function lastValue(chartData, key) {
 // jeweils aktuellen Preis - Klick blendet die Linie aus/ein. Mehr als zwei
 // Reihen liefert die kostenlose Quelle (Cardmarket über TCGdex) nicht: sie hat
 // strukturell nur zwei Preisfelder pro Karte.
-export default function PriceChart({ data }) {
+export default function PriceChart({ data, range: rangeProp, onRangeChange }) {
   const [hidden, setHidden] = useState(() => new Set());
-  const [range, setRange] = useState("12m");
+  const [ownRange, setOwnRange] = useState("12m");
+  const range = rangeProp ?? ownRange;
+  const setRange = onRangeChange ?? setOwnRange;
 
   if (!data || data.length === 0) {
     return (
