@@ -265,7 +265,7 @@ export default function AllCards() {
                           return next;
                         })
                       }
-                      className="absolute top-1.5 right-1.5 bg-canvas/90 rounded-full w-7 h-7 flex items-center justify-center text-lg shadow-sm"
+                      className="absolute top-1.5 right-1.5 bg-canvas rounded-full w-8 h-8 flex items-center justify-center border border-line shadow-md"
                     />
                   )}
                   <p className="text-sm font-medium truncate">{card.name}</p>

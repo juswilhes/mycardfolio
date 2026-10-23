@@ -275,7 +275,7 @@ export default function SetDetail() {
                           return next;
                         })
                       }
-                      className="absolute top-1 right-1 bg-canvas/90 rounded-full w-6 h-6 flex items-center justify-center text-base shadow"
+                      className="absolute top-1.5 right-1.5 bg-canvas rounded-full w-8 h-8 flex items-center justify-center border border-line shadow-md"
                     />
                   )}
                 </div>
