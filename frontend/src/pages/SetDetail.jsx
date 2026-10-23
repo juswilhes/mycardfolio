@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
 import { eur } from "../lib/format.js";
+import Icon from "../components/Icon.jsx";
 import { rarityKey, rarityLabel, rarityRank } from "../lib/rarity.js";
 
 const SORTS = {
@@ -252,14 +253,16 @@ export default function SetDetail() {
                   <img
                     src={card.image_small}
                     alt={`${card.name} (Englisch)`}
-                    className={`rounded-2xl border mb-1.5 shadow-sm transition ${
-                      has ? "border-mint" : "border-line opacity-60"
-                    }`}
+                    className={`rounded-2xl border mb-1.5 shadow-sm transition ${has ? "border-yellow" : "border-line"}`}
                   />
+                  {/* Besessene Karten: leichter gelber Schleier + Häkchen (Justus 23.10.2026); fehlende normal, nicht ausgegraut */}
                   {has && (
-                    <span className="absolute top-1 right-1 bg-mint text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center shadow">
-                      ✓
-                    </span>
+                    <>
+                      <span aria-hidden="true" className="absolute inset-x-0 top-0 bottom-1.5 rounded-2xl bg-yellow pointer-events-none" style={{ opacity: 0.18 }} />
+                      <span className="absolute top-1 right-1 bg-yellow text-yellowInk rounded-full w-6 h-6 flex items-center justify-center shadow" title="In deiner Sammlung">
+                        <Icon name="check" className="w-4 h-4" />
+                      </span>
+                    </>
                   )}
                   {user && !has && (
                     <WatchlistHeart
