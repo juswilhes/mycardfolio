@@ -108,9 +108,9 @@ export function validatePassword(password, { email, username } = {}) {
   return null;
 }
 
-// Testphase: begrenzte Zahl an Konten (TESTER_LIMIT in der .env, Standard 50). Das Betreiber-Konto zählt nicht mit.
+// Testphase: begrenzte Zahl an Konten (TESTER_LIMIT in der .env, Standard 20 - Justus 23.10.2026). Das Betreiber-Konto zählt nicht mit.
 // Die Grenze ist echt - die Startseite zeigt die freien Plätze, bei 0 schließt die Registrierung.
-export const TESTER_LIMIT = Number(process.env.TESTER_LIMIT) || 50;
+export const TESTER_LIMIT = Number(process.env.TESTER_LIMIT) || 20;
 export function testerSpotsLeft() {
   const op = (process.env.OPERATOR_EMAIL || process.env.ADMIN_EMAIL || "").trim().toLowerCase();
   const taken = db.prepare(`SELECT COUNT(*) n FROM users WHERE email != ?`).get(op).n;
