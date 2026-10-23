@@ -31,7 +31,8 @@ const trackedCards = db.prepare(`
   SELECT DISTINCT c.id, c.external_id
   FROM cards c
   JOIN price_snapshots ps ON ps.card_id = c.id
-  WHERE NOT EXISTS (
+  WHERE c.cardmarket_pid_locked IS NULL -- fest zugeordnete bepreist nur die Preisliste (guidePrices.js)
+    AND NOT EXISTS (
     SELECT 1 FROM price_snapshots t
     WHERE t.card_id = c.id AND t.source = 'cardmarket' AND t.price_type = 'trend'
       AND t.variant = 'normal' AND substr(t.fetched_at, 1, 10) = date('now')

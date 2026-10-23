@@ -29,7 +29,7 @@ let sweepRunning = false;
 // Nachtlauf auf die Korrektur warten.
 const sharedProductCardsStmt = db.prepare(`
   SELECT c.id, c.external_id FROM cards c
-  WHERE c.cardmarket_product_id IS NOT NULL
+  WHERE c.cardmarket_product_id IS NOT NULL AND c.cardmarket_pid_locked IS NULL
     AND EXISTS (SELECT 1 FROM cards o WHERE o.cardmarket_product_id = c.cardmarket_product_id AND o.set_id = c.set_id AND o.id != c.id)
 `);
 

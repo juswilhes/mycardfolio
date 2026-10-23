@@ -1,5 +1,5 @@
 import db from "../db/index.js";
-import { priceHistoryForCard, latestTrend } from "./cardService.js";
+import { priceHistoryForCard, latestTrend, rawNormalTrend } from "./cardService.js";
 import { slugOfSet } from "./setSlugs.js";
 import { slugOfCard } from "./cardSlugs.js";
 
@@ -15,22 +15,52 @@ const setsInBooster = (setId) => [setId, ...Object.keys(BOOSTER_OF).filter((k) =
 // in einer Sammlung) - Grundlage für eine marktweite, nutzerunabhängige
 // Auswertung statt nur des eigenen Portfolios.
 const trackedCardsStmt = db.prepare(`
-  SELECT DISTINCT c.id, c.external_id, c.name, c.set_name, c.image_small
+  SELECT DISTINCT c.id, c.external_id, c.name, c.set_name, c.image_small, c.cardmarket_pid_conflict
   FROM cards c
   JOIN price_snapshots ps ON ps.card_id = c.id
 `);
 
+// Sprünge über Faktor 2,5 von einem Tag auf den nächsten (Cardmarket-Rohwerte). Zwei und mehr = wackelige
+// Reihe (wechselnde Produkt-Zuordnung), einer = meist eine einmalige Korrektur der Zuordnung (am 18.10.2026
+// z. B. Ho-Oh Skyridge 213 -> 673 EUR). Beides ist keine Marktbewegung.
+export function jumpCount(cardId, days = 21, factor = 2.5) {
+  const raw = rawNormalTrend.all(cardId, days);
+  let jumps = 0;
+  for (let i = 1; i < raw.length; i++) {
+    const a = raw[i - 1].price, b = raw[i].price;
+    if (a > 0.5 && b > 0.5 && Math.max(a / b, b / a) > factor) jumps++;
+  }
+  return jumps;
+}
+export const isWobbly = (cardId) => jumpCount(cardId) >= 2;
+
+const MOVER_MAX_DAY_FACTOR = 1.8;
+
+const median = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+};
+
+// Bewegung = Median der letzten 3 Tageswerte gegen den Median der 3 Werte vor `days` Tagen - ein einzelner
+// Tag kann so keine Bewegung erzeugen (Justus: +99 % an einem Tag sind praktisch nie echt).
 function moverFor(c, days) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const hist = priceHistoryForCard.all(c.id);
   if (!hist.length) return null;
+  // Karten mit einem Tagessprung über +80 % (bzw. -44 %) im Vergleichszeitraum plus Puffer oder mit gemeldeter
+  // Zuordnungs-Abweichung fehlen (Justus: solche Sprünge an einem Tag sind praktisch nie echte Marktbewegungen)
+  if (c.cardmarket_pid_conflict != null || jumpCount(c.id, days + 7, MOVER_MAX_DAY_FACTOR) > 0) return null;
 
   const latest = hist[hist.length - 1];
-  let base = hist[0];
-  for (const h of hist) {
-    if (new Date(h.fetched_at).getTime() <= cutoff) base = h;
-    else break;
-  }
+  let baseIdx = 0;
+  hist.forEach((h, i) => {
+    if (new Date(h.fetched_at).getTime() <= cutoff) baseIdx = i;
+  });
+  const base = hist[baseIdx];
+  const recent = hist.slice(-3).map((h) => h.price);
+  const before = hist.slice(Math.max(0, baseIdx - 2), baseIdx + 1).map((h) => h.price);
+  const current = Math.round(median(recent) * 100) / 100;
+  const previous = Math.round(median(before) * 100) / 100;
 
   return {
     card_id: c.id,
@@ -39,12 +69,13 @@ function moverFor(c, days) {
     name: c.name,
     set_name: c.set_name,
     image_small: c.image_small,
-    current: latest.price,
-    previous: base.price,
-    delta: latest.price - base.price,
-    delta_pct: base.price ? ((latest.price - base.price) / base.price) * 100 : 0,
+    current,
+    previous,
+    delta: current - previous,
+    delta_pct: previous ? ((current - previous) / previous) * 100 : 0,
     since: base.fetched_at,
-    singlePoint: hist.length < 2,
+    // zu wenige Werte für einen Vergleich über Mediane, oder der Vergleichszeitpunkt liegt nicht weit genug zurück
+    singlePoint: hist.length < 4 || base === latest,
   };
 }
 

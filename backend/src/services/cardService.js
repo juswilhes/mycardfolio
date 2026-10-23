@@ -22,8 +22,18 @@ const snapshotToday = db.prepare(`
   LIMIT 1
 `);
 
+// Zuordnung nur überschreiben, wenn wirklich ein Produkt mitkommt: der US-Ersatzpreis (ohne Produkt)
+// hat sie früher geleert, worauf sie nachts neu gesucht wurde und im Zwei-Tage-Takt wechselte.
 const setCardmarketMeta = db.prepare(`
-  UPDATE cards SET cardmarket_product_id = ?, cardmarket_updated = ? WHERE id = ?
+  UPDATE cards SET cardmarket_product_id = COALESCE(?, cardmarket_product_id), cardmarket_updated = COALESCE(?, cardmarket_updated) WHERE id = ?
+`);
+const lockInfoStmt = db.prepare(`SELECT set_id, cardmarket_pid_locked AS locked, price_valid_from FROM cards WHERE id = ?`);
+const lockTakenStmt = db.prepare(`SELECT 1 FROM cards WHERE set_id = ? AND cardmarket_pid_locked = ? AND id != ? LIMIT 1`);
+const setLockStmt = db.prepare(`UPDATE cards SET cardmarket_pid_locked = ?, cardmarket_pid_conflict = NULL WHERE id = ?`);
+const setConflictStmt = db.prepare(`UPDATE cards SET cardmarket_pid_conflict = ? WHERE id = ?`);
+const recentCardmarketStmt = db.prepare(`
+  SELECT 1 FROM price_snapshots WHERE card_id = ? AND source = 'cardmarket' AND price_type = 'trend'
+    AND fetched_at > datetime('now', '-30 days') LIMIT 1
 `);
 
 // Legt eine Karte an bzw. aktualisiert die Stammdaten. Preise NICHT hier -
@@ -52,6 +62,28 @@ const deleteDaySnapshotsStmt = db.prepare(`DELETE FROM price_snapshots WHERE car
 export function recordPrices(cardId, prices = [], meta = null) {
   const day = new Date().toISOString().slice(0, 10);
   const now = new Date().toISOString();
+  // Feste Zuordnung: schlägt eine Quelle für eine schon fest zugeordnete Karte ein anderes Produkt vor,
+  // wird nichts geschrieben, nur notiert (Tagesbericht). Erste sichere Zuordnung = festschreiben; "sicher"
+  // heißt: die Preisliste meldet sie als eindeutig (lockable), oder eine Korrektur bestätigt sie, oder die Karte
+  // war nie korrigiert - und das Produkt ist im Set nicht schon fest einer anderen Karte zugeordnet.
+  // lockable === false (geratene Zuordnung) schreibt nie fest.
+  const card = lockInfoStmt.get(cardId);
+  if (meta?.basis === "cardmarket" && meta.productId != null && card) {
+    if (card.locked != null && card.locked !== meta.productId) {
+      setConflictStmt.run(meta.productId, cardId);
+      prices = prices.filter((p) => p.source !== "cardmarket");
+      meta = null;
+    } else if (card.locked == null && meta.lockable !== false && (meta.corrected || meta.lockable || !card.price_valid_from)
+               && !lockTakenStmt.get(card.set_id, meta.productId, cardId)) {
+      setLockStmt.run(meta.productId, cardId);
+    }
+  }
+  // Eine Quelle pro Preisreihe: hat die Karte Cardmarket-Werte, kommt kein US-Ersatzwert (TCGplayer)
+  // in dieselbe Reihe - das ergab sonst Sprünge wie Darkrai-EX 16 <-> 730 EUR im Tageswechsel.
+  // Die Gegenprobe (crossCheck.js) legt ihre Werte als 'xcheck' ab und ist davon nicht betroffen.
+  if (prices.some((p) => p.source !== "cardmarket" && p.price_type === "trend") && recentCardmarketStmt.get(cardId)) {
+    prices = prices.filter((p) => p.source === "cardmarket" || p.price_type !== "trend");
+  }
   if (meta?.corrected) {
     // Preise stammen aus der Gegenprüfung (TCGdex hatte das falsche Produkt): frühere
     // Werte gelten nicht mehr, ein heute schon gespeicherter falscher Wert wird ersetzt.
@@ -63,7 +95,7 @@ export function recordPrices(cardId, prices = [], meta = null) {
     if (snapshotToday.get(cardId, p.source, p.price_type, variant, day)) continue;
     insertSnapshot.run(cardId, p.source, p.price_type, p.currency, p.price, variant, now);
   }
-  if (meta && (meta.productId != null || meta.updated != null)) {
+  if (meta && meta.basis === "cardmarket" && (meta.productId != null || meta.updated != null)) {
     setCardmarketMeta.run(meta.productId ?? null, meta.updated ?? null, cardId);
   }
 }
@@ -253,11 +285,15 @@ const normalTrendStmt = db.prepare(`
   ORDER BY fetched_at ASC
 `);
 export const priceHistoryForCard = {
-  all: (cardId) => {
-    const from = flagsStmt.get(cardId)?.price_valid_from;
-    const rows = normalTrendStmt.all(cardId);
-    return smooth(despike(from ? rows.filter((r) => r.fetched_at >= from) : rows));
-  },
+  // Früher "ohne Quellen-Vorrang" - dadurch mischten sich Cardmarket und TCGplayer (Darkrai-EX -97 %).
+  // Jetzt genau die Reihe, die auch Graph und aktueller Preis zeigen.
+  all: (cardId) => variantSeries(cardId, "normal"),
+};
+
+// Rohe Tageswerte (Cardmarket, normal) der letzten Wochen - nur für die Prüfung auf eine wackelige Reihe
+export const rawNormalTrend = {
+  all: (cardId, days = 21) =>
+    normalTrendStmt.all(cardId).filter((r) => r.source === "cardmarket" && Date.parse(r.fetched_at) > Date.now() - days * DAY_MS),
 };
 
 // Illustrator manuell setzen. artist_manual = 1 schützt den Wert davor,

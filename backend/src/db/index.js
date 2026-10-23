@@ -461,6 +461,14 @@ if (!userColumns.has("inactivity_warned_at")) db.exec(`ALTER TABLE users ADD COL
 // Nachweis, wann welche Fassung der Nutzungsbedingungen akzeptiert wurde
 if (!userColumns.has("terms_accepted_at")) db.exec(`ALTER TABLE users ADD COLUMN terms_accepted_at TEXT`);
 if (!userColumns.has("terms_version")) db.exec(`ALTER TABLE users ADD COLUMN terms_version TEXT`);
+const cardColumnsNow = () => new Set(db.prepare(`PRAGMA table_info(cards)`).all().map((c) => c.name));
+// Feste Cardmarket-Zuordnung (Justus 23.10.2026): das Produkt, mit dem eine Karte zuerst sicher bepreist
+// wurde, bleibt ihr Produkt. Vorher wechselte die Zuordnung bei ~950 Karten Nacht für Nacht (Gengar
+// Skyridge 160 <-> 3371 EUR). Ein abweichender Vorschlag einer Quelle wird nur in _conflict notiert.
+for (const [col, type] of [["cardmarket_pid_locked", "INTEGER"], ["cardmarket_pid_conflict", "INTEGER"]]) {
+  if (!cardColumnsNow().has(col)) db.exec(`ALTER TABLE cards ADD COLUMN ${col} ${type}`);
+}
+
 // Benutzername: Pflicht bei der Registrierung, auf der Seite nur einmal vergeben (Groß/Klein egal).
 // Bestehende Konten übernehmen ihren bisherigen Anzeigenamen, wenn er die Regeln erfüllt.
 if (!userColumns.has("username")) {

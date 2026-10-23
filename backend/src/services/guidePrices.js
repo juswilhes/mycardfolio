@@ -12,7 +12,7 @@ import { rebuildAnalysisCache } from "./analysisCache.js";
 // eindeutig zuordnen lassen, übernimmt weiter der Einzelabruf in priceFetcher.js.
 const cardsStmt = db.prepare(`
   SELECT id, external_id, name, set_id, abilities, attacks,
-         cardmarket_product_id AS pid, variant_flags, price_valid_from
+         cardmarket_product_id AS pid, cardmarket_pid_locked AS locked, variant_flags, price_valid_from
   FROM cards WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
 
@@ -38,19 +38,37 @@ export async function refreshPricesFromGuide() {
     [...expCounts].map(([setId, m]) => [setId, [...m].sort((a, b) => b[1] - a[1])[0][0]])
   );
 
-  const stats = { gesetzt: 0, korrigiert: 0, offen: 0 };
+  const stats = { gesetzt: 0, korrigiert: 0, offen: 0, festOhnePreis: 0 };
   db.transaction(() => {
     for (const c of cards) {
+      // Feste Zuordnung: kein Neu-Suchen, kein Einzelabruf - fehlt das Produkt heute in der Liste, bleibt der Tag leer
+      if (c.locked != null) {
+        const row = guide.prices.get(c.locked);
+        const flags = c.variant_flags ? JSON.parse(c.variant_flags) : null;
+        const rows = row ? cardmarketRows(row, flags?.reverse ? "reverse" : "holo") : [];
+        if (!rows.length) {
+          stats.festOhnePreis++;
+          continue;
+        }
+        recordPrices(c.id, rows, { basis: "cardmarket", productId: c.locked, updated: guide.updated, lockable: true });
+        stats.gesetzt++;
+        continue;
+      }
       let pid = c.pid;
       const shared = pid && uses.get(`${c.set_id}|${pid}`) > 1;
       let corrected = false;
+      // Sicher (darf festgeschrieben werden): eigenes, im Set eindeutiges Produkt einer nie korrigierten Karte
+      // oder ein EINDEUTIGER Treffer über Name + Angriffe. Geraten (ältestes passendes Produkt) ist nicht sicher.
+      let sure = !!pid && !shared && !c.price_valid_from;
 
       if (!pid || shared || c.price_valid_from) {
         const expansion = (pid && expansionOfProduct(guide, pid)) || setExpansion.get(c.set_id);
-        const hit = resolveInExpansion(guide, c, expansion, { preferOldest: !pid });
+        const unique = resolveInExpansion(guide, c, expansion);
+        const hit = unique ?? (!pid ? resolveInExpansion(guide, c, expansion, { preferOldest: true }) : null);
         if (hit) {
           pid = hit.idProduct;
           corrected = !!(shared || c.price_valid_from);
+          sure = !!unique;
         } else if (shared || !pid) {
           stats.offen++; // nicht eindeutig: Einzelabruf (TCGdex / pokemontcg.io)
           continue;
@@ -64,14 +82,51 @@ export async function refreshPricesFromGuide() {
         stats.offen++;
         continue;
       }
-      recordPrices(c.id, rows, { basis: "cardmarket", productId: pid, updated: guide.updated, corrected });
+      // Eine geratene Zuordnung (Karte ohne Produkt, ältestes passendes genommen) wird nicht gespeichert: sonst gilt
+      // das Produkt in der nächsten Nacht als "geteilt", die Karte fällt durch - und das im Zwei-Tage-Takt (Darkrai-EX).
+      const guessed = !c.pid && !sure;
+      recordPrices(c.id, rows, { basis: "cardmarket", productId: guessed ? null : pid, updated: guide.updated, corrected, lockable: sure });
       stats.gesetzt++;
       if (corrected) stats.korrigiert++;
     }
   })();
 
-  console.log(`[preisliste] ${stats.gesetzt} Karten bepreist (${stats.korrigiert} davon korrigiert), ${stats.offen} für den Einzelabruf übrig.`);
+  console.log(
+    `[preisliste] ${stats.gesetzt} Karten bepreist (${stats.korrigiert} davon korrigiert), ${stats.offen} für den Einzelabruf übrig, ` +
+      `${stats.festOhnePreis} fest zugeordnete heute ohne Preis.`
+  );
   return stats;
+}
+
+// Einmalig (Marker price_wobbly_cleanup_v1): Karten, deren Cardmarket-Reihe in den letzten 3 Wochen
+// mehrfach über Faktor 2,5 gesprungen ist (wechselnde Produkt-Zuordnung), zeigen ihre bisherigen Werte
+// nicht mehr - ab dem nächsten Nachtlauf beginnt die Reihe mit der festen Zuordnung neu.
+export function cleanUpWobblySeries() {
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'price_wobbly_cleanup_v1'`).get()) return;
+  const rows = db.prepare(`
+    SELECT card_id, price FROM price_snapshots
+    WHERE source = 'cardmarket' AND price_type = 'trend' AND variant = 'normal' AND fetched_at > datetime('now', '-21 days')
+    ORDER BY card_id, fetched_at
+  `).all();
+  const wobbly = [];
+  let prev = null;
+  let jumps = 0;
+  for (const r of [...rows, { card_id: null }]) {
+    if (!prev || r.card_id !== prev.card_id) {
+      if (prev && jumps >= 2) wobbly.push(prev.card_id);
+      jumps = 0;
+    } else if (prev.price > 0.5 && r.price > 0.5 && Math.max(prev.price / r.price, r.price / prev.price) > 2.5) {
+      jumps++;
+    }
+    prev = r;
+  }
+  const now = new Date().toISOString();
+  const mark = db.prepare(`UPDATE cards SET price_valid_from = ? WHERE id = ? AND (price_valid_from IS NULL OR price_valid_from < ?)`);
+  db.transaction(() => {
+    for (const id of wobbly) mark.run(now, id, now);
+    db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('price_wobbly_cleanup_v1', ?)`).run(String(wobbly.length));
+  })();
+  console.log(`[preisliste] ${wobbly.length} wackelige Preisreihen neu begonnen (Altwerte ausgeblendet).`);
 }
 
 // Einmal nach dem Deploy im Hintergrund, damit die Preise nicht bis zum nächsten
