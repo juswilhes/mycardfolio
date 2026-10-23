@@ -36,13 +36,9 @@ export const isWobbly = (cardId) => jumpCount(cardId) >= 2;
 
 const MOVER_MAX_DAY_FACTOR = 1.8;
 
-const median = (xs) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
-};
-
-// Bewegung = Median der letzten 3 Tageswerte gegen den Median der 3 Werte vor `days` Tagen - ein einzelner
-// Tag kann so keine Bewegung erzeugen (Justus: +99 % an einem Tag sind praktisch nie echt).
+// Bewegung = aktueller Preis (genau der auf der Kartenseite) gegen den Preis vor `days` Tagen, beide aus der
+// geglätteten Reihe (Median aus drei Tagen, smooth in cardService.js) - ein einzelner Tag kann so keine Bewegung
+// erzeugen. Dazu fehlen Karten mit großen Tagessprüngen (Justus: +99 % an einem Tag sind praktisch nie echt).
 function moverFor(c, days) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const hist = priceHistoryForCard.all(c.id);
@@ -57,10 +53,8 @@ function moverFor(c, days) {
     if (new Date(h.fetched_at).getTime() <= cutoff) baseIdx = i;
   });
   const base = hist[baseIdx];
-  const recent = hist.slice(-3).map((h) => h.price);
-  const before = hist.slice(Math.max(0, baseIdx - 2), baseIdx + 1).map((h) => h.price);
-  const current = Math.round(median(recent) * 100) / 100;
-  const previous = Math.round(median(before) * 100) / 100;
+  const current = latest.price;
+  const previous = base.price;
 
   return {
     card_id: c.id,
