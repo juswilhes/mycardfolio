@@ -16,6 +16,10 @@ const MIN_PRICE = 3; // Justus 23.10.2026: schon ab 3 EUR (vorher 10)
 const MAX_FACTOR = 2.5;
 // Mit Schlüssel (20.000 Abrufe/Tag) reicht es für alle Karten ab MIN_PRICE (~9.000), ohne nur für die teuersten 800
 const MAX_MINUTES = process.env.POKEMONTCG_API_KEY ? 80 : 45;
+// Ohne Schlüssel (dev.pokemontcg.io nimmt keine Anmeldungen mehr an, Okt 2026) schafft eine Nacht nur 800 Karten.
+// Deshalb reihum: zuerst nie geprüfte, dann die am längsten nicht geprüften Karten; dazwischen gilt der Wert der
+// letzten echten Prüfung bis zu CARRY_DAYS Tage (Justus 23.10.2026). ~8.700 Karten ab 3 EUR = alle ~11 Nächte einmal.
+const CARRY_DAYS = 14;
 const GAP_MS = 350; // kostenlose API ohne Schlüssel drosselt schnell
 const WORKERS = 3;
 
@@ -32,11 +36,22 @@ const rowsStmt = db.prepare(`
     )
   ORDER BY s.price DESC
 `);
+// Letzte ECHTE Prüfung je Karte (übernommene Werte tragen die Quelle 'tcgplayer-vortag' und zählen nicht)
+const lastRealCheckStmt = db.prepare(`
+  SELECT card_id, MAX(fetched_at) AS at FROM price_snapshots
+  WHERE source = 'tcgplayer' AND price_type IN ('xcheck', 'xcheck_off')
+  GROUP BY card_id
+`);
 const updateStmt = db.prepare(`UPDATE price_snapshots SET price = ? WHERE id = ?`);
 // mit dem Zeitstempel der Cardmarket-Zeile, damit beide immer am selben Tag stehen (auch über Mitternacht)
 const insertCheckStmt = db.prepare(`
   INSERT INTO price_snapshots (card_id, source, price_type, currency, price, variant, fetched_at)
   VALUES (?, 'tcgplayer', 'xcheck', 'EUR', ?, ?, ?)
+`);
+// übernommener Wert der letzten Prüfung (eigene Quelle, damit die Reihenfolge der Prüfungen weiterrückt)
+const insertCarryStmt = db.prepare(`
+  INSERT INTO price_snapshots (card_id, source, price_type, currency, price, variant, fetched_at)
+  VALUES (?, 'tcgplayer-vortag', ?, 'EUR', ?, ?, ?)
 `);
 // Quellen widersprechen sich (über MAX_FACTOR): TCGplayer-Wert als 'xcheck_off' merken - die Preisbewegungen
 // lassen solche Karten weg (z. B. Mudkip Star ex7-107: Cardmarket 9.980 EUR, günstigstes Angebot 7.999 EUR).
@@ -45,11 +60,11 @@ const insertOffStmt = db.prepare(`
   VALUES (?, 'tcgplayer', 'xcheck_off', 'EUR', ?, ?, ?)
 `);
 
-// Wert der letzten Gegenprobe (höchstens 3 Tage alt) - für Karten, die heute nicht geprüft werden konnten
+// Wert der letzten echten Gegenprobe (höchstens CARRY_DAYS Tage alt) - für Karten, die heute nicht dran waren
 const lastCheckStmt = db.prepare(`
   SELECT price_type, price FROM price_snapshots
-  WHERE card_id = ? AND variant = ? AND price_type IN ('xcheck', 'xcheck_off')
-    AND substr(fetched_at, 1, 10) < ? AND fetched_at > datetime(?, '-3 days')
+  WHERE card_id = ? AND variant = ? AND price_type IN ('xcheck', 'xcheck_off') AND source = 'tcgplayer'
+    AND substr(fetched_at, 1, 10) < ? AND fetched_at > datetime(?, '-${CARRY_DAYS} days')
   ORDER BY fetched_at DESC LIMIT 1
 `);
 
@@ -79,7 +94,10 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
   const day = latestDayStmt.get()?.day;
   if (!day) return;
   const rows = rowsStmt.all(day, MIN_PRICE, day).filter((r) => r.variant_flags);
-  // Ohne API-Schlüssel erlaubt pokemontcg.io nur ~1.000 Abrufe am Tag: die teuersten zuerst
+  // Ohne API-Schlüssel erlaubt pokemontcg.io nur ~1.000 Abrufe am Tag: nie geprüfte zuerst, dann die am längsten
+  // nicht geprüften; bei Gleichstand die teureren (rows ist schon nach Preis sortiert, sort ist stabil)
+  const lastReal = new Map(lastRealCheckStmt.all().map((r) => [r.card_id, r.at]));
+  rows.sort((a, b) => (lastReal.get(a.card_id) ?? "").localeCompare(lastReal.get(b.card_id) ?? ""));
   const budget = Math.min(limit, process.env.POKEMONTCG_API_KEY ? 12000 : 800);
   const byCard = new Map();
   for (const r of rows) {
@@ -144,13 +162,13 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
     const last = lastCheckStmt.get(r.card_id, r.variant, day, day);
     if (!last) continue;
     if (last.price_type === "xcheck_off") {
-      insertOffStmt.run(r.card_id, last.price, r.variant, r.fetched_at);
+      insertCarryStmt.run(r.card_id, "xcheck_off", last.price, r.variant, r.fetched_at);
       continue;
     }
     const factor = last.price / r.price;
     if (factor > MAX_FACTOR || factor < 1 / MAX_FACTOR) continue;
     db.transaction(() => {
-      insertCheckStmt.run(r.card_id, last.price, r.variant, r.fetched_at);
+      insertCarryStmt.run(r.card_id, "xcheck", last.price, r.variant, r.fetched_at);
       updateStmt.run(Math.round(((r.price + last.price) / 2) * 100) / 100, r.id);
     })();
     stats.vomVortag++;
@@ -159,7 +177,7 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
   console.log(
     `[gegenprobe] ${stats.gemittelt} Preise mit TCGplayer gemittelt, ${stats.unplausibel} unplausibel (nur Cardmarket), ` +
       `${stats.ohneTcgplayer} ohne TCGplayer-Wert, ${stats.fehler} Abruffehler, ${queue.length} nicht mehr geschafft, ` +
-      `${stats.vomVortag} mit dem Wert der Vornacht gemittelt.`
+      `${stats.vomVortag} mit dem Wert der letzten Prüfung (max. ${CARRY_DAYS} Tage) gemittelt.`
   );
   return stats;
 }
