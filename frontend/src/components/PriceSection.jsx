@@ -1,6 +1,6 @@
 import { useState } from "react";
 import PriceChart from "./PriceChart.jsx";
-import { eur } from "../lib/format.js";
+import { eur, pctSigned } from "../lib/format.js";
 import { RANGES, rangeDays, withinDays } from "../lib/chartRange.js";
 
 const VARIANT_LABEL = { holo: "Holo", reverse: "Reverse Holo" };
@@ -95,22 +95,21 @@ export default function PriceSection({ card, history }) {
           <p className="text-subtle text-sm">
             Aktueller Preis{specialPrice != null ? ` · ${baseLabel ?? "Normal"}` : ""}
           </p>
-          <p className="text-3xl font-semibold font-mono">
+          <p className="text-4xl sm:text-5xl font-semibold font-mono">
             {headline != null ? eur(headline) : "—"}
           </p>
         </div>
       </div>
 
       {momentum && (
-        <p className="mt-2 text-sm">
+        <p className="mt-2 text-lg sm:text-xl">
           {momentum.pct != null ? (
             <>
-              <span className={momentum.pct > 1 ? "text-mint" : momentum.pct < -1 ? "text-rose" : "text-subtle"}>
+              <span className={`font-semibold font-mono ${momentum.pct > 1 ? "text-mint" : momentum.pct < -1 ? "text-rose" : "text-subtle"}`}>
                 {momentum.pct > 1 ? "▲" : momentum.pct < -1 ? "▼" : "►"}{" "}
-                {momentum.pct >= 0 ? "+" : ""}
-                {momentum.pct.toFixed(1)} %
+                {pctSigned(momentum.pct)}
               </span>{" "}
-              <span className="text-subtle text-xs">
+              <span className="text-subtle text-sm">
                 {shorterThanRange
                   ? `seit Beginn der Aufzeichnung vor ${spanDays} Tagen`
                   : RANGE_TEXT[range] ?? RANGES.find((r) => r.id === range)?.label}{" "}

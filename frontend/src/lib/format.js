@@ -9,6 +9,10 @@ export const eurAbs = (n) => two.format(Math.abs(Number(n)));
 export const eurCents = (cents) => two.format(Number(cents) / 100);
 export const eur0 = (n) => zero.format(Number(n));
 
+// Prozent mit Vorzeichen im deutschen Format: "+12,3 %", "−4,0 %"
+const pctFmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: "exceptZero" });
+export const pctSigned = (n) => `${pctFmt.format(Number(n))} %`;
+
 // "8. Oktober 2026" aus einem Datum wie 2026-10-08
 export const formatDate = (iso) =>
   new Date(iso).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
