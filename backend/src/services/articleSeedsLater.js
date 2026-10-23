@@ -115,7 +115,7 @@ Hier lohnt sich ein genauer Blick, denn „der Preis" einer Karte ist keine fest
 - **Der Tiefstpreis** ist oft eine einzelne, schlecht erhaltene oder ausländische Karte und sagt wenig über deine.
 - **Der Trend** schwankt bei Karten mit wenigen Verkäufen stark. Ein einziger Verkauf kann ihn verschieben.
 
-Wir nutzen deshalb nicht einen einzelnen Wert, sondern den **Median mehrerer Cardmarket-Kennzahlen** (Trend sowie Durchschnitt über 1, 7 und 30 Tage) und glätten kurze Ausschläge. Bei teuren Karten ab 10 € mitteln wir zusätzlich mit dem Marktpreis aus den USA (TCGplayer), sofern beide Werte zusammenpassen.
+Wir nutzen deshalb nicht einen einzelnen Wert, sondern den **Median mehrerer Cardmarket-Kennzahlen** (Trend sowie Durchschnitt über 1, 7 und 30 Tage) und glätten kurze Ausschläge. Bei Karten ab 3 € mitteln wir zusätzlich mit dem Marktpreis aus den USA (TCGplayer), sofern beide Werte zusammenpassen.
 
 Wichtig und ehrlich gesagt: Unsere Preise gelten **pro Karte und Version**, aber **nicht getrennt nach Sprache und Zustand**. Eine deutsche und eine englische Karte oder Near Mint und Played haben bei uns denselben Preis. Wenn dein Exemplar abgenutzt ist, wirst du also in der Regel weniger bekommen.
 

@@ -9,12 +9,13 @@ import { usdToEur } from "./priceProvider.js";
 // "trend"-Wert (eine Preisreihe, siehe CLAUDE.md); der TCGplayer-Wert wird als 'xcheck'
 // daneben abgelegt (zur Nachvollziehbarkeit und damit ein zweiter Lauf am selben Tag nicht
 // doppelt mittelt). Läuft nur im Nachtlauf, nach der Preisliste.
-const MIN_PRICE = 10;
+const MIN_PRICE = 3; // Justus 23.10.2026: schon ab 3 EUR (vorher 10)
 // Weicht TCGplayer um mehr als diesen Faktor ab, vergleichen die Quellen vermutlich nicht
 // dasselbe (andere Ausführung/Zustand, falsche Zuordnung); ein Mittelwert würde dann zu keiner
 // passen (Espeon Star POP: 6720 vs. 1696 EUR) -> nur Cardmarket
 const MAX_FACTOR = 2.5;
-const MAX_MINUTES = 45;
+// Mit Schlüssel (20.000 Abrufe/Tag) reicht es für alle Karten ab MIN_PRICE (~9.000), ohne nur für die teuersten 800
+const MAX_MINUTES = process.env.POKEMONTCG_API_KEY ? 80 : 45;
 const GAP_MS = 350; // kostenlose API ohne Schlüssel drosselt schnell
 const WORKERS = 3;
 
@@ -44,6 +45,14 @@ const insertOffStmt = db.prepare(`
   VALUES (?, 'tcgplayer', 'xcheck_off', 'EUR', ?, ?, ?)
 `);
 
+// Wert der letzten Gegenprobe (höchstens 3 Tage alt) - für Karten, die heute nicht geprüft werden konnten
+const lastCheckStmt = db.prepare(`
+  SELECT price_type, price FROM price_snapshots
+  WHERE card_id = ? AND variant = ? AND price_type IN ('xcheck', 'xcheck_off')
+    AND substr(fetched_at, 1, 10) < ? AND fetched_at > datetime(?, '-3 days')
+  ORDER BY fetched_at DESC LIMIT 1
+`);
+
 const marketOf = (prices, keys) => {
   for (const k of keys) if (prices[k]?.market > 0) return prices[k].market;
   return null;
@@ -71,7 +80,7 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
   if (!day) return;
   const rows = rowsStmt.all(day, MIN_PRICE, day).filter((r) => r.variant_flags);
   // Ohne API-Schlüssel erlaubt pokemontcg.io nur ~1.000 Abrufe am Tag: die teuersten zuerst
-  const budget = Math.min(limit, process.env.POKEMONTCG_API_KEY ? 4000 : 800);
+  const budget = Math.min(limit, process.env.POKEMONTCG_API_KEY ? 12000 : 800);
   const byCard = new Map();
   for (const r of rows) {
     if (!byCard.has(r.card_id) && byCard.size >= budget) continue;
@@ -81,7 +90,8 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
 
   const rate = await usdToEur();
   const queue = [...byCard.values()];
-  const stats = { gemittelt: 0, unplausibel: 0, ohneTcgplayer: 0, fehler: 0 };
+  const stats = { gemittelt: 0, unplausibel: 0, ohneTcgplayer: 0, fehler: 0, vomVortag: 0 };
+  const checked = new Set(); // heute wirklich bei pokemontcg.io abgefragt
   const deadline = Date.now() + MAX_MINUTES * 60_000;
   let nextStart = 0;
   let failStreak = 0;
@@ -96,6 +106,7 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
       try {
         raw = await getRawPricesById(group[0].external_id);
         failStreak = 0;
+        checked.add(group[0].card_id);
       } catch {
         stats.fehler++;
         failStreak++;
@@ -126,9 +137,29 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
   }
   await Promise.all(Array.from({ length: WORKERS }, worker));
 
+  // Nicht geschafft (Abruffehler, Zeit- oder Abruf-Grenze): mit dem Wert der letzten Gegenprobe mitteln, damit
+  // eine Karte nicht im Wechsel gemittelt und ungemittelt ist (das ergäbe wieder Sprünge in der Preisreihe).
+  for (const r of rows) {
+    if (checked.has(r.card_id)) continue;
+    const last = lastCheckStmt.get(r.card_id, r.variant, day, day);
+    if (!last) continue;
+    if (last.price_type === "xcheck_off") {
+      insertOffStmt.run(r.card_id, last.price, r.variant, r.fetched_at);
+      continue;
+    }
+    const factor = last.price / r.price;
+    if (factor > MAX_FACTOR || factor < 1 / MAX_FACTOR) continue;
+    db.transaction(() => {
+      insertCheckStmt.run(r.card_id, last.price, r.variant, r.fetched_at);
+      updateStmt.run(Math.round(((r.price + last.price) / 2) * 100) / 100, r.id);
+    })();
+    stats.vomVortag++;
+  }
+
   console.log(
     `[gegenprobe] ${stats.gemittelt} Preise mit TCGplayer gemittelt, ${stats.unplausibel} unplausibel (nur Cardmarket), ` +
-      `${stats.ohneTcgplayer} ohne TCGplayer-Wert, ${stats.fehler} Abruffehler, ${queue.length} nicht mehr geschafft.`
+      `${stats.ohneTcgplayer} ohne TCGplayer-Wert, ${stats.fehler} Abruffehler, ${queue.length} nicht mehr geschafft, ` +
+      `${stats.vomVortag} mit dem Wert der Vornacht gemittelt.`
   );
   return stats;
 }

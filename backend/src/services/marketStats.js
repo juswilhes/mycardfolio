@@ -47,6 +47,19 @@ const lastCheckStmt = db.prepare(`
 `);
 const sourcesDisagree = (cardId) => lastCheckStmt.get(cardId)?.price_type === "xcheck_off";
 
+// Wurde die Karte im Vergleichszeitraum zum ersten Mal mit TCGplayer gemittelt (oder nicht mehr), hat sich die
+// Rechenweise geändert - der Unterschied ist keine Marktbewegung (z. B. nach dem Senken der Grenze auf 3 EUR).
+const xcheckSpanStmt = db.prepare(`
+  SELECT MIN(fetched_at) AS first, MAX(fetched_at) AS last FROM price_snapshots
+  WHERE card_id = ? AND price_type = 'xcheck' AND variant = 'normal'
+`);
+function blendChanged(cardId, sinceIso, latestIso) {
+  const x = xcheckSpanStmt.get(cardId);
+  if (!x?.first) return false;
+  if (x.first > sinceIso) return true; // erst im Zeitraum dazugekommen
+  return x.last < latestIso.slice(0, 10) && x.last > sinceIso; // im Zeitraum weggefallen
+}
+
 // Bewegung = aktueller Preis (genau der auf der Kartenseite) gegen den Preis vor `days` Tagen, beide aus der
 // geglätteten Reihe (Median aus drei Tagen, smooth in cardService.js) - ein einzelner Tag kann so keine Bewegung
 // erzeugen. Dazu fehlen Karten mit großen Tagessprüngen (Justus: +99 % an einem Tag sind praktisch nie echt).
@@ -66,6 +79,7 @@ function moverFor(c, days) {
   const base = hist[baseIdx];
   const current = latest.price;
   const previous = base.price;
+  if (blendChanged(c.id, base.fetched_at, latest.fetched_at)) return null;
 
   return {
     card_id: c.id,
