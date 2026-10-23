@@ -112,7 +112,8 @@ router.post("/logout", (req, res) => {
 
 // GET /api/auth/me  -> aktueller Nutzer (oder null) + ob Registrierung offen ist
 router.get("/me", authOptional, (req, res) => {
-  const testers = registrationEnabled() ? { limit: TESTER_LIMIT, left: testerSpotsLeft() } : null;
+  // Nur Grenze und "voll" - die Zahl der freien Plätze wird bewusst nicht gezeigt (Justus)
+  const testers = registrationEnabled() ? { limit: TESTER_LIMIT, full: testerSpotsLeft() <= 0 } : null;
   res.json({ user: publicUser(req.user), registrationOpen: registrationOpen(), testers });
 });
 

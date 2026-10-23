@@ -66,8 +66,8 @@ function MoverRow({ m }) {
 // und den neuesten Artikeln. Angemeldet ("member") steht oben das kleine Portfolio-Fenster,
 // Werbeteile (Pitch, So funktioniert's, Funktionen, FAQ) entfallen.
 // Die Suche selbst lebt auf "Alle Karten" – hier nur der Pitch + Link dorthin.
+// Justus: keine Anzeige der freien Plätze (wirkt unprofessionell) - nur die Begrenzung an sich
 function TesterInvite({ testers }) {
-  const taken = testers.limit - testers.left;
   return (
     <div className="max-w-xl mx-auto mb-8 text-left bg-surface border-2 border-yellow rounded-3xl p-5 sm:p-6 shadow-sm">
       <span className="inline-block bg-yellow text-yellowInk font-semibold rounded-full px-3 py-0.5 text-xs">
@@ -78,17 +78,9 @@ function TesterInvite({ testers }) {
         Kostenlos und ohne Werbung. Als Testnutzer bestimmst du mit, was mycardfolio als Nächstes kann –
         deine Wünsche haben Vorrang.
       </p>
-      <div className="mt-4 h-2 rounded-full bg-line overflow-hidden" aria-hidden="true">
-        <div className="h-full bg-yellow" style={{ width: `${Math.max(4, (taken / testers.limit) * 100)}%` }} />
-      </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-subtle">
-          Noch <strong className="text-ink">{testers.left}</strong> von {testers.limit} Plätzen frei
-        </p>
-        <Link to="/register" className="bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full text-sm">
-          Testplatz sichern
-        </Link>
-      </div>
+      <Link to="/register" className="inline-block mt-4 bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full text-sm">
+        Testplatz sichern
+      </Link>
     </div>
   );
 }

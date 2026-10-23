@@ -50,9 +50,9 @@ export default function Register() {
 
   if (!registrationOpen) {
     return (
-      <AuthCard title={testers && testers.left <= 0 ? "Alle Testplätze vergeben" : "Registrierung geschlossen"} footer={footer}>
+      <AuthCard title={testers?.full ? "Alle Testplätze vergeben" : "Registrierung geschlossen"} footer={footer}>
         <p className="text-sm text-subtle">
-          {testers && testers.left <= 0
+          {testers?.full
             ? `Die ${testers.limit} Plätze der Testphase sind vergeben. Schau bald wieder vorbei – danach öffnen wir für alle.`
             : "mycardfolio nimmt gerade keine neuen Anmeldungen an. Schau bald wieder vorbei."}
         </p>
@@ -81,7 +81,7 @@ export default function Register() {
     <AuthCard title="Konto erstellen" footer={footer}>
       {testers && (
         <p className="text-xs bg-yellow/10 border border-yellow rounded-xl px-3 py-2 mb-4">
-          <strong>Testphase:</strong> noch {testers.left} von {testers.limit} Plätzen frei. Kostenlos, deine Wünsche haben Vorrang.
+          <strong>Testphase:</strong> nur {testers.limit} Plätze. Kostenlos, deine Wünsche haben Vorrang.
         </p>
       )}
       <form onSubmit={submit} className="space-y-3">

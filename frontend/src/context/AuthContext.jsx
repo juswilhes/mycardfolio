@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   // undefined = wird noch geladen, null = nicht angemeldet, Objekt = angemeldet
   const [user, setUser] = useState(undefined);
   const [registrationOpen, setRegistrationOpen] = useState(true);
-  const [testers, setTesters] = useState(null); // { limit, left } während der Testphase
+  const [testers, setTesters] = useState(null); // { limit, full } während der Testphase
 
   const refresh = useCallback(async () => {
     try {
