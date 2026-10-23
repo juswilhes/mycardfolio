@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { usePageTitle } from "../hooks/usePageTitle.js";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduct } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
@@ -24,15 +24,28 @@ export default function SetDetail() {
   const { user } = useAuth();
   const { setId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [set, setSet] = useState(null);
   const [cards, setCards] = useState(null);
   usePageTitle(set ? `${set.name} – Kartenliste & Preise | mycardfolio` : null);
   const [owned, setOwned] = useState(new Set());
   const [watchedIds, setWatchedIds] = useState(new Set());
-  const [filter, setFilter] = useState("all"); // all | have | missing
-  const [sort, setSort] = useState("number");
-  const [rarity, setRarity] = useState("all");
-  useEffect(() => { setRarity("all"); }, [setId]);
+  // Filter stehen in der Adresse (?besitz=&sortierung=&seltenheit=), damit sie nach Karte -> Zurück noch
+  // gesetzt sind (Justus 23.10.2026). replace: Filterwechsel legen keine eigenen Verlaufseinträge an.
+  const [params, setParams] = useSearchParams();
+  const filter = params.get("besitz") ?? "all"; // all | have | missing
+  const sort = SORTS[params.get("sortierung")] ? params.get("sortierung") : "number";
+  const rarity = params.get("seltenheit") ?? "all";
+  const setParam = (key, value, fallback) =>
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      if (value === fallback) next.delete(key);
+      else next.set(key, value);
+      return next;
+    }, { replace: true });
+  const setFilter = (v) => setParam("besitz", v, "all");
+  const setSort = (v) => setParam("sortierung", v, "number");
+  const setRarity = (v) => setParam("seltenheit", v, "all");
   const [sealedOpen, setSealedOpen] = useState(false);
   const [sealedBusy, setSealedBusy] = useState(false);
   const [sealedError, setSealedError] = useState(null);
@@ -40,8 +53,8 @@ export default function SetDetail() {
 
   // alte ID-Adresse (/sets/me1) -> lesbare Adresse (/sets/mega-evolution)
   useEffect(() => {
-    if (set?.slug && setId !== set.slug) navigate(`/sets/${set.slug}`, { replace: true });
-  }, [set, setId, navigate]);
+    if (set?.slug && setId !== set.slug) navigate(`/sets/${set.slug}${location.search}`, { replace: true });
+  }, [set, setId, navigate, location.search]);
 
   useEffect(() => {
     getSet(setId).then(setSet);
