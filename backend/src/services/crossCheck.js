@@ -27,7 +27,7 @@ const rowsStmt = db.prepare(`
   WHERE s.source = 'cardmarket' AND s.price_type = 'trend' AND substr(s.fetched_at, 1, 10) = ? AND s.price >= ?
     AND NOT EXISTS (
       SELECT 1 FROM price_snapshots x
-      WHERE x.card_id = s.card_id AND x.price_type = 'xcheck' AND x.variant = s.variant AND substr(x.fetched_at, 1, 10) = ?
+      WHERE x.card_id = s.card_id AND x.price_type IN ('xcheck', 'xcheck_off') AND x.variant = s.variant AND substr(x.fetched_at, 1, 10) = ?
     )
   ORDER BY s.price DESC
 `);
@@ -36,6 +36,12 @@ const updateStmt = db.prepare(`UPDATE price_snapshots SET price = ? WHERE id = ?
 const insertCheckStmt = db.prepare(`
   INSERT INTO price_snapshots (card_id, source, price_type, currency, price, variant, fetched_at)
   VALUES (?, 'tcgplayer', 'xcheck', 'EUR', ?, ?, ?)
+`);
+// Quellen widersprechen sich (über MAX_FACTOR): TCGplayer-Wert als 'xcheck_off' merken - die Preisbewegungen
+// lassen solche Karten weg (z. B. Mudkip Star ex7-107: Cardmarket 9.980 EUR, günstigstes Angebot 7.999 EUR).
+const insertOffStmt = db.prepare(`
+  INSERT INTO price_snapshots (card_id, source, price_type, currency, price, variant, fetched_at)
+  VALUES (?, 'tcgplayer', 'xcheck_off', 'EUR', ?, ?, ?)
 `);
 
 const marketOf = (prices, keys) => {
@@ -106,6 +112,7 @@ export async function blendWithTcgplayer({ limit = Infinity } = {}) {
         const tcgEur = usd * rate;
         const factor = tcgEur / r.price;
         if (factor > MAX_FACTOR || factor < 1 / MAX_FACTOR) {
+          insertOffStmt.run(r.card_id, Math.round(tcgEur * 100) / 100, r.variant, r.fetched_at);
           stats.unplausibel++;
           continue;
         }

@@ -38,6 +38,15 @@ export const isWobbly = (cardId) => jumpCount(cardId) >= 2;
 
 const MOVER_MAX_DAY_FACTOR = 1.5;
 
+// Hat die Gegenprobe (crossCheck.js) zuletzt einen Widerspruch zu TCGplayer gemeldet, ist der Cardmarket-Wert
+// fraglich (dünner Markt, nur bewertete Angebote ...) - solche Karten gehören nicht in die Top-Bewegungen.
+const lastCheckStmt = db.prepare(`
+  SELECT price_type FROM price_snapshots
+  WHERE card_id = ? AND price_type IN ('xcheck', 'xcheck_off') AND variant = 'normal'
+  ORDER BY fetched_at DESC LIMIT 1
+`);
+const sourcesDisagree = (cardId) => lastCheckStmt.get(cardId)?.price_type === "xcheck_off";
+
 // Bewegung = aktueller Preis (genau der auf der Kartenseite) gegen den Preis vor `days` Tagen, beide aus der
 // geglätteten Reihe (Median aus drei Tagen, smooth in cardService.js) - ein einzelner Tag kann so keine Bewegung
 // erzeugen. Dazu fehlen Karten mit großen Tagessprüngen (Justus: +99 % an einem Tag sind praktisch nie echt).
@@ -47,7 +56,7 @@ function moverFor(c, days) {
   if (!hist.length) return null;
   // Karten mit einem Tagessprung über +50 % (bzw. -33 %) im Vergleichszeitraum plus Puffer oder mit gemeldeter
   // Zuordnungs-Abweichung fehlen (Justus: solche Sprünge an einem Tag sind praktisch nie echte Marktbewegungen)
-  if (c.cardmarket_pid_conflict != null || jumpCount(c.id, days + 7, MOVER_MAX_DAY_FACTOR) > 0) return null;
+  if (c.cardmarket_pid_conflict != null || jumpCount(c.id, days + 7, MOVER_MAX_DAY_FACTOR) > 0 || sourcesDisagree(c.id)) return null;
 
   const latest = hist[hist.length - 1];
   let baseIdx = 0;
