@@ -34,7 +34,7 @@ export function jumpCount(cardId, days = 21, factor = 2.5) {
 }
 export const isWobbly = (cardId) => jumpCount(cardId) >= 2;
 
-const MOVER_MAX_DAY_FACTOR = 1.8;
+const MOVER_MAX_DAY_FACTOR = 1.5;
 
 // Bewegung = aktueller Preis (genau der auf der Kartenseite) gegen den Preis vor `days` Tagen, beide aus der
 // geglätteten Reihe (Median aus drei Tagen, smooth in cardService.js) - ein einzelner Tag kann so keine Bewegung
@@ -43,7 +43,7 @@ function moverFor(c, days) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const hist = priceHistoryForCard.all(c.id);
   if (!hist.length) return null;
-  // Karten mit einem Tagessprung über +80 % (bzw. -44 %) im Vergleichszeitraum plus Puffer oder mit gemeldeter
+  // Karten mit einem Tagessprung über +50 % (bzw. -33 %) im Vergleichszeitraum plus Puffer oder mit gemeldeter
   // Zuordnungs-Abweichung fehlen (Justus: solche Sprünge an einem Tag sind praktisch nie echte Marktbewegungen)
   if (c.cardmarket_pid_conflict != null || jumpCount(c.id, days + 7, MOVER_MAX_DAY_FACTOR) > 0) return null;
 
