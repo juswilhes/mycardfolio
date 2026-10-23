@@ -180,8 +180,8 @@ export default function Landing() {
       {/* Preisbewegungen */}
       {data && (data.gainers.length > 0 || data.losers.length > 0) && (
         <Section
-          title="Preisbewegungen der Woche"
-          intro="Auch ein Karpador wird irgendwann zum Garados – bei manchen Karten geht es nur etwas schneller. Die größten Bewegungen der letzten 7 Tage, ganz ohne Konto."
+          title="Preisbewegungen des Monats"
+          intro="Auch ein Karpador wird irgendwann zum Garados – bei manchen Karten geht es nur etwas schneller. Die größten Bewegungen der letzten 30 Tage, ganz ohne Konto."
           action={<Link to="/sets" className="text-xs text-subtle hover:text-ink underline shrink-0">Alle Karten →</Link>}
         >
           <div className="grid md:grid-cols-2 gap-4">

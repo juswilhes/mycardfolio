@@ -28,7 +28,9 @@ export function jumpCount(cardId, days = 21, factor = 2.5) {
   let jumps = 0;
   for (let i = 1; i < raw.length; i++) {
     const a = raw[i - 1].price, b = raw[i].price;
-    if (a > 0.5 && b > 0.5 && Math.max(a / b, b / a) > factor) jumps++;
+    // Sprung zählt, sobald einer der Werte über 0,50 EUR liegt - sonst rutschen Fälle wie 0,02 -> 10 EUR durch
+    // (Machamp-GX sm3-135); beide unter 0,50 EUR sind Cent-Schwankungen ohne Aussage.
+    if (Math.max(a, b) > 0.5 && Math.min(a, b) > 0 && Math.max(a / b, b / a) > factor) jumps++;
   }
   return jumps;
 }

@@ -31,7 +31,9 @@ router.get("/pull-or-buy", (_req, res) => {
 
 // GET /api/stats/landing -> Zahlen für die öffentliche Startseite: Anzahl Karten/Sets,
 // die 3 Sets mit dem besten Verhältnis Kartenwert pro Pack zu Boosterpreis und die
-// größten Preisbewegungen der Woche (alles aus den Nacht-Auswertungen).
+// größten Preisbewegungen der letzten 30 Tage (alles aus den Nacht-Auswertungen).
+// 30 statt 7 Tage (Justus 23.10.2026): über einen Monat setzen sich echte Marktbewegungen durch,
+// einzelne falsche Tageswerte fallen kaum ins Gewicht - möglichst realistische Preisabbildung.
 const moverFields = (m) => ({
   external_id: m.external_id,
   slug: m.slug,
@@ -61,7 +63,7 @@ router.get("/landing", (_req, res) => {
     }))
     .sort((a, b) => b.ratio - a.ratio)
     .slice(0, 3);
-  const movers = getMarketMovers({ days: 7, limit: Infinity });
+  const movers = getMarketMovers({ days: 30, limit: Infinity });
   res.json({
     counts: analysis("siteCounts"),
     boosters,
