@@ -25,6 +25,7 @@ const COLUMNS = [
     show: (s) => `${s.packComplete ? "" : "≥ "}${eur(s.packValue)}`,
   },
   { id: "booster", label: "Booster", best: false, title: "Boosterpreis", show: (s) => eur(s.booster) },
+  { id: "box", label: "Display", best: false, title: "Displaypreis (36 Booster)", show: (s) => eur(s.box) },
   {
     id: "valueRatio",
     label: "% vom Booster",
@@ -59,6 +60,7 @@ export default function SetRanking() {
       return {
         ...s,
         booster,
+        box: s.boxPriceCents != null ? s.boxPriceCents / 100 : null,
         valueRatio: booster && s.packValue != null ? (s.packValue / booster) * 100 : null,
         top20Ratio: booster && s.top20Count ? s.top20Value / booster : null,
       };
@@ -89,7 +91,8 @@ export default function SetRanking() {
     <div className="mb-10">
       <h2 className="text-sm font-medium mb-1">Set-Rangliste</h2>
       <p className="text-xs text-subtle mb-3">
-        Alle Sets mit hinterlegten Pull Rates im direkten Vergleich. Ein Klick auf eine Spaltenüberschrift sortiert
+        Alle Sets mit Booster- oder Displaypreis im direkten Vergleich; Hit Rate und Wert pro Pack gibt es nur für
+        Sets mit hinterlegten Pull Rates (sonst „–“). Ein Klick auf eine Spaltenüberschrift sortiert
         danach, ein zweiter Klick dreht die Reihenfolge um. Grün ist jeweils der beste Wert der Spalte. „% vom
         Booster" zeigt, wie viel vom Boosterpreis im Schnitt als Kartenwert zurückkommt; „Top 20 = Booster", wie
         viele Booster man für den Wert der 20 teuersten Karten kaufen könnte. „≥" heißt: nicht alle Seltenheiten

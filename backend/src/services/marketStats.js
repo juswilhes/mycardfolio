@@ -357,7 +357,7 @@ export function buildSetRanking(setValue, pullRates, packValue) {
   const sets = new Map();
   const get = (id, base) => {
     if (!sets.has(id)) {
-      sets.set(id, { id, slug: slugOfSet(id), name: base.name, release_date: base.release_date, hitRatePct: null, packValue: null, boosterPriceCents: null, top20Value: null, top20Count: 0, topCard: null });
+      sets.set(id, { id, slug: slugOfSet(id), name: base.name, release_date: base.release_date, hitRatePct: null, packValue: null, boosterPriceCents: null, boxPriceCents: null, top20Value: null, top20Count: 0, topCard: null });
     }
     return sets.get(id);
   };
@@ -370,12 +370,16 @@ export function buildSetRanking(setValue, pullRates, packValue) {
   for (const s of setValue) {
     const row = get(s.id, s);
     row.boosterPriceCents = s.boosterPriceCents ?? row.boosterPriceCents;
+    row.boxPriceCents = s.boxPriceCents ?? null;
     Object.assign(row, { top20Value: s.top20Value, top20Count: s.top20Count });
     const top = s.topCards[0];
     row.topCard = top ? { external_id: top.external_id, slug: top.slug, name: top.name, price: top.price } : null;
   }
-  // Nur Sets, für die die Pull Rates vorliegen - ohne sie ist kein fairer Vergleich möglich
-  return [...sets.values()].filter((r) => r.hitRatePct != null || r.packValue != null);
+  // Alle Sets mit Pull Rates ODER Booster-/Displaypreis (Justus 29.10.2026); ohne Pull Rates bleiben Hit Rate und
+  // Wert pro Pack leer
+  return [...sets.values()].filter(
+    (r) => r.hitRatePct != null || r.packValue != null || r.boosterPriceCents != null || r.boxPriceCents != null
+  );
 }
 
 // Analyse "Ziehen oder kaufen": je Set die Chase-Karten (Seltenheiten mit
