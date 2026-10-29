@@ -7,7 +7,7 @@ import db from "../db/index.js";
 import { recordSetValueSnapshots } from "../services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "../services/analysisCache.js";
 import { resolveSetParam } from "../services/setSlugs.js";
-import { listSealedPrices } from "../services/sealedPrices.js";
+import { sealedForSet } from "../services/sealedPrices.js";
 
 const router = Router();
 
@@ -36,12 +36,6 @@ router.get("/", (_req, res) => {
   res.json(listSetsLocal());
 });
 
-// GET /api/sets/sealed -> Booster- und Displaypreise je Set (Rubrik "Sealed" unter "Alle Karten", öffentlich).
-// Steht vor /:setId, sonst hielte Express "sealed" für eine Set-ID.
-router.get("/sealed", (_req, res) => {
-  res.json(listSealedPrices());
-});
-
 // GET /api/sets/progress -> { set_id: besessene_Karten } (nur mit Login)
 router.get("/progress", authRequired, (req, res) => {
   const map = {};
@@ -49,11 +43,11 @@ router.get("/progress", authRequired, (req, res) => {
   res.json(map);
 });
 
-// GET /api/sets/:setId -> Metadaten zu einem Set (öffentlich)
+// GET /api/sets/:setId -> Metadaten zu einem Set (öffentlich), dazu Booster-/Displaypreis (sealedPrices.js)
 router.get("/:setId", (req, res) => {
   const set = getSetLocal(req.params.setId);
   if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
-  res.json(set);
+  res.json({ ...set, sealed: sealedForSet(set.id) });
 });
 
 // GET /api/sets/:setId/cards -> alle Karten in diesem Set inkl. aktuellem

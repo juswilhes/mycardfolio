@@ -1,7 +1,6 @@
 import db from "../db/index.js";
 import { loadGuide, expansionOfProduct } from "./cardmarketGuide.js";
 import { robustPrice, usdToEur } from "./priceProvider.js";
-import { slugOfSet } from "./setSlugs.js";
 
 // Booster- und Displaypreise automatisch aus Cardmarkets öffentlicher Preisliste (Justus 29.10.2026), statt
 // sie von Hand zu pflegen. Die versiegelten Produkte stehen in products_nonsingles_6.json, ihre Preise in
@@ -200,48 +199,27 @@ export async function refreshSealedPrices() {
   return stats;
 }
 
-// Für die Rubrik "Sealed" unter "Alle Karten": alle Sets mit automatischem Preis, neueste zuerst
-const sealedListStmt = db.prepare(`
-  SELECT id, name, series, release_date, logo, symbol, auto_booster_price_cents, auto_box_price_cents,
-         auto_booster_name, auto_box_name, auto_prices_at,
+// Für die Set-Seite (oben, über den Einzelkarten): Booster- und Displaypreis dieses Sets
+const sealedOfSetStmt = db.prepare(`
+  SELECT auto_booster_price_cents, auto_box_price_cents, auto_booster_name, auto_box_name, auto_prices_at,
          auto_box_cm_cents, auto_box_tcg_cents, auto_booster_cm_cents, auto_booster_tcg_cents
-  FROM card_sets
-  WHERE auto_booster_price_cents IS NOT NULL OR auto_box_price_cents IS NOT NULL
-  ORDER BY release_date DESC
+  FROM card_sets WHERE id = ?
 `);
 const UTM = "utm_source=mycardfolio&utm_medium=referral";
 // Cardmarket-Adressen lassen sich aus der Produktnummer nicht bauen (landet auf der Startseite) - Suche nach dem Namen
 const searchLink = (name) =>
   name ? `https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=${encodeURIComponent(name)}&${UTM}` : null;
+const item = (name, priceCents, cardmarketCents, tcgplayerCents) =>
+  priceCents ? { name, priceCents, cardmarketCents, tcgplayerCents, link: searchLink(name) } : null;
 
-export function listSealedPrices() {
-  return sealedListStmt.all().map((s) => ({
-    id: s.id,
-    slug: slugOfSet(s.id),
-    name: s.name,
-    series: s.series,
-    release_date: s.release_date,
-    logo: s.logo ?? s.symbol,
-    booster: s.auto_booster_price_cents
-      ? {
-          name: s.auto_booster_name,
-          priceCents: s.auto_booster_price_cents,
-          cardmarketCents: s.auto_booster_cm_cents,
-          tcgplayerCents: s.auto_booster_tcg_cents,
-          link: searchLink(s.auto_booster_name),
-        }
-      : null,
-    display: s.auto_box_price_cents
-      ? {
-          name: s.auto_box_name,
-          priceCents: s.auto_box_price_cents,
-          cardmarketCents: s.auto_box_cm_cents,
-          tcgplayerCents: s.auto_box_tcg_cents,
-          link: searchLink(s.auto_box_name),
-        }
-      : null,
+export function sealedForSet(setId) {
+  const s = sealedOfSetStmt.get(setId);
+  if (!s || !(s.auto_booster_price_cents || s.auto_box_price_cents)) return null;
+  return {
+    booster: item(s.auto_booster_name, s.auto_booster_price_cents, s.auto_booster_cm_cents, s.auto_booster_tcg_cents),
+    display: item(s.auto_box_name, s.auto_box_price_cents, s.auto_box_cm_cents, s.auto_box_tcg_cents),
     updated: s.auto_prices_at,
-  }));
+  };
 }
 
 // Einmal nach dem Deploy (Marker), damit die Preise nicht erst nach dem nächsten Nachtlauf da sind

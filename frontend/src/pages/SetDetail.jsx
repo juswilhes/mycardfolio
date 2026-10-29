@@ -6,6 +6,7 @@ import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduc
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
+import SealedPrices from "../components/SealedPrices.jsx";
 import { eur } from "../lib/format.js";
 import Icon from "../components/Icon.jsx";
 import { rarityKey, rarityLabel, rarityRank } from "../lib/rarity.js";
@@ -171,6 +172,8 @@ export default function SetDetail() {
           <Link to="/sammlung" className="underline">Sammlung</Link> sichtbar.
         </p>
       )}
+
+      <SealedPrices sealed={set?.sealed} />
 
       {cards && user && (
         <div className="mb-6">

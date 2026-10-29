@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { searchCards, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers, getSealedPrices } from "../api.js";
-import { eur, formatDate } from "../lib/format.js";
+import { searchCards, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
@@ -39,7 +38,6 @@ export default function AllCards() {
   const [view, setView] = useState("sets");
   const [movers, setMovers] = useState(null);
   const [moversLoading, setMoversLoading] = useState(false);
-  const [sealed, setSealed] = useState(null);
 
   const [dialogCard, setDialogCard] = useState(null);
   const [celebrateCard, setCelebrateCard] = useState(null);
@@ -71,12 +69,6 @@ export default function AllCards() {
       .catch(() => setMovers({ gainers: [], losers: [], trackedCount: 0 }))
       .finally(() => setMoversLoading(false));
   }, [view, movers]);
-
-  // Sealed-Preise ebenfalls erst beim ersten Umschalten laden
-  useEffect(() => {
-    if (view !== "sealed" || sealed) return;
-    getSealedPrices().then(setSealed).catch(() => setSealed([]));
-  }, [view, sealed]);
 
   async function runSearch(q) {
     const term = q.trim();
@@ -219,7 +211,6 @@ export default function AllCards() {
           options={[
             { id: "sets", label: "Alle Sets" },
             { id: "movers", label: "Preisbewegungen" },
-            { id: "sealed", label: "Sealed" },
           ]}
           value={view}
           onChange={setView}
@@ -310,8 +301,6 @@ export default function AllCards() {
         </>
       ) : view === "movers" ? (
         <MoversBrowser data={movers} loading={moversLoading} />
-      ) : view === "sealed" ? (
-        <SealedBrowser sets={sealed} />
       ) : sets === null ? (
         <p className="text-subtle text-sm">Lade Sets …</p>
       ) : (
@@ -380,71 +369,6 @@ export default function AllCards() {
 // Zeigt die größten Preisausschläge (30 Tage) über alle beobachteten Karten
 // hinweg - Vorschläge, welche Karten einen Blick wert sein könnten, nicht
 // nur die eigene Sammlung (die hat Collection.jsx/Movers.jsx schon).
-// Rubrik "Sealed": Einzelbooster- und Displaypreise je Set, jede Nacht aus Cardmarkets Preisliste
-// (backend/src/services/sealedPrices.js). Links führen zur Cardmarket-Suche nach dem Produkt.
-function SealedBrowser({ sets }) {
-  if (!sets) return <p className="text-subtle text-sm">Lade Preise …</p>;
-  if (!sets.length) return <p className="text-subtle text-sm">Noch keine Preise vorhanden.</p>;
-  const updated = sets.map((s) => s.updated).filter(Boolean).sort().at(-1);
-  return (
-    <div>
-      <p className="text-subtle text-sm mb-6">
-        Preise für einen einzelnen Booster und ein Display (36 Booster)
-        {updated ? `, Stand ${formatDate(updated)}` : ""}: Mittelwert aus Cardmarket (Europa, alle Sprachen) und
-        TCGplayer (USA, nur Englisch, in Euro umgerechnet), darunter beide Einzelwerte. Sondersets wie Prismatic
-        Evolutions gibt es nicht als Display, dort steht nur der Boosterpreis.
-      </p>
-      <div className="grid sm:grid-cols-2 gap-3">
-        {sets.map((s) => (
-          <div key={s.id} className="border border-line rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-            <Link to={`/sets/${s.slug ?? s.id}`} className="flex items-center gap-2 min-w-0 hover:underline">
-              {s.logo && <img src={s.logo} alt="" className="h-8 w-8 object-contain shrink-0" />}
-              <span className="min-w-0">
-                <span className="block font-medium text-sm truncate">{s.name}</span>
-                {s.release_date && <span className="block text-[11px] text-subtle">{s.release_date.slice(0, 4)}</span>}
-              </span>
-            </Link>
-            <div className="grid grid-cols-2 gap-2">
-              <SealedPrice label="Booster" item={s.booster} />
-              <SealedPrice label="Display" item={s.display} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SealedPrice({ label, item }) {
-  if (!item) {
-    return (
-      <div className="rounded-xl bg-canvas border border-line px-3 py-2">
-        <p className="text-[11px] text-subtle">{label}</p>
-        <p className="text-sm text-subtle">—</p>
-      </div>
-    );
-  }
-  return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={`${item.name} auf Cardmarket ansehen`}
-      className="rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink"
-    >
-      <p className="text-[11px] text-subtle">{label}</p>
-      <p className="text-base font-semibold font-mono">{eur(item.priceCents / 100)}</p>
-      {item.tcgplayerCents ? (
-        <p className="text-[10px] text-subtle font-mono leading-tight mt-0.5">
-          CM {eur(item.cardmarketCents / 100)} · TCG {eur(item.tcgplayerCents / 100)}
-        </p>
-      ) : (
-        <p className="text-[10px] text-subtle leading-tight mt-0.5">nur Cardmarket</p>
-      )}
-    </a>
-  );
-}
-
 function MoversBrowser({ data, loading }) {
   if (loading || !data) return <p className="text-subtle text-sm">Lade Preisbewegungen …</p>;
 
