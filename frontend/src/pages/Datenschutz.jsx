@@ -181,9 +181,10 @@ export default function Datenschutz() {
 
       <h2>8. Kartenbilder und Schriftarten</h2>
       <p>
-        Die Bilder der Sammelkarten stammen von externen Bild-Servern
-        (<code>images.pokemontcg.io</code>, <code>assets.tcgdex.net</code>,{" "}
-        <code>images.scrydex.com</code>, <code>assets.pokemon.com</code>).{" "}
+        Die Bilder der Sammelkarten und der versiegelten Produkte (Booster, Displays) stammen von externen
+        Bild-Servern (<code>images.pokemontcg.io</code>, <code>assets.tcgdex.net</code>,{" "}
+        <code>images.scrydex.com</code>, <code>assets.pokemon.com</code>,{" "}
+        <code>tcgplayer-cdn.tcgplayer.com</code>).{" "}
         <strong>Dein Browser lädt sie aber ausschließlich von unserem Server</strong>:
         Unser Server holt das Bild beim jeweiligen Anbieter ab, speichert es
         zwischen und liefert es dir aus. Die Anbieter erhalten dabei keine Daten

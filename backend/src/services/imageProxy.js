@@ -15,6 +15,7 @@ export const IMAGE_HOSTS = new Set([
   "images.scrydex.com",
   "assets.tcgdex.net",
   "assets.pokemon.com",
+  "tcgplayer-cdn.tcgplayer.com", // Booster-/Displaybilder (sealedPrices.js)
 ]);
 
 const MAX_WIDTH = 734; // Großansicht auf der Kartenseite; kleinere Bilder werden nicht vergrößert

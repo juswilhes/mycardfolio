@@ -40,5 +40,5 @@ export const SITE = {
 // auf den Rechtstexten aus.
 // Geprüft und freigegeben von Justus (Jurist) am 22.10.2026 - Impressum, Datenschutzerklärung,
 // Nutzungsbedingungen. Bei inhaltlichen Änderungen erneut von ihm prüfen lassen. Datenschutz Ziff. 9 (tcgcsv.com)
-// freigegeben am 29.10.2026.
+// freigegeben am 29.10.2026, Ziff. 8 (Produktbilder von tcgplayer-cdn.tcgplayer.com) ebenfalls am 29.10.2026.
 export const LEGAL_REVIEWED = true;

@@ -346,6 +346,9 @@ for (const [col, type] of [
   ["auto_box_tcg_cents", "INTEGER"],
   ["auto_booster_cm_cents", "INTEGER"],
   ["auto_booster_tcg_cents", "INTEGER"],
+  // Produktbilder von TCGplayer (über unseren Bild-Umweg ausgeliefert, imageProxy.js)
+  ["auto_booster_image", "TEXT"],
+  ["auto_box_image", "TEXT"],
 ]) {
   if (!csColumns.has(col)) db.exec(`ALTER TABLE card_sets ADD COLUMN ${col} ${type}`);
 }

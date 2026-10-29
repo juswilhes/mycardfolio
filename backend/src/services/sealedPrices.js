@@ -33,7 +33,8 @@ const cardProductsStmt = db.prepare(`
 const setsStmt = db.prepare(`SELECT id, name FROM card_sets`);
 const updateStmt = db.prepare(`
   UPDATE card_sets SET auto_box_price_cents = ?, auto_booster_price_cents = ?, auto_box_name = ?, auto_booster_name = ?,
-    auto_prices_at = ?, auto_box_cm_cents = ?, auto_box_tcg_cents = ?, auto_booster_cm_cents = ?, auto_booster_tcg_cents = ?
+    auto_prices_at = ?, auto_box_cm_cents = ?, auto_box_tcg_cents = ?, auto_booster_cm_cents = ?, auto_booster_tcg_cents = ?,
+    auto_booster_image = ?, auto_box_image = ?
   WHERE id = ?
 `);
 
@@ -88,7 +89,9 @@ async function tcgplayerPrices(sets) {
       const booster = pickTcg(products, " Booster Pack", TCG_BOOSTER_EXCLUDE);
       const display = pickTcg(products, " Booster Box", TCG_DISPLAY_EXCLUDE);
       const eur = (p) => (p && market.get(p.productId) ? market.get(p.productId) * rate : null);
-      out.set(s.id, { boosterEur: eur(booster), displayEur: eur(display) });
+      // Produktbild in 400 px Breite (die Liste nennt die 200-px-Fassung)
+      const image = (p) => (p?.imageUrl ? p.imageUrl.replace("_200w", "_400w") : null);
+      out.set(s.id, { boosterEur: eur(booster), displayEur: eur(display), boosterImage: image(booster), displayImage: image(display) });
     } catch (e) {
       console.warn(`[sealed] TCGplayer ${s.name}: ${e.message}`);
     }
@@ -188,6 +191,8 @@ export async function refreshSealedPrices() {
         d.tcg,
         boosterCents,
         b.tcg,
+        b.value ? t.boosterImage ?? null : null,
+        d.value ? t.displayImage ?? null : null,
         id
       );
     }
@@ -202,33 +207,33 @@ export async function refreshSealedPrices() {
 // Für die Set-Seite (oben, über den Einzelkarten): Booster- und Displaypreis dieses Sets
 const sealedOfSetStmt = db.prepare(`
   SELECT auto_booster_price_cents, auto_box_price_cents, auto_booster_name, auto_box_name, auto_prices_at,
-         auto_box_cm_cents, auto_box_tcg_cents, auto_booster_cm_cents, auto_booster_tcg_cents
+         auto_box_cm_cents, auto_box_tcg_cents, auto_booster_cm_cents, auto_booster_tcg_cents, auto_booster_image, auto_box_image
   FROM card_sets WHERE id = ?
 `);
 const UTM = "utm_source=mycardfolio&utm_medium=referral";
 // Cardmarket-Adressen lassen sich aus der Produktnummer nicht bauen (landet auf der Startseite) - Suche nach dem Namen
 const searchLink = (name) =>
   name ? `https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=${encodeURIComponent(name)}&${UTM}` : null;
-const item = (name, priceCents, cardmarketCents, tcgplayerCents) =>
-  priceCents ? { name, priceCents, cardmarketCents, tcgplayerCents, link: searchLink(name) } : null;
+const item = (name, priceCents, cardmarketCents, tcgplayerCents, image) =>
+  priceCents ? { name, priceCents, cardmarketCents, tcgplayerCents, image, link: searchLink(name) } : null;
 
 export function sealedForSet(setId) {
   const s = sealedOfSetStmt.get(setId);
   if (!s || !(s.auto_booster_price_cents || s.auto_box_price_cents)) return null;
   return {
-    booster: item(s.auto_booster_name, s.auto_booster_price_cents, s.auto_booster_cm_cents, s.auto_booster_tcg_cents),
-    display: item(s.auto_box_name, s.auto_box_price_cents, s.auto_box_cm_cents, s.auto_box_tcg_cents),
+    booster: item(s.auto_booster_name, s.auto_booster_price_cents, s.auto_booster_cm_cents, s.auto_booster_tcg_cents, s.auto_booster_image),
+    display: item(s.auto_box_name, s.auto_box_price_cents, s.auto_box_cm_cents, s.auto_box_tcg_cents, s.auto_box_image),
     updated: s.auto_prices_at,
   };
 }
 
 // Einmal nach dem Deploy (Marker), damit die Preise nicht erst nach dem nächsten Nachtlauf da sind
 export function catchUpSealedPrices(after) {
-  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_prices_v2'`).get()) return;
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_prices_v3'`).get()) return;
   setTimeout(async () => {
     try {
       await refreshSealedPrices();
-      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_prices_v2', '1')`).run();
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_prices_v3', '1')`).run();
       after?.();
     } catch (e) {
       console.error("[sealed] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);

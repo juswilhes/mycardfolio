@@ -10,7 +10,7 @@ export default function SealedPrices({ sealed }) {
         <p className="text-sm font-medium">Sealed</p>
         {sealed.updated && <p className="text-[11px] text-subtle">Stand {formatDate(sealed.updated)}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-2 max-w-md">
+      <div className="grid grid-cols-2 gap-2 max-w-lg">
         <SealedPrice label="Booster" item={sealed.booster} />
         <SealedPrice label="Display (36 Booster)" item={sealed.display} />
       </div>
@@ -34,10 +34,15 @@ function SealedPrice({ label, item }) {
       target="_blank"
       rel="noopener noreferrer"
       title={`${item.name} auf Cardmarket ansehen`}
-      className="rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink"
+      className="rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink flex items-center gap-3"
     >
-      <p className="text-[11px] text-subtle">{label}</p>
-      <p className="text-base font-semibold font-mono">{eur(item.priceCents / 100)}</p>
+      {item.image && (
+        <img src={item.image} alt={item.name} loading="lazy" className="h-20 w-16 object-contain shrink-0 rounded" />
+      )}
+      <span className="min-w-0">
+        <span className="block text-[11px] text-subtle">{label}</span>
+        <span className="block text-base font-semibold font-mono">{eur(item.priceCents / 100)}</span>
+      </span>
     </a>
   );
 }
