@@ -64,6 +64,7 @@ const insertOffStmt = db.prepare(`
 const lastCheckStmt = db.prepare(`
   SELECT price_type, price FROM price_snapshots
   WHERE card_id = ? AND variant = ? AND price_type IN ('xcheck', 'xcheck_off') AND source = 'tcgplayer'
+    AND fetched_at >= COALESCE((SELECT price_valid_from FROM cards WHERE id = card_id), '')
     AND substr(fetched_at, 1, 10) < ? AND fetched_at > datetime(?, '-${CARRY_DAYS} days')
   ORDER BY fetched_at DESC LIMIT 1
 `);

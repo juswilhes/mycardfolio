@@ -195,7 +195,14 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
           prices: cmRows,
           meta: { basis: "cardmarket", productId: cm.idProduct ?? null, updated: cm.updated ?? null },
         };
-        value = (await correctSharedProduct(row, cm, specialVariant).catch((e) => { console.warn(`[preise] Gegenprüfung ${externalId}: ${e.message}`); return null; })) ?? value; // nicht erreichbar: TCGdex-Werte behalten
+        // Gegenprüfung nicht erreichbar (pokemontcg.io drosselt ohne Schlüssel): bei einem im Set geteilten Produkt
+        // NICHT den TCGdex-Wert nehmen - der gehört oft zur anderen Karte, und im Wechsel mit geprüften Nächten
+        // sprang der Preis (Dark Gyarados Team Rocket: 21 <-> 392 EUR). Dann lieber heute keinen Wert.
+        const checked = await correctSharedProduct(row, cm, specialVariant).catch((e) => {
+          console.warn(`[preise] Gegenprüfung ${externalId}: ${e.message}`);
+          return UNCHECKED;
+        });
+        value = checked === UNCHECKED ? { prices: [], meta: null } : (checked ?? value);
       } else if (tp) {
         // Fallback: TCGplayer-Marktpreis (USD) -> EUR umgerechnet
         const variant = tp.holofoil ?? tp.normal ?? tp.reverseHolofoil ?? Object.values(tp).find((v) => v?.marketPrice);
@@ -272,12 +279,19 @@ export function cardmarketRows(cm, specialVariant) {
 // Trend, Ø 1 Tag, Ø 7 Tage und Ø 30 Tage: der höchste und der niedrigste Wert fallen weg, ein
 // einzelner Ausreißer zählt nicht. (Test an 132 Karten: Median liegt näher an TCGplayer als
 // der Trend allein.) Mit weniger als drei Kennzahlen bleibt es beim Trend.
+// Zusätzlich höchstens ±30 % um Ø 30 Tage (Justus 29.10.2026, Preise sprangen weiter): bei dünnem Handel ziehen
+// ein einzelner teurer Verkauf Trend UND Ø 1 Tag hoch, der Median aus vier Werten liegt dann mittendrin
+// (Magikarp Legendary Collection 39 EUR bei Ø 30 Tage 10,55). Test an 1.073 Karten gegen TCGplayer: genauso nah
+// wie ohne Grenze, aber keine Karte mehr über doppelt so weit vom 30-Tage-Schnitt weg (vorher 22).
+export const AVG30_BAND = 1.3;
 export function robustPrice(cm, suffix = "") {
   const trend = cm[`trend${suffix}`];
+  const avg30 = cm[`avg30${suffix}`];
   const vals = ["trend", "avg1", "avg7", "avg30"].map((k) => cm[`${k}${suffix}`]).filter((v) => v > 0).sort((a, b) => a - b);
   if (vals.length < 3) return trend;
   const mid = vals.length >> 1;
-  return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  const median = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  return avg30 > 0 ? Math.min(Math.max(median, avg30 / AVG30_BAND), avg30 * AVG30_BAND) : median;
 }
 
 const eurRow = (variant, priceType, price) =>
@@ -311,6 +325,8 @@ async function pricesFromRaw(raw, maxAgeMs) {
   }
   return { prices: [], meta: null };
 }
+
+const UNCHECKED = Symbol("ungeprüft");
 
 async function pokemonTcgFallback(externalId) {
   const raw = await paced(() => getRawPricesById(externalId));
