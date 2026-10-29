@@ -341,6 +341,11 @@ for (const [col, type] of [
   ["auto_booster_name", "TEXT"],
   ["auto_prices_at", "TEXT"],
   ["manual_prices_override", "INTEGER NOT NULL DEFAULT 0"],
+  // Einzelwerte, aus denen der automatische Preis gemittelt ist (Cardmarket / TCGplayer), für die Anzeige
+  ["auto_box_cm_cents", "INTEGER"],
+  ["auto_box_tcg_cents", "INTEGER"],
+  ["auto_booster_cm_cents", "INTEGER"],
+  ["auto_booster_tcg_cents", "INTEGER"],
 ]) {
   if (!csColumns.has(col)) db.exec(`ALTER TABLE card_sets ADD COLUMN ${col} ${type}`);
 }

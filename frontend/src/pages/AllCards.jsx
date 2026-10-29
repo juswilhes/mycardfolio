@@ -389,9 +389,10 @@ function SealedBrowser({ sets }) {
   return (
     <div>
       <p className="text-subtle text-sm mb-6">
-        Aktuelle Cardmarket-Preise für einen einzelnen Booster und ein Display (36 Booster)
-        {updated ? `, Stand ${formatDate(updated)}` : ""}. Sondersets wie Prismatic Evolutions gibt es nicht als
-        Display, dort steht nur der Boosterpreis.
+        Preise für einen einzelnen Booster und ein Display (36 Booster)
+        {updated ? `, Stand ${formatDate(updated)}` : ""}: Mittelwert aus Cardmarket (Europa, alle Sprachen) und
+        TCGplayer (USA, nur Englisch, in Euro umgerechnet), darunter beide Einzelwerte. Sondersets wie Prismatic
+        Evolutions gibt es nicht als Display, dort steht nur der Boosterpreis.
       </p>
       <div className="grid sm:grid-cols-2 gap-3">
         {sets.map((s) => (
@@ -433,6 +434,13 @@ function SealedPrice({ label, item }) {
     >
       <p className="text-[11px] text-subtle">{label}</p>
       <p className="text-base font-semibold font-mono">{eur(item.priceCents / 100)}</p>
+      {item.tcgplayerCents ? (
+        <p className="text-[10px] text-subtle font-mono leading-tight mt-0.5">
+          CM {eur(item.cardmarketCents / 100)} · TCG {eur(item.tcgplayerCents / 100)}
+        </p>
+      ) : (
+        <p className="text-[10px] text-subtle leading-tight mt-0.5">nur Cardmarket</p>
+      )}
     </a>
   );
 }

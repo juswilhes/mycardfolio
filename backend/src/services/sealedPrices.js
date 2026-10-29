@@ -1,6 +1,6 @@
 import db from "../db/index.js";
 import { loadGuide, expansionOfProduct } from "./cardmarketGuide.js";
-import { robustPrice } from "./priceProvider.js";
+import { robustPrice, usdToEur } from "./priceProvider.js";
 import { slugOfSet } from "./setSlugs.js";
 
 // Booster- und Displaypreise automatisch aus Cardmarkets öffentlicher Preisliste (Justus 29.10.2026), statt
@@ -13,8 +13,17 @@ import { slugOfSet } from "./setSlugs.js";
 // Ein Display muss 10- bis 80-mal so viel kosten wie ein Booster (36 Booster, alte Sets mit Aufpreis); sonst
 // stimmt eins von beiden nicht (Expedition: Display 100 EUR, Booster 1.023 EUR) und das Set bleibt ohne
 // automatischen Preis. Läuft nur im Nachtlauf (und einmal nach dem Deploy).
+//
+// Mittelwert mit TCGplayer (Justus 29.10.2026): Cardmarkets Liste mittelt über alle Sprachen, englische Displays
+// kosten mehr (Mega Evolution: Cardmarket 209 EUR, englisch ca. 280 EUR). TCGplayer (USA) führt nur englische
+// Produkte. Gilt jetzt (Cardmarket + TCGplayer) / 2, wenn TCGplayer das Produkt hat und höchstens 2,5x abweicht,
+// sonst Cardmarket allein. TCGplayer-Daten von tcgcsv.com (freier Tagesabzug der TCGplayer-Daten; Regeln:
+// eigene Kennung im User-Agent, einmal am Tag, mit Pause, Daten selbst speichern - https://tcgcsv.com/docs).
 const BOOSTER_EXCLUDE = /sleeved|fun pack|sampling|dollar tree|demo|blister|jumbo|\(/i;
 const DISPLAY_EXCLUDE = /enhanced|case|bundle|\(/i;
+const TCG_MAX_FACTOR = 2.5;
+const TCGCSV = "https://tcgcsv.com/tcgplayer/3"; // 3 = Pokémon
+const UA = { "User-Agent": "mycardfolio/1.0 (+https://mycardfolio.de)" };
 const MIN_RATIO = 10;
 const MAX_RATIO = 80;
 
@@ -25,8 +34,77 @@ const cardProductsStmt = db.prepare(`
 const setsStmt = db.prepare(`SELECT id, name FROM card_sets`);
 const updateStmt = db.prepare(`
   UPDATE card_sets SET auto_box_price_cents = ?, auto_booster_price_cents = ?, auto_box_name = ?, auto_booster_name = ?,
-    auto_prices_at = ? WHERE id = ?
+    auto_prices_at = ?, auto_box_cm_cents = ?, auto_box_tcg_cents = ?, auto_booster_cm_cents = ?, auto_booster_tcg_cents = ?
+  WHERE id = ?
 `);
+
+// TCGplayer-Gruppe (= Set) zu unserem Set: Namen ohne Kürzel ("SV02: ", "SM - ", "EX "), "Base Set" am Ende und
+// "&"/"and" gleich behandelt; Sonderfälle mit festem Namen
+const TCG_GROUP_ALIAS = { base1: "Base Set", sm1: "SM Base Set", sv3pt5: "SV: Scarlet & Violet 151" };
+const groupKey = (name) => {
+  let n = String(name ?? "")
+    .replace(/^[A-Za-z0-9 .]+:\s*/, "")
+    .replace(/^(SM|XY|SWSH|SV|BW|DP|HGSS|ME)\s+-\s+/i, "")
+    .replace(/^EX\s+/i, "")
+    .replace(/^HS\W+/i, "");
+  const stripped = n.replace(/\s+Base Set$/i, "");
+  if (stripped) n = stripped;
+  return n.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+};
+
+async function tcgJson(path) {
+  await new Promise((r) => setTimeout(r, 250)); // Pause zwischen den Abrufen (Regeln von tcgcsv)
+  const res = await fetch(`${TCGCSV}${path}`, { headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`tcgcsv ${path}: HTTP ${res.status}`);
+  return (await res.json()).results ?? [];
+}
+
+// Kürzester Name mit dieser Endung, nur wenn eindeutig
+function pickTcg(products, suffix, exclude) {
+  const hits = products.filter((p) => p.name.endsWith(suffix) && !exclude.test(p.name)).sort((a, b) => a.name.length - b.name.length);
+  if (!hits.length || (hits[1] && hits[1].name.length === hits[0].name.length)) return null;
+  return hits[0];
+}
+const TCG_BOOSTER_EXCLUDE = /sleeved|code card|blister|art bundle|bundle|case/i;
+const TCG_DISPLAY_EXCLUDE = /enhanced|case|half|bundle/i;
+
+// { setId: { boosterEur, displayEur } } aus TCGplayer (Marktpreis, USD -> EUR) für die genannten Sets
+async function tcgplayerPrices(sets) {
+  const out = new Map();
+  let groups;
+  try {
+    groups = await tcgJson("/groups");
+  } catch (e) {
+    console.warn("[sealed] TCGplayer (tcgcsv) nicht erreichbar, nur Cardmarket:", e.message);
+    return out;
+  }
+  const rate = await usdToEur();
+  for (const s of sets) {
+    const alias = TCG_GROUP_ALIAS[s.id];
+    const hits = groups.filter((g) => (alias ? g.name === alias : groupKey(g.name) === groupKey(s.name)));
+    if (hits.length !== 1) continue;
+    try {
+      const [products, prices] = [await tcgJson(`/${hits[0].groupId}/products`), await tcgJson(`/${hits[0].groupId}/prices`)];
+      const market = new Map(prices.filter((p) => p.marketPrice > 0).map((p) => [p.productId, p.marketPrice]));
+      const booster = pickTcg(products, " Booster Pack", TCG_BOOSTER_EXCLUDE);
+      const display = pickTcg(products, " Booster Box", TCG_DISPLAY_EXCLUDE);
+      const eur = (p) => (p && market.get(p.productId) ? market.get(p.productId) * rate : null);
+      out.set(s.id, { boosterEur: eur(booster), displayEur: eur(display) });
+    } catch (e) {
+      console.warn(`[sealed] TCGplayer ${s.name}: ${e.message}`);
+    }
+  }
+  return out;
+}
+
+// Mittelwert aus Cardmarket und TCGplayer, wenn beide da sind und zusammenpassen; sonst Cardmarket
+function blend(cmCents, tcgEur) {
+  const tcgCents = cents(tcgEur);
+  if (!cmCents || !tcgCents) return { value: cmCents, tcg: null };
+  const f = Math.max(cmCents, tcgCents) / Math.min(cmCents, tcgCents);
+  if (f > TCG_MAX_FACTOR) return { value: cmCents, tcg: null };
+  return { value: Math.round((cmCents + tcgCents) / 2), tcg: tcgCents };
+}
 
 // Kürzester Name, der auf `suffix` endet - nur wenn er eindeutig der kürzeste ist
 function pick(products, category, suffix, exclude) {
@@ -70,37 +148,53 @@ export async function refreshSealedPrices() {
     if (!cur || (named && !cur.named) || (named === cur.named && n > cur.n)) owner.set(exp, { setId, n, named });
   }
 
+  // Erst Cardmarket je Set bestimmen, dann TCGplayer nur für Sets mit Cardmarket-Preis abrufen (gemittelt wird nur dort)
+  const cm = new Map();
+  const stats = { booster: 0, display: 0, unplausibel: 0, mitTcgplayer: 0 };
+  for (const { id } of sets) {
+    const e = expansionOf.get(id);
+    const products = e && owner.get(e.exp)?.setId === id ? guide.sealedByExpansion?.get(e.exp) ?? [] : [];
+    const booster = pick(products, "Pokémon Booster", " Booster", BOOSTER_EXCLUDE);
+    const display = pick(products, "Pokémon Display", " Booster Box", DISPLAY_EXCLUDE);
+    let boosterCents = booster ? cents(robustPrice(guide.prices.get(booster.id) ?? {})) : null;
+    let displayCents = display ? cents(robustPrice(guide.prices.get(display.id) ?? {})) : null;
+    if (boosterCents && displayCents) {
+      const ratio = displayCents / boosterCents;
+      if (ratio < MIN_RATIO || ratio > MAX_RATIO) {
+        boosterCents = displayCents = null;
+        stats.unplausibel++;
+      }
+    }
+    cm.set(id, { booster, display, boosterCents, displayCents });
+  }
+  const tcg = await tcgplayerPrices(sets.filter((s) => cm.get(s.id)?.boosterCents || cm.get(s.id)?.displayCents));
+
   const now = new Date().toISOString();
-  const stats = { booster: 0, display: 0, unplausibel: 0 };
   db.transaction(() => {
     for (const { id } of sets) {
-      const e = expansionOf.get(id);
-      const products = e && owner.get(e.exp)?.setId === id ? guide.sealedByExpansion?.get(e.exp) ?? [] : [];
-      const booster = pick(products, "Pokémon Booster", " Booster", BOOSTER_EXCLUDE);
-      const display = pick(products, "Pokémon Display", " Booster Box", DISPLAY_EXCLUDE);
-      let boosterCents = booster ? cents(robustPrice(guide.prices.get(booster.id) ?? {})) : null;
-      let displayCents = display ? cents(robustPrice(guide.prices.get(display.id) ?? {})) : null;
-      if (boosterCents && displayCents) {
-        const ratio = displayCents / boosterCents;
-        if (ratio < MIN_RATIO || ratio > MAX_RATIO) {
-          boosterCents = displayCents = null;
-          stats.unplausibel++;
-        }
-      }
-      if (boosterCents) stats.booster++;
-      if (displayCents) stats.display++;
+      const { booster, display, boosterCents, displayCents } = cm.get(id);
+      const t = tcg.get(id) ?? {};
+      const b = blend(boosterCents, t.boosterEur);
+      const d = blend(displayCents, t.displayEur);
+      if (b.value) stats.booster++;
+      if (d.value) stats.display++;
+      if (b.tcg || d.tcg) stats.mitTcgplayer++;
       updateStmt.run(
+        d.value,
+        b.value,
+        d.value ? display.name : null,
+        b.value ? booster.name : null,
+        b.value || d.value ? now : null,
         displayCents,
+        d.tcg,
         boosterCents,
-        displayCents ? display.name : null,
-        boosterCents ? booster.name : null,
-        boosterCents || displayCents ? now : null,
+        b.tcg,
         id
       );
     }
   })();
   console.log(
-    `[sealed] Cardmarket-Preise: ${stats.booster} Sets mit Booster-, ${stats.display} mit Displaypreis, ` +
+    `[sealed] ${stats.booster} Sets mit Booster-, ${stats.display} mit Displaypreis (${stats.mitTcgplayer} davon mit TCGplayer gemittelt), ` +
       `${stats.unplausibel} unplausibel (ohne automatischen Preis).`
   );
   return stats;
@@ -109,7 +203,8 @@ export async function refreshSealedPrices() {
 // Für die Rubrik "Sealed" unter "Alle Karten": alle Sets mit automatischem Preis, neueste zuerst
 const sealedListStmt = db.prepare(`
   SELECT id, name, series, release_date, logo, symbol, auto_booster_price_cents, auto_box_price_cents,
-         auto_booster_name, auto_box_name, auto_prices_at
+         auto_booster_name, auto_box_name, auto_prices_at,
+         auto_box_cm_cents, auto_box_tcg_cents, auto_booster_cm_cents, auto_booster_tcg_cents
   FROM card_sets
   WHERE auto_booster_price_cents IS NOT NULL OR auto_box_price_cents IS NOT NULL
   ORDER BY release_date DESC
@@ -128,10 +223,22 @@ export function listSealedPrices() {
     release_date: s.release_date,
     logo: s.logo ?? s.symbol,
     booster: s.auto_booster_price_cents
-      ? { name: s.auto_booster_name, priceCents: s.auto_booster_price_cents, link: searchLink(s.auto_booster_name) }
+      ? {
+          name: s.auto_booster_name,
+          priceCents: s.auto_booster_price_cents,
+          cardmarketCents: s.auto_booster_cm_cents,
+          tcgplayerCents: s.auto_booster_tcg_cents,
+          link: searchLink(s.auto_booster_name),
+        }
       : null,
     display: s.auto_box_price_cents
-      ? { name: s.auto_box_name, priceCents: s.auto_box_price_cents, link: searchLink(s.auto_box_name) }
+      ? {
+          name: s.auto_box_name,
+          priceCents: s.auto_box_price_cents,
+          cardmarketCents: s.auto_box_cm_cents,
+          tcgplayerCents: s.auto_box_tcg_cents,
+          link: searchLink(s.auto_box_name),
+        }
       : null,
     updated: s.auto_prices_at,
   }));
@@ -139,11 +246,11 @@ export function listSealedPrices() {
 
 // Einmal nach dem Deploy (Marker), damit die Preise nicht erst nach dem nächsten Nachtlauf da sind
 export function catchUpSealedPrices(after) {
-  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_prices_v1'`).get()) return;
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_prices_v2'`).get()) return;
   setTimeout(async () => {
     try {
       await refreshSealedPrices();
-      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_prices_v1', '1')`).run();
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_prices_v2', '1')`).run();
       after?.();
     } catch (e) {
       console.error("[sealed] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);
