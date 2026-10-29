@@ -203,7 +203,8 @@ export default function Datenschutz() {
       <p>
         Zur Ergänzung von Karten- und Preisinformationen ruft unser Server –
         ohne Bezug zu deiner Person – Daten von folgenden Diensten ab: TCGdex,
-        Pokémon TCG API, die öffentlichen Preislisten von Cardmarket, PokéAPI
+        Pokémon TCG API, die öffentlichen Preislisten von Cardmarket, tcgcsv.com
+        (tägliche Preisdaten von TCGplayer), PokéAPI
         sowie Wechselkurse von frankfurter.dev. Für eine interne Übersicht des
         Betreibers liest unser Server außerdem öffentliche News- und Forenbeiträge
         (Pokézentrum, PokéBeach, Reddit). Dabei werden keine personenbezogenen

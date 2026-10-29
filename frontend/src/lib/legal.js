@@ -33,11 +33,12 @@ export const HOSTING = {
 export const SITE = {
   domain: "mycardfolio.de",
   altDomain: "mycardfolio.eu",
-  lastUpdated: "2026-10-22", // Datum der letzten Änderung dieser Texte
+  lastUpdated: "2026-10-29", // Datum der letzten Änderung dieser Texte
 };
 
 // Fertig ausgefüllt? Dann hier auf true setzen – blendet den Hinweisbanner
 // auf den Rechtstexten aus.
 // Geprüft und freigegeben von Justus (Jurist) am 22.10.2026 - Impressum, Datenschutzerklärung,
-// Nutzungsbedingungen. Bei inhaltlichen Änderungen erneut von ihm prüfen lassen.
+// Nutzungsbedingungen. Bei inhaltlichen Änderungen erneut von ihm prüfen lassen. Datenschutz Ziff. 9 (tcgcsv.com)
+// freigegeben am 29.10.2026.
 export const LEGAL_REVIEWED = true;
