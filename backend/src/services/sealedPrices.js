@@ -214,8 +214,9 @@ const UTM = "utm_source=mycardfolio&utm_medium=referral";
 // Cardmarket-Adressen lassen sich aus der Produktnummer nicht bauen (landet auf der Startseite) - Suche nach dem Namen
 const searchLink = (name) =>
   name ? `https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=${encodeURIComponent(name)}&${UTM}` : null;
+// "?v=2": neue Adresse für die Fassung ohne weißen Hintergrund (Browser hielten die alte sonst 30 Tage)
 const item = (name, priceCents, cardmarketCents, tcgplayerCents, image) =>
-  priceCents ? { name, priceCents, cardmarketCents, tcgplayerCents, image, link: searchLink(name) } : null;
+  priceCents ? { name, priceCents, cardmarketCents, tcgplayerCents, image: image ? `${image}?v=2` : null, link: searchLink(name) } : null;
 
 export function sealedForSet(setId) {
   const s = sealedOfSetStmt.get(setId);
