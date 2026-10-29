@@ -1,7 +1,7 @@
 import { eur, formatDate } from "../lib/format.js";
 
-// Booster- und Displaypreis eines Sets, oben auf der Set-Seite (Justus 29.10.2026). Jede Nacht neu: Mittelwert aus
-// Cardmarket (Europa, alle Sprachen) und TCGplayer (USA, nur Englisch), siehe backend/src/services/sealedPrices.js.
+// Booster- und Displaypreis eines Sets, oben auf der Set-Seite (Justus 29.10.2026; Berechnung siehe
+// backend/src/services/sealedPrices.js). Nur die Zahlen, keine Erklärung der Berechnung (Justus: Fakten liefern).
 export default function SealedPrices({ sealed }) {
   if (!sealed) return null;
   return (
@@ -14,10 +14,7 @@ export default function SealedPrices({ sealed }) {
         <SealedPrice label="Booster" item={sealed.booster} />
         <SealedPrice label="Display (36 Booster)" item={sealed.display} />
       </div>
-      <p className="text-[11px] text-subtle mt-2">
-        Mittelwert aus Cardmarket (Europa, alle Sprachen) und TCGplayer (USA, nur Englisch, in Euro umgerechnet).
-        {!sealed.display && " Dieses Set gibt es nicht als Display."}
-      </p>
+      {!sealed.display && <p className="text-[11px] text-subtle mt-2">Dieses Set gibt es nicht als Display.</p>}
     </div>
   );
 }
@@ -41,13 +38,6 @@ function SealedPrice({ label, item }) {
     >
       <p className="text-[11px] text-subtle">{label}</p>
       <p className="text-base font-semibold font-mono">{eur(item.priceCents / 100)}</p>
-      {item.tcgplayerCents ? (
-        <p className="text-[10px] text-subtle font-mono leading-tight mt-0.5">
-          CM {eur(item.cardmarketCents / 100)} · TCG {eur(item.tcgplayerCents / 100)}
-        </p>
-      ) : (
-        <p className="text-[10px] text-subtle leading-tight mt-0.5">nur Cardmarket</p>
-      )}
     </a>
   );
 }

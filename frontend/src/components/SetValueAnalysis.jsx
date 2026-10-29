@@ -89,8 +89,7 @@ export default function SetValueAnalysis() {
       <h2 className="text-sm font-medium mb-1">Booster vs. Top-Karten</h2>
       <p className="text-xs text-subtle mb-3">
         Wie viel sind die 20 teuersten Karten eines Sets wert – im Verhältnis zum Preis eines Displays
-        bzw. eines einzelnen Boosters? Kartenwerte sind die aktuellen Preise, Booster-/Displaypreise das Mittel aus
-        Cardmarket und TCGplayer (jede Nacht neu). Sondersets ohne Display (z. B. 30th Celebration) haben nur einen Boosterpreis. Klick auf
+        bzw. eines einzelnen Boosters? Alle Preise sind aktuell (jede Nacht neu). Sondersets ohne Display (z. B. 30th Celebration) haben nur einen Boosterpreis. Klick auf
         ein Set zeigt die 20 Karten.
       </p>
 
@@ -367,7 +366,7 @@ function PriceEditor({ onSaved }) {
     <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
       <p className="text-sm font-medium mb-1">Preise pflegen</p>
       <p className="text-xs text-subtle mb-3">
-        Die Preise kommen jede Nacht automatisch (Mittel aus Cardmarket und TCGplayer, grau im Feld). Ein eigener Wert geht vor; beide Felder
+        Die Preise kommen jede Nacht automatisch (grau im Feld). Ein eigener Wert geht vor; beide Felder
         leeren und speichern = wieder automatisch.
       </p>
       <div className="space-y-2">
