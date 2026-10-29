@@ -331,6 +331,19 @@ if (!csColumns.has("booster_price_cents")) {
 if (!csColumns.has("prices_updated_at")) {
   db.exec(`ALTER TABLE card_sets ADD COLUMN prices_updated_at TEXT`);
 }
+// Automatische Booster-/Displaypreise aus Cardmarkets Preisliste (services/sealedPrices.js, Nachtlauf) samt
+// Produktname. manual_prices_override = 1: der Betreiber hat selbst Preise eingetragen, die dann vorgehen;
+// ohne eigene Eingabe gelten die automatischen (Justus 29.10.2026).
+for (const [col, type] of [
+  ["auto_box_price_cents", "INTEGER"],
+  ["auto_booster_price_cents", "INTEGER"],
+  ["auto_box_name", "TEXT"],
+  ["auto_booster_name", "TEXT"],
+  ["auto_prices_at", "TEXT"],
+  ["manual_prices_override", "INTEGER NOT NULL DEFAULT 0"],
+]) {
+  if (!csColumns.has(col)) db.exec(`ALTER TABLE card_sets ADD COLUMN ${col} ${type}`);
+}
 
 // card_sets.chase_hit_rate_pct wird nicht mehr genutzt (die Hit Rate wird
 // aus den Pull Rates berechnet, siehe services/marketStats.js) - die Spalte

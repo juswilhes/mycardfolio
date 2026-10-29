@@ -24,7 +24,8 @@ import { authRequired } from "./middleware/auth.js";
 import { isOperatorUser } from "./lib/admin.js";
 import { countPageView, isKnownRoute, humanPing } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
-import { catchUpSetValueSnapshots } from "./services/setValueSnapshots.js";
+import { catchUpSetValueSnapshots, recordSetValueSnapshots } from "./services/setValueSnapshots.js";
+import { catchUpSealedPrices } from "./services/sealedPrices.js";
 import { seedStarterArticles, seedLaterArticles } from "./services/articles.js";
 import { catchUpVariantFlags } from "./services/variantFlags.js";
 import { catchUpMissingPrices } from "./services/setPriceBackfill.js";
@@ -191,6 +192,11 @@ app.listen(PORT, () => {
   console.log(`API läuft auf http://localhost:${PORT}`);
   schedulePriceFetching();
   catchUpSetValueSnapshots();
+  // einmalig nach dem Deploy: Booster-/Displaypreise von Cardmarket, danach Analysen und Monatsstand neu
+  catchUpSealedPrices(() => {
+    rebuildAnalysisCache();
+    recordSetValueSnapshots();
+  });
   seedStarterArticles();
   seedLaterArticles();
   catchUpVariantFlags();

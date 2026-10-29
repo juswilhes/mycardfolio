@@ -89,8 +89,9 @@ export default function SetValueAnalysis() {
       <h2 className="text-sm font-medium mb-1">Booster vs. Top-Karten</h2>
       <p className="text-xs text-subtle mb-3">
         Wie viel sind die 20 teuersten Karten eines Sets wert – im Verhältnis zum Preis eines Displays
-        bzw. eines einzelnen Boosters? Kartenwerte sind die aktuellen Preise. Sondersets ohne Display
-        (z. B. 30th Celebration) haben nur einen Boosterpreis. Klick auf ein Set zeigt die 20 Karten.
+        bzw. eines einzelnen Boosters? Kartenwerte und Booster-/Displaypreise sind die aktuellen Cardmarket-Preise
+        (jede Nacht neu). Sondersets ohne Display (z. B. 30th Celebration) haben nur einen Boosterpreis. Klick auf
+        ein Set zeigt die 20 Karten.
       </p>
 
       {rows.length === 0 ? (
@@ -239,9 +240,9 @@ function HistoryChart({ rows }) {
     <div className="mt-10">
       <h2 className="text-sm font-medium mb-1">Verlauf</h2>
       <p className="text-xs text-subtle mb-3">
-        Jeweils der Stand zum Monatsersten – so siehst du, ob sich ein Set im Verhältnis zum Booster-/Boxpreis
-        lohnender oder weniger lohnend entwickelt. Mehrere Sets lassen sich übereinanderlegen. Ab dem 1. jedes
-        Monats kommt automatisch ein neuer Punkt dazu.
+        Ein Stand je Monat (der laufende Monat wird jede Nacht aktualisiert) – so siehst du, ob sich ein Set im
+        Verhältnis zum Booster-/Boxpreis lohnender oder weniger lohnend entwickelt. Mehrere Sets lassen sich
+        übereinanderlegen.
       </p>
 
       {withHistory.length === 0 ? (
@@ -338,7 +339,7 @@ function HistoryChart({ rows }) {
               </ResponsiveContainer>
               {data.length < 2 && (
                 <p className="text-subtle text-xs mt-1">
-                  Erst ein Stand – die Linien entstehen, sobald am nächsten Monatsersten der zweite dazukommt.
+                  Erst ein Stand – die Linien entstehen, sobald im nächsten Monat der zweite dazukommt.
                 </p>
               )}
             </>
@@ -365,7 +366,10 @@ function PriceEditor({ onSaved }) {
   return (
     <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
       <p className="text-sm font-medium mb-1">Preise pflegen</p>
-      <p className="text-xs text-subtle mb-3">Boxpreis leer lassen bei Sets ohne Display (z. B. 30th Celebration).</p>
+      <p className="text-xs text-subtle mb-3">
+        Die Preise kommen jede Nacht automatisch von Cardmarket (grau im Feld). Ein eigener Wert geht vor; beide Felder
+        leeren und speichern = wieder automatisch.
+      </p>
       <div className="space-y-2">
         {list.map((s) => (
           <PriceRow key={s.id} set={s} onSaved={onSaved} />
@@ -382,8 +386,10 @@ function PriceEditor({ onSaved }) {
 
 function PriceRow({ set, onSaved }) {
   const toInput = (c) => (c != null ? (c / 100).toFixed(2) : "");
-  const [box, setBox] = useState(toInput(set.box_price_cents));
-  const [booster, setBooster] = useState(toInput(set.booster_price_cents));
+  // Eigene Werte nur zeigen, wenn sie gelten (alte Handwerte ohne Vorrang wären irreführend)
+  const own = set.manual_prices_override;
+  const [box, setBox] = useState(own ? toInput(set.box_price_cents) : "");
+  const [booster, setBooster] = useState(own ? toInput(set.booster_price_cents) : "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -410,9 +416,9 @@ function PriceRow({ set, onSaved }) {
         {set.name}
       </span>
       <span className="text-xs text-subtle">Box</span>
-      <input type="number" step="0.01" min="0" value={box} onChange={edit(setBox)} className={input} />
+      <input type="number" step="0.01" min="0" value={box} onChange={edit(setBox)} placeholder={toInput(set.auto_box_price_cents)} className={input} />
       <span className="text-xs text-subtle">Booster</span>
-      <input type="number" step="0.01" min="0" value={booster} onChange={edit(setBooster)} className={input} />
+      <input type="number" step="0.01" min="0" value={booster} onChange={edit(setBooster)} placeholder={toInput(set.auto_booster_price_cents)} className={input} />
       <span className="text-xs text-subtle">€</span>
       <button
         onClick={save}

@@ -9,6 +9,7 @@ import { syncNewCards } from "./newCardsSync.js";
 import { repairImages } from "./imageRepair.js";
 import { rebuildAnalysisCache } from "./analysisCache.js";
 import { recordSetValueSnapshots } from "./setValueSnapshots.js";
+import { refreshSealedPrices } from "./sealedPrices.js";
 import { rebuildSitemap } from "./seo.js";
 import { refreshVariantFlags } from "./variantFlags.js";
 import { refreshPricesFromGuide } from "./guidePrices.js";
@@ -103,10 +104,12 @@ export async function runDailyPriceJob() {
       ["Preise", refreshAllPrices],
       ["Preise nachholen", backfillAllMissingPrices],
       ["Gegenprobe", blendWithTcgplayer],
+      ["Sealed-Preise", refreshSealedPrices],
       // neue Karten bekommen ihre Cardmarket-Seite; sonntags auch die bisher unbekannten noch einmal
       ["Cardmarket-Links", () => fillCardmarketPages({ limit: 5000, retryEmpty: new Date().getDay() === 0 })],
       ["Analysen", async () => rebuildAnalysisCache()],
-      ["Monatsstand", async () => recordSetValueSnapshots({ onlyMissing: true })],
+      // Boosterpreise ändern sich jetzt jede Nacht (Cardmarket): Stand des laufenden Monats jede Nacht aktualisieren
+      ["Monatsstand", async () => recordSetValueSnapshots()],
       ["Sitemap", async () => rebuildSitemap()],
       // sonntags alle Karten prüfen (~3 Min.), sonst nur die üblichen Verdächtigen
       ["Bilder", () => repairImages({ full: new Date().getDay() === 0 })],

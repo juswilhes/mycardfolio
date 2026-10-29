@@ -7,11 +7,13 @@ import db from "../db/index.js";
 import { recordSetValueSnapshots } from "../services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "../services/analysisCache.js";
 import { resolveSetParam } from "../services/setSlugs.js";
+import { listSealedPrices } from "../services/sealedPrices.js";
 
 const router = Router();
 
+// Eigene Eingabe geht vor den automatischen Cardmarket-Preisen; beide Felder leer = wieder automatisch
 const setPricesStmt = db.prepare(
-  `UPDATE card_sets SET box_price_cents = ?, booster_price_cents = ?, prices_updated_at = ? WHERE id = ?`
+  `UPDATE card_sets SET box_price_cents = ?, booster_price_cents = ?, prices_updated_at = ?, manual_prices_override = ? WHERE id = ?`
 );
 const pullRatesForSetStmt = db.prepare(`SELECT rarity, any_denominator, specific_denominator FROM pull_rates WHERE set_id = ? ORDER BY rarity`);
 const upsertPullRateStmt = db.prepare(`
@@ -32,6 +34,12 @@ router.param("setId", (req, _res, next, value) => {
 // GET /api/sets -> alle Sets, für die "Alle Karten"-Übersichtsseite (öffentlich)
 router.get("/", (_req, res) => {
   res.json(listSetsLocal());
+});
+
+// GET /api/sets/sealed -> Booster- und Displaypreise je Set (Rubrik "Sealed" unter "Alle Karten", öffentlich).
+// Steht vor /:setId, sonst hielte Express "sealed" für eine Set-ID.
+router.get("/sealed", (_req, res) => {
+  res.json(listSealedPrices());
 });
 
 // GET /api/sets/progress -> { set_id: besessene_Karten } (nur mit Login)
@@ -69,10 +77,9 @@ function eurToCents(v) {
   return Math.round(n * 100);
 }
 
-// PATCH /api/sets/:setId/prices -> Box- und Boosterpreis setzen/ändern (nur
-// Betreiber - es gibt keine freie API-Quelle dafür, das trägt Justus von
-// Hand ein). { boxEur, boosterEur }, jeweils null zum Löschen. Sondersets
-// ohne Display haben nur einen Boosterpreis.
+// PATCH /api/sets/:setId/prices -> eigenen Box- und Boosterpreis setzen/ändern (nur Betreiber). Gilt vor dem
+// automatischen Cardmarket-Preis (sealedPrices.js); { boxEur, boosterEur }, beide null = wieder automatisch.
+// Sondersets ohne Display haben nur einen Boosterpreis.
 router.patch("/:setId/prices", authRequired, (req, res) => {
   if (!isOperatorUser(req.user)) {
     return res.status(403).json({ error: "Nur der Betreiber darf das ändern." });
@@ -85,7 +92,7 @@ router.patch("/:setId/prices", authRequired, (req, res) => {
   if (box === undefined || booster === undefined) {
     return res.status(400).json({ error: "Ungültiger Preis" });
   }
-  setPricesStmt.run(box, booster, new Date().toISOString(), req.params.setId);
+  setPricesStmt.run(box, booster, new Date().toISOString(), box != null || booster != null ? 1 : 0, req.params.setId);
   // Eingaben des Betreibers gelten sofort (nicht erst im Nachtlauf)
   rebuildAnalysisCache();
   // Stand dieses Monats im Analyse-Verlauf gleich mit den neuen Preisen aktualisieren

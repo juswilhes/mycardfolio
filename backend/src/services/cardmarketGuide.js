@@ -7,6 +7,8 @@
 
 const PRICES_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json";
 const PRODUCTS_URL = "https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json";
+// Versiegelte Produkte (Booster, Displays, ETBs ...) - Preise stehen in derselben Preisliste (sealedPrices.js)
+const SEALED_URL = "https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_6.json";
 
 let cache = null;
 let loading = null;
@@ -24,7 +26,7 @@ export async function loadGuide() {
   const day = new Date().toISOString().slice(0, 10);
   if (!(cache?.day === day)) {
     loading ??= (async () => {
-      const [pl, pg] = await Promise.all([download(PRODUCTS_URL), download(PRICES_URL)]);
+      const [pl, pg, sl] = await Promise.all([download(PRODUCTS_URL), download(PRICES_URL), download(SEALED_URL)]);
       const products = new Map();
       const byExpansion = new Map();
       for (const p of pl.products) {
@@ -33,8 +35,14 @@ export async function loadGuide() {
         if (!byExpansion.has(p.idExpansion)) byExpansion.set(p.idExpansion, []);
         byExpansion.get(p.idExpansion).push(entry);
       }
+      const sealedByExpansion = new Map();
+      for (const p of sl.products) {
+        const entry = { id: p.idProduct, name: p.name, category: p.categoryName, expansion: p.idExpansion };
+        if (!sealedByExpansion.has(p.idExpansion)) sealedByExpansion.set(p.idExpansion, []);
+        sealedByExpansion.get(p.idExpansion).push(entry);
+      }
       const prices = new Map(pg.priceGuides.map((r) => [r.idProduct, r]));
-      cache = { day, products, byExpansion, prices, updated: pg.createdAt };
+      cache = { day, products, byExpansion, sealedByExpansion, prices, updated: pg.createdAt };
     })().finally(() => {
       loading = null;
     });

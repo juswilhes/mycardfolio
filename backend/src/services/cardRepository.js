@@ -564,7 +564,8 @@ export function getCardsByArtistLocal(artist) {
 }
 
 const setsStmt = db.prepare(`
-  SELECT id, name, series, printed_total, total, release_date, logo, symbol, box_price_cents, booster_price_cents, prices_updated_at
+  SELECT id, name, series, printed_total, total, release_date, logo, symbol, box_price_cents, booster_price_cents, prices_updated_at,
+         auto_box_price_cents, auto_booster_price_cents, manual_prices_override
   FROM card_sets
   WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')
   ORDER BY release_date DESC
@@ -604,5 +605,9 @@ function mapSetRow(s) {
     box_price_cents: s.box_price_cents ?? null,
     booster_price_cents: s.booster_price_cents ?? null,
     prices_updated_at: s.prices_updated_at ?? null,
+    // automatisch von Cardmarket (sealedPrices.js); für die Preispflege in der Analyse
+    auto_box_price_cents: s.auto_box_price_cents ?? null,
+    auto_booster_price_cents: s.auto_booster_price_cents ?? null,
+    manual_prices_override: !!s.manual_prices_override,
   };
 }

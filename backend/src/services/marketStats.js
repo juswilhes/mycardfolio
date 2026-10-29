@@ -2,6 +2,7 @@ import db from "../db/index.js";
 import { priceHistoryForCard, latestTrend, rawNormalTrend } from "./cardService.js";
 import { slugOfSet } from "./setSlugs.js";
 import { slugOfCard } from "./cardSlugs.js";
+import { EFFECTIVE_SET_PRICES, HAS_SET_PRICE } from "./setPrices.js";
 
 // Sets, deren Karten aus den Boostern eines anderen Sets gezogen werden: die
 // Classic Collection steckt in den Boostern des 30th Celebration. In den
@@ -103,8 +104,8 @@ function moverFor(c, days) {
 // derselbe wie auf der Kartenseite (latestTrend). Die Verhältnisse (Top 20 vs.
 // Box/Booster) rechnet das Frontend.
 const pricedSetsStmt = db.prepare(`
-  SELECT id, name, series, release_date, logo, box_price_cents, booster_price_cents, prices_updated_at
-  FROM card_sets WHERE box_price_cents IS NOT NULL OR booster_price_cents IS NOT NULL
+  SELECT id, name, series, release_date, logo, ${EFFECTIVE_SET_PRICES}
+  FROM card_sets WHERE ${HAS_SET_PRICE}
 `);
 const setCardsStmt = db.prepare(`SELECT id, external_id, name, image_small FROM cards WHERE set_id = ?`);
 
@@ -143,6 +144,7 @@ export function getSetValueAnalysis() {
       boxPriceCents: r.box_price_cents,
       boosterPriceCents: r.booster_price_cents,
       pricesUpdatedAt: r.prices_updated_at,
+      priceSource: r.price_source,
       top20Value: Math.round(top.reduce((sum, c) => sum + c.price, 0) * 100) / 100,
       top20Count: top.length,
       pricedCards: cards.length,
@@ -247,7 +249,7 @@ export function getPullRateOverview() {
 const PACKS_PER_BOX = 36;
 const round2 = (x) => Math.round(x * 100) / 100;
 const cardsWithRarityStmt = db.prepare(`SELECT id, rarity FROM cards WHERE set_id = ? AND rarity IS NOT NULL`);
-const setPricesStmt = db.prepare(`SELECT box_price_cents, booster_price_cents FROM card_sets WHERE id = ?`);
+const setPricesStmt = db.prepare(`SELECT ${EFFECTIVE_SET_PRICES} FROM card_sets WHERE id = ?`);
 
 // Pull-Rate-Zeilen je Booster (Sets in Fremd-Boostern zählen zum Booster-Set).
 function boosterGroups() {

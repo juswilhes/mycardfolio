@@ -85,6 +85,7 @@ export const undoSale = (id) => request(`/sales/${id}/undo`, { method: "POST" })
 
 // --- Sets --------------------------------------------------------
 export const getSets = () => request("/sets");
+export const getSealedPrices = () => request("/sets/sealed");
 export const getSet = (setId) => request(`/sets/${setId}`);
 export const getCardsForSet = (setId) => request(`/sets/${setId}/cards`);
 export const getSetProgress = () => request("/sets/progress");
