@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { getSetValueAnalysis, getSets, updateSetPrices } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { eur } from "../lib/format.js";
@@ -107,6 +107,8 @@ export default function SetValueAnalysis() {
             ))}
           </select>
 
+          <ValueBars rows={shown} />
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -192,6 +194,69 @@ const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f29
 // Der erste Stand entsteht beim ersten Aufruf nach dem Deploy bzw. sobald
 // Preise eingetragen sind, danach automatisch am 1. jedes Monats.
 const HISTORY_RANGES = RANGES.filter((r) => ["3m", "6m", "12m"].includes(r.id));
+
+// Balkendiagramm (Justus 30.10.2026): je Set Displaypreis neben dem Wert der 20 teuersten Karten, in der
+// Reihenfolge der Tabelle. Nur Sets mit Display - ohne Display gibt es nichts Vergleichbares.
+const BAR_COLORS = { box: "#5a9bff", top20: "#f8c93a" };
+const BARS_FIRST = 12;
+const ROW_HEIGHT = 44;
+
+function ValueBars({ rows }) {
+  const [all, setAll] = useState(false);
+  const withBox = rows.filter((s) => s.box != null && s.top20Count);
+  if (!withBox.length) return null;
+  const data = (all ? withBox : withBox.slice(0, BARS_FIRST)).map((s) => ({
+    name: s.name,
+    box: s.box,
+    top20: Math.round(s.top20Value * 100) / 100,
+  }));
+  return (
+    <div className="mb-6">
+      <ResponsiveContainer width="100%" height={data.length * ROW_HEIGHT + 40}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 12, left: 4, bottom: 0 }} barGap={2}>
+          <XAxis
+            type="number"
+            stroke="var(--subtle)"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => eur(v).replace(",00", "")}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={130}
+            stroke="var(--subtle)"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            interval={0}
+          />
+          <Tooltip
+            cursor={{ fill: "var(--line)", opacity: 0.4 }}
+            contentStyle={{
+              background: "var(--surface)",
+              border: "1px solid var(--line)",
+              borderRadius: 8,
+              fontSize: 12,
+              color: "var(--ink)",
+            }}
+            labelStyle={{ color: "var(--subtle)" }}
+            formatter={(v, name) => [eur(v), name]}
+          />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar dataKey="box" name="Display" fill={BAR_COLORS.box} radius={[0, 4, 4, 0]} barSize={12} />
+          <Bar dataKey="top20" name="Top 20 Karten" fill={BAR_COLORS.top20} radius={[0, 4, 4, 0]} barSize={12} />
+        </BarChart>
+      </ResponsiveContainer>
+      {withBox.length > BARS_FIRST && (
+        <button onClick={() => setAll((v) => !v)} className="text-xs text-subtle underline hover:text-ink mt-1">
+          {all ? "Weniger anzeigen" : `Alle ${withBox.length} Sets anzeigen`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function HistoryChart({ rows }) {
   const [range, setRange] = useState("12m");
