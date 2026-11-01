@@ -347,6 +347,15 @@ async function pokemonTcgFallback(externalId) {
 //  - sonst: ist der TCGdex-Trend mehr als dreimal so hoch wie der TCGplayer-Marktpreis
 //    (und mindestens 2 EUR darüber), gilt sie ebenfalls als falsch
 // Dann zählen die Werte von pokemontcg.io (Cardmarket, auch wenn älter, sonst TCGplayer).
+// TCGplayer-Marktpreis (EUR) der unlimitierten Ausführung aus einer pokemontcg.io-Antwort
+async function tcgplayerEur(raw) {
+  const prices = raw?.tcgplayer?.prices;
+  if (!prices) return null;
+  const ref =
+    ["normal", "holofoil", "reverseHolofoil", "unlimitedHolofoil", "unlimited"].map((k) => prices[k]).find((v) => v?.market > 0) ??
+    Object.values(prices).find((v) => v?.market > 0);
+  return ref ? ref.market * (await usdToEur()) : null;
+}
 const sharedProductStmt = db.prepare(
   `SELECT 1 FROM cards WHERE cardmarket_product_id = ? AND set_id = ? AND external_id != ? LIMIT 1`
 );
@@ -367,13 +376,15 @@ async function correctSharedProduct(row, cm, specialVariant) {
   // 2) Vergleich mit pokemontcg.io
   const raw = await paced(() => getRawPricesById(row.external_id));
   const cmOwn = raw?.cardmarket?.prices?.trendPrice;
+  const refEur = await tcgplayerEur(raw);
+  const ratio = (a, b) => Math.max(a / b, b / a);
   if (cmOwn > 0) {
-    if (Math.max(cm.trend / cmOwn, cmOwn / cm.trend) <= 1.8 || Math.abs(cm.trend - cmOwn) < 1) return null;
+    if (ratio(cm.trend, cmOwn) <= 1.8 || Math.abs(cm.trend - cmOwn) < 1) return null;
+    // Widerspruch: TCGplayer (eigene Zuordnung je Karte und Auflage) entscheidet, welcher Wert zur Karte gehört -
+    // pokemontcg.io führt bei manchen Karten die 1. Auflage (Clefable Jungle base2-1: 471 statt 35 EUR)
+    if (refEur && ratio(cm.trend, refEur) < ratio(cmOwn, refEur)) return null;
   } else {
-    const prices = raw?.tcgplayer?.prices;
-    const ref = prices && (prices.normal?.market > 0 ? prices.normal : Object.values(prices).find((v) => v?.market > 0));
-    if (!ref) return null;
-    const refEur = ref.market * (await usdToEur());
+    if (!refEur) return null;
     if (!(cm.trend > 3 * refEur && cm.trend - refEur >= 2)) return null;
   }
   const fixed = await pricesFromRaw(raw, Infinity);

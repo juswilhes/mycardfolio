@@ -70,6 +70,22 @@ const splitName = (name) => {
   return { base: m[1], bracket: m[2] ?? "" };
 };
 
+// Gleicher Angriffsname, ein Tippfehler erlaubt (TCGdex: "Sprial Drain" bei Leafeon dp5-24) - nur bei längeren Namen
+function sameAttack(a, b) {
+  if (a === b) return true;
+  if (a.length < 6 || Math.abs(a.length - b.length) > 1) return false;
+  // Abstand höchstens 1 (ersetzt, eingefügt, gelöscht oder zwei Nachbarn vertauscht)
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length] <= 1;
+}
+
 // Erweiterung (Cardmarket) zu einem Produkt
 export const expansionOfProduct = (guide, productId) => guide.products.get(productId)?.expansion ?? null;
 
@@ -93,7 +109,7 @@ export function resolveInExpansion(guide, card, expansionId, { preferOldest = fa
     if (ours.length) {
       if (!(a.startsWith(wanted) || wanted.startsWith(a))) continue;
       const theirs = bracket.split("|").map(norm).filter(Boolean);
-      if (ours.every((t) => theirs.includes(t))) hits.push({ p, extra: theirs.length - ours.length });
+      if (ours.every((t) => theirs.some((x) => sameAttack(t, x)))) hits.push({ p, extra: theirs.length - ours.length });
     } else if (a === wanted && !bracket) {
       hits.push({ p, extra: 0 });
     }

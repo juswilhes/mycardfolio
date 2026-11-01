@@ -75,6 +75,11 @@ async function refreshAllPrices() {
   console.log(`[priceFetcher] Fertig - ${ok}/${cards.length} mit Preis.`);
 }
 
+// "YYYY-MM-DD HH:MM:SS" in deutscher Zeit
+function berlinNow() {
+  return new Date().toLocaleString("sv-SE", { timeZone: "Europe/Berlin" });
+}
+
 // Der komplette Nachtlauf um 1 Uhr:
 //  1. neue Sets/Karten bei TCGdex suchen und importieren (damit sie gleich
 //     mit Preisen und Bildern versorgt werden)
@@ -95,6 +100,7 @@ export async function runDailyPriceJob() {
     return;
   }
   running = true;
+  db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('nightly_last_run', ?)`).run(berlinNow().slice(0, 10));
   try {
     const steps = [
       ["Löschfristen", runDataRetention],
@@ -133,7 +139,20 @@ export function schedulePriceFetching() {
     () => {
       runDailyPriceJob().catch((e) => console.error("[priceFetcher] Job fehlgeschlagen:", e));
     },
-    { timezone: "Europe/Berlin" }
+    // node-cron trifft nur die exakte Sekunde 1:00:00; war der Server in dieser Sekunde beschäftigt,
+    // fiel der ganze Nachtlauf aus (30.10.2026). Mit recover wird die verpasste Sekunde nachgeholt.
+    { timezone: "Europe/Berlin", recoverMissedExecutions: true }
   );
+  // Zweites Netz (z. B. Neustart um 1 Uhr): bis 6 Uhr alle 10 Minuten prüfen, ob der Lauf heute gestartet ist
+  setInterval(() => {
+    const now = berlinNow();
+    const hour = Number(now.slice(11, 13));
+    const minute = Number(now.slice(14, 16));
+    if (hour < 1 || hour >= 6 || (hour === 1 && minute < 10)) return;
+    const last = db.prepare(`SELECT value FROM app_meta WHERE key = 'nightly_last_run'`).get()?.value;
+    if (last === now.slice(0, 10) || running) return;
+    console.log("[priceFetcher] Nachtlauf verpasst - wird jetzt nachgeholt.");
+    runDailyPriceJob().catch((e) => console.error("[priceFetcher] Job fehlgeschlagen:", e));
+  }, 10 * 60 * 1000);
   console.log("[priceFetcher] Täglicher Preis-Job um 1:00 Uhr (Europe/Berlin) eingeplant.");
 }
