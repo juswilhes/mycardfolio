@@ -33,7 +33,9 @@ router.get("/search", (req, res) => {
   const q = String(req.query.q ?? "").trim();
   const type = req.query.type ? String(req.query.type) : null;
   if (!q && !type) return res.status(400).json({ error: "Query-Parameter 'q' fehlt" });
-  res.json(searchCardsLocal(q, { type, limit: type ? 120 : 30 }));
+  // Mit aktuellem Preis (wie auf der Set-Seite, Justus 01.11.2026) - derselbe Wert wie auf der Kartenseite
+  const cards = searchCardsLocal(q, { type, limit: type ? 120 : 30 });
+  res.json(cards.map((c) => ({ ...c, price: latestTrendByExternal(c.external_id)?.price ?? null })));
 });
 
 // GET /api/cards/types -> [{ subtype, n }] alle Kartenarten (aus den Nacht-Auswertungen)

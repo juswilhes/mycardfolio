@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchCards, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
+import { eur } from "../lib/format.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
 import PortfolioAddedAnimation from "../components/PortfolioAddedAnimation.jsx";
@@ -268,7 +269,10 @@ export default function AllCards() {
                       className="absolute top-1.5 right-1.5 bg-canvas rounded-full w-8 h-8 flex items-center justify-center border border-line shadow-md"
                     />
                   )}
-                  <p className="text-sm font-medium truncate">{card.name}</p>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-sm font-medium truncate">{card.name}</p>
+                    <p className="text-sm font-mono shrink-0">{card.price != null ? eur(card.price) : "—"}</p>
+                  </div>
                   <p className="text-subtle text-xs truncate">
                     {card.set_name}
                     {card.year ? ` (${card.year})` : ""}
