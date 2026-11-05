@@ -256,7 +256,11 @@ export default function SetDetail() {
                   <img
                     src={card.image_small}
                     alt={`${card.name} (Englisch)`}
-                    className={`rounded-2xl border mb-1.5 shadow-sm transition ${has ? "border-yellow" : "border-line"}`}
+                    loading="lazy"
+                    decoding="async"
+                    width={245}
+                    height={342}
+                    className={`w-full h-auto rounded-2xl border mb-1.5 shadow-sm transition ${has ? "border-yellow" : "border-line"}`}
                   />
                   {/* Besessene Karten: leichter gelber Schleier + Häkchen (Justus 23.10.2026); fehlende normal, nicht ausgegraut */}
                   {has && (

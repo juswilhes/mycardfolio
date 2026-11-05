@@ -20,8 +20,28 @@ import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import ZoomableCardImage from "../components/ZoomableCardImage.jsx";
 import SellDialog from "../components/SellDialog.jsx";
 import SaleCelebrationAnimation from "../components/SaleCelebrationAnimation.jsx";
+import { reportError } from "../lib/reportError.js";
 
 const fmt = (n) => `${Number(n).toFixed(2)} €`;
+
+// Hängt eine Abfrage, half bisher nur Neuladen (Justus 05.11.2026): nach kurzer Wartezeit selbst neu versuchen.
+// Jeder Fehlversuch wird gemeldet, damit sich die Ursache in den Fehlerberichten zeigt.
+const RETRY_WAITS_MS = [5000, 8000, 15000];
+async function withRetry(load, what) {
+  for (let i = 0; ; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), RETRY_WAITS_MS[i]);
+    const started = performance.now();
+    try {
+      return await load({ signal: ctrl.signal });
+    } catch (e) {
+      reportError(new Error(`${what}: Versuch ${i + 1} nach ${Math.round(performance.now() - started)} ms fehlgeschlagen (${e.name}: ${e.message})`));
+      if ((e.status && e.status < 500) || i === RETRY_WAITS_MS.length - 1) throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
 
 const entryCost = (e) =>
   e.purchase_price != null || e.shipping_cost != null
@@ -79,15 +99,17 @@ export default function CardInfo() {
 
   useEffect(() => {
     // nach dem Umstellen auf die lesbare Adresse nicht noch einmal laden
-    if (loadedFor.current.has(param)) return;
+    if (loadedFor.current.has(param)) return undefined;
+    let left = false; // Seite inzwischen verlassen: nicht mehr auf die Karte zurückspringen
     setCard(null);
     setHistory(null);
     setError(false);
-    getCardInfo(param)
+    withRetry((opts) => getCardInfo(param, opts), "Kartenseite")
       .then((c) => {
+        if (left) return;
         loadedFor.current = new Set([param, c.slug, c.external_id]);
         setCard(c);
-        getCardPriceHistory(c.external_id)
+        withRetry((opts) => getCardPriceHistory(c.external_id, opts), "Preisverlauf")
           .then((h) => setHistory(h ?? []))
           .catch(() => setHistory([]));
         // alte ID-Adresse (/database/pl4-60) -> lesbare (/database/arceus-60-cherubi)
@@ -97,6 +119,9 @@ export default function CardInfo() {
         setError(true);
         setHistory([]);
       });
+    return () => {
+      left = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [param]);
 
@@ -157,7 +182,16 @@ export default function CardInfo() {
 
   const removeEntry = (id) => withEntriesReload(() => deleteCollectionItem(id)).then(() => setConfirmDeleteId(null));
 
-  if (error) return <p className="text-rose text-sm">Karteninfo konnte nicht geladen werden.</p>;
+  if (error) {
+    return (
+      <div className="text-sm">
+        <p className="text-rose mb-3">Karteninfo konnte nicht geladen werden.</p>
+        <button onClick={() => window.location.reload()} className="border border-line px-4 py-2 rounded-full hover:border-ink">
+          Erneut versuchen
+        </button>
+      </div>
+    );
+  }
   if (!card) return <p className="text-subtle text-sm">Lade Kartendetails …</p>;
 
   const kartentyp = [card.supertype, (card.types ?? []).join("/")].filter(Boolean).join(" · ");

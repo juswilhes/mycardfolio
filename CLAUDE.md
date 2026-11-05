@@ -33,6 +33,7 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - Nach dem Push prüfen, ob der Lauf grün ist (`https://api.github.com/repos/juswilhes/mycardfolio/actions/runs?per_page=3`).
 
 ## Wichtige Regeln aus der Praxis
+- **Kartenseite hängt nicht mehr (Justus 05.11.2026, "erst nach Neuladen"):** `withRetry` in `pages/CardInfo.jsx` bricht die Abfrage nach 5/8/15 Sekunden ab, versucht es neu und meldet jeden Fehlversuch in `client_errors` ("Kartenseite: Versuch ..."). Kartenraster laden Bilder mit `loading="lazy"` plus `width`/`height` (ohne die Maße hätten alle Bilder Höhe 0 und würden doch alle geladen).
 - **React-Falle:** nie `useEffect(load, [])`, wenn `load` ein Promise zurückgibt (React hält es für die Cleanup-Funktion → Blank Screen). Immer `useEffect(() => { load(); }, [])`.
 - Nie ein Konto/Passwort für Anmeldungen benutzen oder Zugangsdaten eintragen; Tests, die einen Login brauchen, dem Nutzer überlassen.
 - Sicherheit: Sitzungs-/Reset-Token liegen nur als SHA-256-Hash in der DB (`authService.js`); Kontosperre nach 5 Fehlversuchen.

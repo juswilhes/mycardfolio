@@ -38,6 +38,10 @@ export default function CardTile({ item, onChanged }) {
       <img
         src={item.image_small}
         alt={`${item.name} (Englisch)`}
+        loading="lazy"
+        decoding="async"
+        width={245}
+        height={342}
         className="w-14 sm:w-12 h-auto rounded shrink-0"
       />
       <div className="flex-1 min-w-0">

@@ -2,9 +2,10 @@ const BASE = "/api";
 
 // Zentraler Fetch-Helfer: schickt immer das Session-Cookie mit und wirft
 // bei Fehlern die Server-Meldung (statt einer generischen).
-async function request(path, { method = "GET", body, headers } = {}) {
+async function request(path, { method = "GET", body, headers, signal } = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method,
+    signal,
     credentials: "include",
     headers: {
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
@@ -16,6 +17,7 @@ async function request(path, { method = "GET", body, headers } = {}) {
   let data = null;
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) data = await res.json().catch(() => null);
+  signal?.throwIfAborted?.();
 
   if (!res.ok) {
     const err = new Error(data?.error || `Fehler ${res.status}`);
@@ -55,8 +57,8 @@ export const searchCards = (q, { type } = {}) =>
   request(`/cards/search?q=${encodeURIComponent(q)}${type ? `&type=${encodeURIComponent(type)}` : ""}`);
 export const getCardTypes = () => request("/cards/types");
 export const getCardsByArtist = (artist) => request(`/cards/by-artist?name=${encodeURIComponent(artist)}`);
-export const getCardInfo = (externalId) => request(`/cards/external/${externalId}`);
-export const getCardPriceHistory = (externalId) => request(`/cards/external/${externalId}/prices`);
+export const getCardInfo = (externalId, opts) => request(`/cards/external/${externalId}`, opts);
+export const getCardPriceHistory = (externalId, opts) => request(`/cards/external/${externalId}/prices`, opts);
 export const updateCardArtist = (externalId, artist) =>
   request(`/cards/external/${externalId}/artist`, { method: "PATCH", body: { artist } });
 

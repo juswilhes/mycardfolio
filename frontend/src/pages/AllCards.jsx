@@ -253,7 +253,11 @@ export default function AllCards() {
                   <img
                     src={card.image_large}
                     alt={`${card.name} (Englisch)`}
-                    className="rounded-2xl mb-2 border border-line shadow-sm group-hover:border-ink transition"
+                    loading="lazy"
+                    decoding="async"
+                    width={245}
+                    height={342}
+                    className="w-full h-auto rounded-2xl mb-2 border border-line shadow-sm group-hover:border-ink transition"
                   />
                   {user && (
                     <WatchlistHeart

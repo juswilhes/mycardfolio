@@ -36,7 +36,11 @@ export default function ArtistCards() {
               <img
                 src={card.image_small}
                 alt={`${card.name} (Englisch)`}
-                className="rounded-2xl border border-line mb-1.5 shadow-sm hover:border-ink transition"
+                loading="lazy"
+                decoding="async"
+                width={245}
+                height={342}
+                className="w-full h-auto rounded-2xl border border-line mb-1.5 shadow-sm hover:border-ink transition"
               />
               <p className="text-xs font-medium truncate">{card.name}</p>
               <p className="text-[11px] text-subtle truncate">
