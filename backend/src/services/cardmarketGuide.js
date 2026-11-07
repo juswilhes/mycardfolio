@@ -125,6 +125,29 @@ export function resolveInExpansion(guide, card, expansionId, { preferOldest = fa
   return row ? { idProduct: chosen.p.id, cm: { ...row, idProduct: chosen.p.id, updated: guide.updated } } : null;
 }
 
+// Cardmarket-Erweiterung eines Sets, dessen Karten noch kein einziges Produkt haben (neues Set aus
+// tcgplayerSetImport.js): die Erweiterung, in der die meisten Karten über Name + Angriffe eindeutig zu finden
+// sind - mindestens 10 Karten und 40 % der Karten mit Angriffen, sonst keine.
+export function guessExpansion(guide, cards) {
+  const withAttacks = cards.filter((c) => parseList(c.abilities).length + parseList(c.attacks).length > 0);
+  if (withAttacks.length < 10) return null;
+  const prefix = (s) => norm(s).slice(0, 5);
+  const byPrefix = new Map();
+  for (const p of guide.products.values()) {
+    const k = prefix(splitName(p.name).base);
+    if (!byPrefix.has(k)) byPrefix.set(k, new Set());
+    byPrefix.get(k).add(p.expansion);
+  }
+  const counts = new Map();
+  for (const c of withAttacks) {
+    for (const exp of byPrefix.get(prefix(c.name)) ?? []) {
+      if (resolveInExpansion(guide, c, exp)) counts.set(exp, (counts.get(exp) ?? 0) + 1);
+    }
+  }
+  const [best, n] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [];
+  return n >= 10 && n >= withAttacks.length * 0.4 ? best : null;
+}
+
 // Wie resolveInExpansion, mit der Erweiterung eines (falsch geteilten) Produkts
 export async function resolveProduct(card, sharedProductId) {
   if (!sharedProductId) return null;

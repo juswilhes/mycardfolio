@@ -31,6 +31,7 @@ import { catchUpVariantFlags } from "./services/variantFlags.js";
 import { catchUpMissingPrices } from "./services/setPriceBackfill.js";
 import { catchUpGuidePrices, cleanUpWobblySeries, capHistoryToAvg30Band } from "./services/guidePrices.js";
 import { catchUpCardmarketPages } from "./services/cardmarketLinks.js";
+import { catchUpNewSets } from "./services/newCardsSync.js";
 import { rebuildAnalysisCache } from "./services/analysisCache.js";
 import { metaFor, renderIndex, sitemap, redirectFor } from "./services/seo.js";
 import { scheduleImageRepair } from "./services/imageRepair.js";
@@ -202,6 +203,7 @@ app.listen(PORT, () => {
   catchUpVariantFlags();
   catchUpMissingPrices();
   catchUpGuidePrices();
+  catchUpNewSets(); // neue Sets, die TCGdex noch nicht hat (Delta Reign), gleich nach dem Deploy
   try {
     cleanUpWobblySeries(); // einmalig, vor dem Vorrechnen der Auswertungen
   } catch (e) {

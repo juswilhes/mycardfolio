@@ -1,6 +1,7 @@
 import db from "../db/index.js";
 import { refreshTcgdexSets, tcgdexSetId } from "./priceProvider.js";
 import { importTcgdexSet } from "./tcgdexImport.js";
+import { importNewSetsFromTcgplayer } from "./tcgplayerSetImport.js";
 
 // Nächtlicher Neu-Check (Teil des Tagesjobs um 1 Uhr): gibt es bei TCGdex
 // - komplett neue Sets, die wir noch nicht haben, oder
@@ -88,7 +89,15 @@ export async function syncNewCards({ dryRun = false } = {}) {
   }
 
   console.log(`[newCards] Neue Sets: ${newSets.join(", ") || "-"} | Sets mit neuen Karten: ${grownSets.join(", ") || "-"}`);
-  if (dryRun) return { newSets, grownSets };
+  // Ersatzquelle für neue Sets, die TCGdex noch nicht hat (tcgplayerSetImport.js)
+  const tcgdexNames = new Set(tcgdexSets.map((t) => normName(t.name)));
+  let tcgplayerSets = [];
+  try {
+    tcgplayerSets = await importNewSetsFromTcgplayer({ covered, tcgdexNames, dryRun });
+  } catch (e) {
+    console.error("[newCards] TCGplayer-Abgleich fehlgeschlagen:", e.message);
+  }
+  if (dryRun) return { newSets, grownSets, tcgplayerSets };
 
   for (const id of newSets) {
     try {
@@ -104,5 +113,28 @@ export async function syncNewCards({ dryRun = false } = {}) {
       console.error(`[newCards] Nachladen für Set ${id} fehlgeschlagen:`, e.message);
     }
   }
-  return { newSets, grownSets };
+  return { newSets, grownSets, tcgplayerSets };
+}
+
+// Einmal nach dem Deploy (Marker), damit ein schon erschienenes Set nicht bis zum Nachtlauf wartet: Neu-Check
+// und für neue Sets gleich die Cardmarket-Preise, Slugs/Sitemap und Analysen.
+export function catchUpNewSets() {
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'tcgplayer_sets_v1'`).get()) return;
+  setTimeout(async () => {
+    try {
+      const { newSets, tcgplayerSets } = await syncNewCards();
+      const added = [...newSets, ...(tcgplayerSets ?? [])];
+      if (added.length) {
+        const { refreshPricesFromGuide } = await import("./guidePrices.js");
+        const { rebuildSitemap } = await import("./seo.js");
+        const { rebuildAnalysisCache } = await import("./analysisCache.js");
+        await refreshPricesFromGuide({ onlySetIds: added });
+        rebuildSitemap();
+        rebuildAnalysisCache();
+      }
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('tcgplayer_sets_v1', '1')`).run();
+    } catch (e) {
+      console.error("[newCards] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);
+    }
+  }, 90_000);
 }

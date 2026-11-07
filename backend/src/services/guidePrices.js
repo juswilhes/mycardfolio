@@ -1,7 +1,7 @@
 import db from "../db/index.js";
 import { recordPrices } from "./cardService.js";
 import { cardmarketRows, AVG30_BAND } from "./priceProvider.js";
-import { loadGuide, expansionOfProduct, resolveInExpansion } from "./cardmarketGuide.js";
+import { loadGuide, expansionOfProduct, resolveInExpansion, guessExpansion } from "./cardmarketGuide.js";
 import { rebuildAnalysisCache } from "./analysisCache.js";
 
 // Der Hauptweg für die Nacht-Preise: Cardmarkets öffentliche Preisliste (eine Datei mit
@@ -15,6 +15,8 @@ const cardsStmt = db.prepare(`
          cardmarket_product_id AS pid, cardmarket_pid_locked AS locked, variant_flags, price_valid_from
   FROM cards WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
+
+const recentSetsStmt = db.prepare(`SELECT id FROM card_sets WHERE release_date >= ?`);
 
 // Gleiche Karte zweimal im Set (Justus 29.10.2026: Pikachu Cosmic Eclipse #66 Common und #241 Secret Rare,
 // Vaporeon Skyridge #33 und H31): Cardmarket führt beide unter EXAKT demselben Namen, die Suche über Name +
@@ -104,9 +106,9 @@ const relockStmt = db.prepare(`
 // Produkt gewechselt: alle älteren Werte stammen vom falschen Produkt -> ausblenden (auch über ein früheres Datum hinweg)
 const resetValidFromStmt = db.prepare(`UPDATE cards SET price_valid_from = ? WHERE id = ?`);
 
-export async function refreshPricesFromGuide() {
+export async function refreshPricesFromGuide({ onlySetIds = null } = {}) {
   const guide = await loadGuide();
-  const cards = cardsStmt.all();
+  const cards = cardsStmt.all().filter((c) => !onlySetIds || onlySetIds.includes(c.set_id));
 
   // Wie oft kommt ein Produkt in einem Set vor? (>1 = TCGdex hat es mehrfach vergeben)
   const uses = new Map();
@@ -125,10 +127,25 @@ export async function refreshPricesFromGuide() {
   const setExpansion = new Map(
     [...expCounts].map(([setId, m]) => [setId, [...m].sort((a, b) => b[1] - a[1])[0][0]])
   );
+  // Neue Sets ohne ein einziges Produkt (tcgplayerSetImport.js): Erweiterung über Name + Angriffe suchen
+  const recent = new Set(recentSetsStmt.all(new Date(Date.now() - 210 * 86400000).toISOString().slice(0, 10).replace(/-/g, "/")).map((r) => r.id));
+  // Gleiche Karte mehrfach im neuen Set (Pincurchin Common + Illustration Rare), bei Cardmarket aber (noch) seltener
+  // geführt: der "eindeutige" Treffer gehört dann oft zur anderen Karte und würde fest zugeordnet - lieber kein Preis
+  const sigCount = new Map();
+  for (const c of cards) if (recent.has(c.set_id)) sigCount.set(`${c.set_id}|${cardSig(c)}`, (sigCount.get(`${c.set_id}|${cardSig(c)}`) ?? 0) + 1);
+  const productCount = (expansion, sig) => (guide.byExpansion.get(expansion) ?? []).filter((p) => productSig(p.name) === sig).length;
+  for (const setId of recent) {
+    if (setExpansion.has(setId)) continue;
+    const exp = guessExpansion(guide, cards.filter((c) => c.set_id === setId));
+    if (exp) setExpansion.set(setId, exp);
+  }
 
   // Gleiche Karte zweimal im Set: Zuordnung vorab festschreiben, auch über eine frühere (falsche) feste Zuordnung
   // hinweg; wechselt das Produkt, gelten die alten Werte nicht mehr (corrected -> price_valid_from)
-  const pairs = pairIdenticalProducts(guide, cards, setExpansion);
+  // Nicht bei Sets unter 30 Tagen: die Zuordnung folgt der Preis-Reihenfolge, und die ist kurz nach Erscheinen
+  // noch Zufall (kaum Verkäufe) - festgeschrieben bliebe sie aber für immer
+  const young = new Set(recentSetsStmt.all(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10).replace(/-/g, "/")).map((r) => r.id));
+  const pairs = pairIdenticalProducts(guide, cards.filter((c) => !young.has(c.set_id)), setExpansion);
   const changed = new Set();
   db.transaction(() => {
     for (const c of cards) {
@@ -169,8 +186,15 @@ export async function refreshPricesFromGuide() {
 
       if (!pid || shared || c.price_valid_from) {
         const expansion = (pid && expansionOfProduct(guide, pid)) || setExpansion.get(c.set_id);
+        const twins = sigCount.get(`${c.set_id}|${cardSig(c)}`) ?? 1;
+        if (twins > 1 && productCount(expansion, cardSig(c)) < twins) {
+          stats.offen++;
+          continue;
+        }
         const unique = resolveInExpansion(guide, c, expansion);
-        const hit = unique ?? (!pid ? resolveInExpansion(guide, c, expansion, { preferOldest: true }) : null);
+        // Raten (ältestes passendes Produkt) nur, wenn die Karte im Set nur einmal vorkommt - sonst bekäme die
+        // Illustration Rare den Preis der gewöhnlichen Karte (Delta Reign: Aarune SIR = Ultra Rare = 0,18 EUR)
+        const hit = unique ?? (!pid && twins === 1 ? resolveInExpansion(guide, c, expansion, { preferOldest: true }) : null);
         if (hit) {
           pid = hit.idProduct;
           corrected = !!(shared || c.price_valid_from);
