@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
+import { getSealedCatalog } from "../api.js";
+import { eur } from "../lib/format.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const round2 = (n) => Math.round(n * 100) / 100;
 
 // Dialog zum Erfassen ODER Bearbeiten eines Sealed-Produkts (Booster-Display,
-// Elite Trainer Box, Bundle, ...). Anders als bei Karten gibt es dafür keine
-// automatische Preisquelle - der aktuelle Wert wird vom Nutzer selbst
-// eingetragen und bleibt bis zur nächsten manuellen Änderung stehen.
+// Elite Trainer Box, Bundle, ...). Beim Hinzufügen auf der Set-Seite steht oben
+// die Auswahl aus dem Katalog des Sets (Bild + aktueller Wert, jede Nacht neu,
+// backend/src/services/sealedCatalog.js); ein eigener Wert geht vor. Produkte, die
+// nicht im Katalog stehen, lassen sich weiter von Hand eintragen.
 export default function SealedProductDialog({
+  setId,
   setName,
   initial,
   busy,
@@ -16,6 +20,9 @@ export default function SealedProductDialog({
   onClose,
 }) {
   const editing = !!initial;
+  const [catalog, setCatalog] = useState(null);
+  const [catalogId, setCatalogId] = useState(initial?.catalog_id ?? null);
+  const [autoValue, setAutoValue] = useState(initial?.auto_value ?? null);
   const [name, setName2] = useState(initial?.name ?? "");
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? 1));
   // Gesamtpreis für diesen Kauf, wie beim Karten-Dialog - nicht pro Stück,
@@ -42,6 +49,24 @@ export default function SealedProductDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    if (editing || !setId) return;
+    getSealedCatalog(setId)
+      .then(setCatalog)
+      .catch(() => setCatalog([]));
+  }, [editing, setId]);
+
+  function choose(item) {
+    setCatalogId(item?.id ?? null);
+    setAutoValue(item?.priceCents != null ? item.priceCents / 100 : null);
+    setName2(item?.name ?? "");
+    setImageUrl("");
+    setCardmarketUrl("");
+  }
+
+  // "Delta Reign Elite Trainer Box" -> "Elite Trainer Box" (der Set-Name steht schon oben)
+  const short = (n) => (setName && n.startsWith(`${setName} `) ? n.slice(setName.length + 1) : n);
+
   const qty = parseInt(quantity, 10) || 1;
   const totalPaid = (parseFloat(purchasePrice) || 0) + (parseFloat(shippingCost) || 0);
 
@@ -55,9 +80,10 @@ export default function SealedProductDialog({
       shippingCost: shippingCost === "" ? null : round2((parseFloat(shippingCost) || 0) / qty),
       purchaseDate: purchaseDate || null,
       currentValue: currentValue === "" ? null : parseFloat(currentValue) || 0,
-      imageUrl: imageUrl.trim() || null,
-      cardmarketUrl: cardmarketUrl.trim() || null,
+      imageUrl: catalogId ? null : imageUrl.trim() || null,
+      cardmarketUrl: catalogId ? null : cardmarketUrl.trim() || null,
       notes: notes.trim() || null,
+      catalogId,
     });
   }
 
@@ -77,6 +103,42 @@ export default function SealedProductDialog({
           {editing ? "Sealed-Produkt bearbeiten" : "Sealed-Produkt hinzufügen"}
         </p>
         {setName && <p className="font-semibold mb-4 truncate">{setName}</p>}
+
+        {catalog === null && !editing && setId && <p className="text-xs text-subtle mb-4">Lade Produkte …</p>}
+        {catalog?.length > 0 && (
+          <div className="mb-5">
+            <p className="text-xs text-subtle mb-2">Produkt auswählen</p>
+            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+              {catalog.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => choose(item)}
+                  className={`rounded-xl border p-2 text-left flex flex-col gap-1 bg-canvas hover:border-ink ${
+                    catalogId === item.id ? "border-ink ring-1 ring-ink" : "border-line"
+                  }`}
+                >
+                  {item.image ? (
+                    <img src={item.image} alt="" loading="lazy" className="h-16 w-full object-contain" />
+                  ) : (
+                    <span className="h-16" />
+                  )}
+                  <span className="text-[11px] leading-tight line-clamp-2">{short(item.name)}</span>
+                  <span className="text-xs font-mono">{item.priceCents != null ? eur(item.priceCents / 100) : "—"}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => choose(null)}
+                className={`rounded-xl border p-2 text-[11px] text-subtle bg-canvas hover:border-ink ${
+                  catalogId == null ? "border-ink ring-1 ring-ink" : "border-line"
+                }`}
+              >
+                Anderes Produkt selbst eintragen
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs text-subtle col-span-2">
@@ -124,35 +186,42 @@ export default function SealedProductDialog({
             />
           </label>
           <label className="text-xs text-subtle col-span-2">
-            Aktueller Wert (€) pro Stück
+            {catalogId ? "Eigener Wert (€) pro Stück" : "Aktueller Wert (€) pro Stück"}
             <input
-              type="number" min="0" step="0.01" inputMode="decimal" placeholder="optional"
+              type="number" min="0" step="0.01" inputMode="decimal"
+              placeholder={catalogId && autoValue != null ? autoValue.toFixed(2) : "optional"}
               value={currentValue} onChange={(e) => setCurrentValue(e.target.value)}
               className={inputCls}
             />
             <span className="block mt-0.5 text-[11px] text-subtle">
-              Gibt es dafür keine automatische Preisquelle - trag deine eigene Einschätzung ein, jederzeit änderbar.
+              {catalogId
+                ? `Leer lassen: der Wert${autoValue != null ? ` (aktuell ${eur(autoValue)})` : ""} wird jede Nacht automatisch aktualisiert.`
+                : "Trag deine eigene Einschätzung ein, jederzeit änderbar."}
             </span>
           </label>
-          <label className="text-xs text-subtle col-span-2">
-            Bild-URL (optional)
-            <input
-              type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://…"
-              className={inputCls}
-            />
-          </label>
-          <label className="text-xs text-subtle col-span-2">
-            Cardmarket-Link (optional)
-            <input
-              type="url" value={cardmarketUrl} onChange={(e) => setCardmarketUrl(e.target.value)}
-              placeholder="https://www.cardmarket.com/…"
-              className={inputCls}
-            />
-            <span className="block mt-0.5 text-[11px] text-subtle">
-              Link zur Produktseite bei Cardmarket - dort siehst du den aktuellen Marktpreis.
-            </span>
-          </label>
+          {!catalogId && (
+            <>
+              <label className="text-xs text-subtle col-span-2">
+                Bild-URL (optional)
+                <input
+                  type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://…"
+                  className={inputCls}
+                />
+              </label>
+              <label className="text-xs text-subtle col-span-2">
+                Cardmarket-Link (optional)
+                <input
+                  type="url" value={cardmarketUrl} onChange={(e) => setCardmarketUrl(e.target.value)}
+                  placeholder="https://www.cardmarket.com/…"
+                  className={inputCls}
+                />
+                <span className="block mt-0.5 text-[11px] text-subtle">
+                  Link zur Produktseite bei Cardmarket - dort siehst du den aktuellen Marktpreis.
+                </span>
+              </label>
+            </>
+          )}
           <label className="text-xs text-subtle col-span-2">
             Notiz (optional)
             <input

@@ -26,6 +26,7 @@ import { countPageView, isKnownRoute, humanPing } from "./middleware/hits.js";
 import { schedulePriceFetching, runDailyPriceJob } from "./services/priceFetcher.js";
 import { catchUpSetValueSnapshots, recordSetValueSnapshots } from "./services/setValueSnapshots.js";
 import { catchUpSealedPrices } from "./services/sealedPrices.js";
+import { catchUpSealedCatalog } from "./services/sealedCatalog.js";
 import { seedStarterArticles, seedLaterArticles } from "./services/articles.js";
 import { catchUpVariantFlags } from "./services/variantFlags.js";
 import { catchUpMissingPrices } from "./services/setPriceBackfill.js";
@@ -203,6 +204,7 @@ app.listen(PORT, () => {
   catchUpVariantFlags();
   catchUpMissingPrices();
   catchUpGuidePrices();
+  catchUpSealedCatalog();
   catchUpNewSets(); // neue Sets, die TCGdex noch nicht hat (Delta Reign), gleich nach dem Deploy
   try {
     cleanUpWobblySeries(); // einmalig, vor dem Vorrechnen der Auswertungen

@@ -5,12 +5,13 @@ import {
   updateSealedProduct,
   deleteSealedProduct,
 } from "../services/sealedProductService.js";
+import { searchLink } from "../services/sealedPrices.js";
 
 const router = Router();
 
 // GET /api/sealed-products -> alle Sealed-Produkte des Nutzers
 router.get("/", (req, res) => {
-  res.json(listSealedProducts.all(req.user.id));
+  res.json(listSealedProducts.all(req.user.id).map((p) => ({ ...p, auto_link: p.catalog_id ? searchLink(p.catalog_cm_name) : null })));
 });
 
 // POST /api/sealed-products { setId?, setName?, name, quantity, purchasePrice, shippingCost, purchaseDate, currentValue?, notes? }

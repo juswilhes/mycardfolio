@@ -8,6 +8,7 @@ import { recordSetValueSnapshots } from "../services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "../services/analysisCache.js";
 import { resolveSetParam } from "../services/setSlugs.js";
 import { sealedForSet } from "../services/sealedPrices.js";
+import { catalogForSet } from "../services/sealedCatalog.js";
 
 const router = Router();
 
@@ -48,6 +49,11 @@ router.get("/:setId", (req, res) => {
   const set = getSetLocal(req.params.setId);
   if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
   res.json({ ...set, sealed: sealedForSet(set.id) });
+});
+
+// GET /api/sets/:setId/sealed-catalog -> versiegelte Produkte des Sets zur Auswahl (Bild, Name, aktueller Wert)
+router.get("/:setId/sealed-catalog", (req, res) => {
+  res.json(catalogForSet(req.params.setId));
 });
 
 // GET /api/sets/:setId/cards -> alle Karten in diesem Set inkl. aktuellem

@@ -10,6 +10,7 @@ import { repairImages } from "./imageRepair.js";
 import { rebuildAnalysisCache } from "./analysisCache.js";
 import { recordSetValueSnapshots } from "./setValueSnapshots.js";
 import { refreshSealedPrices } from "./sealedPrices.js";
+import { refreshSealedCatalog } from "./sealedCatalog.js";
 import { rebuildSitemap } from "./seo.js";
 import { refreshVariantFlags } from "./variantFlags.js";
 import { refreshPricesFromGuide } from "./guidePrices.js";
@@ -111,6 +112,7 @@ export async function runDailyPriceJob() {
       ["Preise nachholen", backfillAllMissingPrices],
       ["Gegenprobe", blendWithTcgplayer],
       ["Sealed-Preise", refreshSealedPrices],
+      ["Sealed-Katalog", refreshSealedCatalog],
       // neue Karten bekommen ihre Cardmarket-Seite; sonntags auch die bisher unbekannten noch einmal
       ["Cardmarket-Links", () => fillCardmarketPages({ limit: 5000, retryEmpty: new Date().getDay() === 0 })],
       ["Analysen", async () => rebuildAnalysisCache()],

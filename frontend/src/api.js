@@ -111,6 +111,7 @@ export const removeFromWatchlist = (externalId) =>
 // --- Sealed Produkte -------------------------------------------------
 export const getSealedProducts = () => request("/sealed-products");
 export const addSealedProduct = (payload) => request("/sealed-products", { method: "POST", body: payload });
+export const getSealedCatalog = (setId) => request(`/sets/${setId}/sealed-catalog`);
 export const updateSealedProduct = (id, payload) =>
   request(`/sealed-products/${id}`, { method: "PATCH", body: payload });
 export const deleteSealedProduct = (id) => request(`/sealed-products/${id}`, { method: "DELETE" });

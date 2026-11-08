@@ -40,8 +40,8 @@ const updateStmt = db.prepare(`
 
 // TCGplayer-Gruppe (= Set) zu unserem Set: Namen ohne Kürzel ("SV02: ", "SM - ", "EX "), "Base Set" am Ende und
 // "&"/"and" gleich behandelt; Sonderfälle mit festem Namen
-const TCG_GROUP_ALIAS = { base1: "Base Set", sm1: "SM Base Set", sv3pt5: "SV: Scarlet & Violet 151" };
-const groupKey = (name) => {
+export const TCG_GROUP_ALIAS = { base1: "Base Set", sm1: "SM Base Set", sv3pt5: "SV: Scarlet & Violet 151" };
+export const groupKey = (name) => {
   let n = String(name ?? "")
     .replace(/^[A-Za-z0-9 .]+:\s*/, "")
     .replace(/^(SM|XY|SWSH|SV|BW|DP|HGSS|ME)\s+-\s+/i, "")
@@ -52,7 +52,7 @@ const groupKey = (name) => {
   return n.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
 };
 
-async function tcgJson(path) {
+export async function tcgJson(path) {
   await new Promise((r) => setTimeout(r, 250)); // Pause zwischen den Abrufen (Regeln von tcgcsv)
   const res = await fetch(`${TCGCSV}${path}`, { headers: UA, signal: AbortSignal.timeout(30_000) });
   if (!res.ok) throw new Error(`tcgcsv ${path}: HTTP ${res.status}`);
@@ -119,10 +119,11 @@ function pick(products, category, suffix, exclude) {
 
 const cents = (eur) => (eur > 0 ? Math.round(eur * 100) : null);
 
-export async function refreshSealedPrices() {
-  const guide = await loadGuide();
-
-  // Erweiterung je Set (häufigste unter den Kartenprodukten) und wie viele Karten dafür sprechen
+// Cardmarket-Erweiterung je Set für die versiegelten Produkte: die häufigste unter den Kartenprodukten; bei Teilsets
+// (Trainer Gallery, Shiny Vault ...), die sich die Erweiterung mit dem Hauptset teilen, nur EIN Set (Vorrang: das
+// Set, dessen Name im Produktnamen steht - "Shining Fates Booster" gehört zu Shining Fates -, sonst das größte).
+// -> Map setId -> { exp, n }, nur Sets, denen die Erweiterung gehört
+export function sealedExpansions(guide) {
   const counts = new Map();
   for (const r of cardProductsStmt.all()) {
     const exp = expansionOfProduct(guide, r.pid);
@@ -136,11 +137,7 @@ export async function refreshSealedPrices() {
     const [exp, n] = [...m].sort((a, b) => b[1] - a[1])[0];
     expansionOf.set(setId, { exp, n });
   }
-  // Teilsets (Trainer Gallery, Shiny Vault ...) teilen sich die Erweiterung mit dem Hauptset: Preise nur bei EINEM
-  // Set, sonst stünde derselbe Booster doppelt in der Liste. Vorrang hat das Set, dessen Name im Produktnamen steht
-  // ("Shining Fates Booster" gehört zu Shining Fates, nicht zum größeren Teilset Shiny Vault), sonst das größte.
-  const sets = setsStmt.all();
-  const nameOf = new Map(sets.map((x) => [x.id, x.name]));
+  const nameOf = new Map(setsStmt.all().map((x) => [x.id, x.name]));
   const flat = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const owner = new Map();
   for (const [setId, { exp, n }] of expansionOf) {
@@ -149,13 +146,21 @@ export async function refreshSealedPrices() {
     const cur = owner.get(exp);
     if (!cur || (named && !cur.named) || (named === cur.named && n > cur.n)) owner.set(exp, { setId, n, named });
   }
+  return new Map([...expansionOf].filter(([setId, { exp }]) => owner.get(exp)?.setId === setId));
+}
+
+export async function refreshSealedPrices() {
+  const guide = await loadGuide();
+
+  const expansionOf = sealedExpansions(guide);
+  const sets = setsStmt.all();
 
   // Erst Cardmarket je Set bestimmen, dann TCGplayer nur für Sets mit Cardmarket-Preis abrufen (gemittelt wird nur dort)
   const cm = new Map();
   const stats = { booster: 0, display: 0, unplausibel: 0, mitTcgplayer: 0 };
   for (const { id } of sets) {
     const e = expansionOf.get(id);
-    const products = e && owner.get(e.exp)?.setId === id ? guide.sealedByExpansion?.get(e.exp) ?? [] : [];
+    const products = e ? guide.sealedByExpansion?.get(e.exp) ?? [] : [];
     const booster = pick(products, "Pokémon Booster", " Booster", BOOSTER_EXCLUDE);
     const display = pick(products, "Pokémon Display", " Booster Box", DISPLAY_EXCLUDE);
     let boosterCents = booster ? cents(robustPrice(guide.prices.get(booster.id) ?? {})) : null;
@@ -212,7 +217,7 @@ const sealedOfSetStmt = db.prepare(`
 `);
 const UTM = "utm_source=mycardfolio&utm_medium=referral";
 // Cardmarket-Adressen lassen sich aus der Produktnummer nicht bauen (landet auf der Startseite) - Suche nach dem Namen
-const searchLink = (name) =>
+export const searchLink = (name) =>
   name ? `https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=${encodeURIComponent(name)}&${UTM}` : null;
 // "?v=2": neue Adresse für die Fassung ohne weißen Hintergrund (Browser hielten die alte sonst 30 Tage)
 const item = (name, priceCents, cardmarketCents, tcgplayerCents, image) =>

@@ -106,8 +106,7 @@ CREATE TABLE IF NOT EXISTS sales (
 );
 
 -- Versiegelte Produkte (Booster-Displays, Elite Trainer Boxen, Bundles, ...).
--- Anders als Karten gibt es dafür keine kostenlose Preisquelle - current_value
--- wird vom Nutzer selbst gepflegt, nicht automatisch nachgezogen.
+-- current_value = eigener Wert des Nutzers; mit catalog_id kommt sonst der automatische Wert aus sealed_catalog.
 CREATE TABLE IF NOT EXISTS sealed_products (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id        INTEGER NOT NULL REFERENCES users(id),
@@ -331,6 +330,28 @@ if (!csColumns.has("booster_price_cents")) {
 if (!csColumns.has("prices_updated_at")) {
   db.exec(`ALTER TABLE card_sets ADD COLUMN prices_updated_at TEXT`);
 }
+// Katalog der versiegelten Produkte je Set (services/sealedCatalog.js, Nachtlauf): Auswahl beim Hinzufügen und
+// automatischer Wert; sealed_products.catalog_id verweist darauf (Justus 08.11.2026)
+db.exec(`
+CREATE TABLE IF NOT EXISTS sealed_catalog (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id         TEXT NOT NULL,
+  tcg_product_id INTEGER NOT NULL UNIQUE,
+  name           TEXT NOT NULL,
+  image          TEXT,
+  cm_product_id  INTEGER,
+  cm_name        TEXT,
+  cm_cents       INTEGER,
+  tcg_cents      INTEGER,
+  price_cents    INTEGER,
+  updated_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sealed_catalog_set ON sealed_catalog(set_id);
+`);
+if (!spColumns.has("catalog_id")) {
+  db.exec(`ALTER TABLE sealed_products ADD COLUMN catalog_id INTEGER`);
+}
+
 // Automatische Booster-/Displaypreise aus Cardmarkets Preisliste (services/sealedPrices.js, Nachtlauf) samt
 // Produktname. manual_prices_override = 1: der Betreiber hat selbst Preise eingetragen, die dann vorgehen;
 // ohne eigene Eingabe gelten die automatischen (Justus 29.10.2026).

@@ -299,6 +299,7 @@ export default function SetDetail() {
 
       {sealedOpen && (
         <SealedProductDialog
+          setId={set?.id ?? setId}
           setName={set?.name}
           busy={sealedBusy}
           error={sealedError}

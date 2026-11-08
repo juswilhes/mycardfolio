@@ -8,7 +8,9 @@ const cost = (p) =>
   p.purchase_price != null || p.shipping_cost != null
     ? ((p.purchase_price ?? 0) + (p.shipping_cost ?? 0)) * (p.quantity ?? 1)
     : null;
-const value = (p) => (p.current_value != null ? p.current_value * (p.quantity ?? 1) : null);
+// Eigener Wert geht vor, sonst der automatische aus dem Katalog (jede Nacht neu)
+const unitValue = (p) => p.current_value ?? p.auto_value ?? null;
+const value = (p) => (unitValue(p) != null ? unitValue(p) * (p.quantity ?? 1) : null);
 
 // Versiegelte Produkte (Displays, Elite Trainer Boxen, ...) - eigener
 // Abschnitt in der Sammlung, damit sie nicht in einem separaten Reiter
@@ -59,7 +61,7 @@ export default function SealedProductList() {
 
   const totalCost = items.reduce((s, p) => s + (cost(p) ?? 0), 0);
   const totalValue = items.reduce((s, p) => s + (value(p) ?? 0), 0);
-  const anyValue = items.some((p) => p.current_value != null);
+  const anyValue = items.some((p) => unitValue(p) != null);
 
   return (
     <div className="mb-8">
@@ -85,9 +87,9 @@ export default function SealedProductList() {
             const gain = c != null && v != null ? v - c : null;
             return (
               <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                {p.image_url ? (
+                {p.image_url || p.catalog_image ? (
                   <img
-                    src={p.image_url}
+                    src={p.image_url || p.catalog_image}
                     alt=""
                     className="w-12 h-12 object-contain rounded-lg border border-line shrink-0 bg-canvas"
                   />
@@ -107,9 +109,9 @@ export default function SealedProductList() {
                     {p.set_name ?? "Kein Set"}
                     {p.purchase_date ? ` · ${new Date(p.purchase_date).toLocaleDateString("de-DE")}` : ""}
                   </p>
-                  {p.cardmarket_url && (
+                  {(p.cardmarket_url || p.auto_link) && (
                     <a
-                      href={p.cardmarket_url}
+                      href={p.cardmarket_url || p.auto_link}
                       target="_blank"
                       rel="noreferrer"
                       className="text-xs underline text-subtle hover:text-ink"
