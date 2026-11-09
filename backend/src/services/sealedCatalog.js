@@ -118,6 +118,9 @@ const catalogStmt = db.prepare(`
   SELECT id, name, image, price_cents, cm_name, updated_at FROM sealed_catalog
   WHERE set_id = ? ORDER BY price_cents IS NULL, price_cents DESC, name
 `);
+const countStmt = db.prepare(`SELECT COUNT(*) n FROM sealed_catalog WHERE set_id = ?`);
+export const catalogCount = (setId) => countStmt.get(setId).n;
+
 export function catalogForSet(setId) {
   return catalogStmt.all(setId).map((c) => ({
     id: c.id,

@@ -8,7 +8,7 @@ import { recordSetValueSnapshots } from "../services/setValueSnapshots.js";
 import { rebuildAnalysisCache } from "../services/analysisCache.js";
 import { resolveSetParam } from "../services/setSlugs.js";
 import { sealedForSet } from "../services/sealedPrices.js";
-import { catalogForSet } from "../services/sealedCatalog.js";
+import { catalogForSet, catalogCount } from "../services/sealedCatalog.js";
 
 const router = Router();
 
@@ -48,7 +48,7 @@ router.get("/progress", authRequired, (req, res) => {
 router.get("/:setId", (req, res) => {
   const set = getSetLocal(req.params.setId);
   if (!set) return res.status(404).json({ error: "Set nicht gefunden" });
-  res.json({ ...set, sealed: sealedForSet(set.id) });
+  res.json({ ...set, sealed: sealedForSet(set.id), sealedCatalogCount: catalogCount(set.id) });
 });
 
 // GET /api/sets/:setId/sealed-catalog -> versiegelte Produkte des Sets zur Auswahl (Bild, Name, aktueller Wert)

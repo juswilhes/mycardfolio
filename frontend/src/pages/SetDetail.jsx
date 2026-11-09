@@ -173,7 +173,7 @@ export default function SetDetail() {
         </p>
       )}
 
-      <SealedPrices sealed={set?.sealed} />
+      <SealedPrices sealed={set?.sealed} setId={set?.id} setName={set?.name} catalogCount={set?.sealedCatalogCount ?? 0} />
 
       {cards && user && (
         <div className="mb-6">
