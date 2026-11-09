@@ -111,12 +111,14 @@ export function searchSealed(query, limit = 24) {
   const needs = parseSealedQuery(query);
   if (!needs.length) return { total: 0, items: [] };
   const hits = rows().filter((r) => needs.every((alts) => alts.some((a) => r.hay.includes(` ${a}`))));
-  // Reihenfolge: Treffer direkt im Produktnamen, dann neuere Sets, dann teurere Produkte
+  // Reihenfolge: Treffer direkt im Produktnamen, dann neuere Sets, dann das schlichtere Produkt (kürzerer Name:
+  // "Booster Box" vor "Build & Battle Box Display" - wer "Display" tippt, meint die Booster Box), dann teurere
   const inName = (r) => needs.every((alts) => alts.some((a) => r.nameNorm.includes(` ${a}`)));
   hits.sort(
     (a, b) =>
       Number(inName(b)) - Number(inName(a)) ||
       String(b.release_date ?? "").localeCompare(String(a.release_date ?? "")) ||
+      a.name.length - b.name.length ||
       (b.price_cents ?? -1) - (a.price_cents ?? -1)
   );
   return {
