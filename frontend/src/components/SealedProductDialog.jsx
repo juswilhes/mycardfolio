@@ -12,6 +12,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
 // nicht im Katalog stehen, lassen sich weiter von Hand eintragen.
 export default function SealedProductDialog({
   setId,
+  preset, // Katalog-Produkt, das schon gewählt ist ("+" in der Sealed-Liste der Set-Seite)
   setName,
   initial,
   busy,
@@ -21,9 +22,9 @@ export default function SealedProductDialog({
 }) {
   const editing = !!initial;
   const [catalog, setCatalog] = useState(null);
-  const [catalogId, setCatalogId] = useState(initial?.catalog_id ?? null);
-  const [autoValue, setAutoValue] = useState(initial?.auto_value ?? null);
-  const [name, setName2] = useState(initial?.name ?? "");
+  const [catalogId, setCatalogId] = useState(initial?.catalog_id ?? preset?.id ?? null);
+  const [autoValue, setAutoValue] = useState(initial?.auto_value ?? (preset?.priceCents != null ? preset.priceCents / 100 : null));
+  const [name, setName2] = useState(initial?.name ?? preset?.name ?? "");
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? 1));
   // Gesamtpreis für diesen Kauf, wie beim Karten-Dialog - nicht pro Stück,
   // damit niemand selbst durch die Menge teilen muss.

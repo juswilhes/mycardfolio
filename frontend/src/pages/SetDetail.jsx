@@ -49,6 +49,7 @@ export default function SetDetail() {
   const setSort = (v) => setParam("sortierung", v, "number");
   const setRarity = (v) => setParam("seltenheit", v, "all");
   const [sealedOpen, setSealedOpen] = useState(false);
+  const [sealedPreset, setSealedPreset] = useState(null);
   const [sealedBusy, setSealedBusy] = useState(false);
   const [sealedError, setSealedError] = useState(null);
   const [sealedAdded, setSealedAdded] = useState(false);
@@ -120,6 +121,7 @@ export default function SetDetail() {
     try {
       await addSealedProduct({ ...values, setId: set?.id ?? setId, setName: set?.name });
       setSealedOpen(false);
+      setSealedPreset(null);
       setSealedAdded(true);
       setTimeout(() => setSealedAdded(false), 3000);
     } catch (err) {
@@ -169,11 +171,17 @@ export default function SetDetail() {
       {sealedAdded && (
         <p className="text-mint text-xs mb-4">
           Hinzugefügt – in deiner{" "}
-          <Link to="/sammlung" className="underline">Sammlung</Link> sichtbar.
+          <Link to="/sammlung?ansicht=sealed" className="underline">Sammlung (Sealed)</Link> sichtbar.
         </p>
       )}
 
-      <SealedPrices sealed={set?.sealed} setId={set?.id} setName={set?.name} catalogCount={set?.sealedCatalogCount ?? 0} />
+      <SealedPrices
+        sealed={set?.sealed}
+        setId={set?.id}
+        setName={set?.name}
+        catalogCount={set?.sealedCatalogCount ?? 0}
+        onAdd={user ? (item) => (setSealedPreset(item), setSealedOpen(true)) : undefined}
+      />
 
       {cards && user && (
         <div className="mb-6">
@@ -299,12 +307,14 @@ export default function SetDetail() {
 
       {sealedOpen && (
         <SealedProductDialog
+          key={sealedPreset?.id ?? "neu"}
+          preset={sealedPreset}
           setId={set?.id ?? setId}
           setName={set?.name}
           busy={sealedBusy}
           error={sealedError}
           onConfirm={confirmSealed}
-          onClose={() => !sealedBusy && (setSealedOpen(false), setSealedError(null))}
+          onClose={() => !sealedBusy && (setSealedOpen(false), setSealedError(null), setSealedPreset(null))}
         />
       )}
     </div>

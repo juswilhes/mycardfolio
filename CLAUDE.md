@@ -102,8 +102,8 @@ Die Karten-Datenbank `backend/data.sqlite` (~45 MB) ist **nicht in Git**. Ohne s
 - **Testphase: 20 Plätze** (`TESTER_LIMIT` in `authService.js`, Betreiber zählt nicht): Startseite zeigt für Abgemeldete bei offener Registrierung den Kasten "Testphase · nur 20 Plätze" (`TesterInvite` in `Landing.jsx`), KEINE Anzeige freier Plätze (Justus: unprofessionell; API liefert nur `{limit, full}`); bei 20 Konten schließt die Registrierung von selbst.
 - **Registrierung bleibt zu** (`REGISTRATION_OPEN=false` in der Server-.env), bis Justus sagt, dass alles fertig ist - Öffnen ist der LETZTE Schritt (Justus, 22.10.2026).
 
-## Meine Sammlung: Einzelkarten | Sealed
-- Umschalter oben (`SegmentedToggle`, Justus 09.11.2026), Ansicht in der Adresse (`/sammlung?ansicht=sealed`). Einzelkarten = alles Bisherige (Wert, Verlauf, Sets, Orden, Bewegungen, Liste); Sealed = `SealedProductList` mit Knopf "+ Sealed-Produkt hinzufügen" -> `SealedAddDialog.jsx` (erst Set wählen, dann Katalog-Auswahl wie auf der Set-Seite; "Ohne Set eintragen" möglich). Sealed zählt nicht in den Kartenwert.
+## Meine Sammlung: Gesamt | Einzelkarten | Sealed
+- Umschalter oben (`SegmentedToggle`, Justus 09.11.2026), Ansicht in der Adresse (`/sammlung`, `?ansicht=karten`, `?ansicht=sealed`). Gesamt (Standard) = Kartenwert + Sealed-Wert, Investiert, G/V (nur Einträge mit Kaufpreis), zwei Kacheln mit Anteil. Sealed lässt sich auch auf der Set-Seite hinzufügen: "+" je Produkt in der aufgeklappten Sealed-Liste (`onAdd` in `SealedPrices.jsx`, Dialog mit `preset`). Einzelkarten = alles Bisherige (Wert, Verlauf, Sets, Orden, Bewegungen, Liste); Sealed = `SealedProductList` mit Knopf "+ Sealed-Produkt hinzufügen" -> `SealedAddDialog.jsx` (erst Set wählen, dann Katalog-Auswahl wie auf der Set-Seite; "Ohne Set eintragen" möglich). Sealed zählt nicht in den Kartenwert.
 
 ## Watchlist
 - Es gibt nur EINE Merkliste und sie heißt überall **Watchlist** (Herz-Symbol auf Karten, Seite `/watchlist`, erreichbar über den Button auf "Meine Sammlung"; nicht in der Hauptnavigation). Keine zweite "Wunschliste" anlegen.

@@ -7,6 +7,7 @@ import {
   getSets,
   getSetProgress,
   getAchievements,
+  getSealedProducts,
 } from "../api.js";
 import CollectionGroup from "../components/CollectionGroup.jsx";
 import SealedProductList from "../components/SealedProductList.jsx";
@@ -128,12 +129,20 @@ export default function Collection() {
   const [setOwned, setSetOwned] = useState({});
   const [achievements, setAchievements] = useState(null);
   const [unlockQueue, setUnlockQueue] = useState([]);
-  // Einzelkarten und Sealed getrennt (Justus 09.11.2026); die Ansicht steht in der Adresse (bleibt nach Zurück)
+  // Gesamt | Einzelkarten | Sealed (Justus 09.11.2026); die Ansicht steht in der Adresse (bleibt nach Zurück)
   const [params, setParams] = useSearchParams();
-  const view = params.get("ansicht") === "sealed" ? "sealed" : "karten";
-  const setView = (v) => setParams(v === "sealed" ? { ansicht: "sealed" } : {}, { replace: true });
+  const view = ["karten", "sealed"].includes(params.get("ansicht")) ? params.get("ansicht") : "gesamt";
+  const setView = (v) => setParams(v === "gesamt" ? {} : { ansicht: v }, { replace: true });
   const [sealedAddOpen, setSealedAddOpen] = useState(false);
   const [sealedKey, setSealedKey] = useState(0);
+  const [sealedItems, setSealedItems] = useState(null);
+  // für "Gesamt" frisch laden (Änderungen unter "Sealed" sollen sofort mitzählen)
+  useEffect(() => {
+    if (view !== "gesamt") return;
+    getSealedProducts()
+      .then(setSealedItems)
+      .catch(() => setSealedItems([]));
+  }, [view, sealedKey]);
   const down = useMemo(
     () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
     []
@@ -342,6 +351,7 @@ export default function Collection() {
       </div>
       <SegmentedToggle
         options={[
+          { id: "gesamt", label: "Gesamt" },
           { id: "karten", label: "Einzelkarten" },
           { id: "sealed", label: "Sealed" },
         ]}
@@ -366,6 +376,78 @@ export default function Collection() {
       <div>
         {header}
         <SealedProductList key={sealedKey} />
+      </div>
+    );
+  }
+
+  if (view === "gesamt") {
+    const sealedList = sealedItems ?? [];
+    const sUnit = (p) => p.current_value ?? p.auto_value ?? null;
+    const sVal = (p) => (sUnit(p) ?? 0) * (p.quantity ?? 1);
+    const sCost = (p) =>
+      p.purchase_price != null || p.shipping_cost != null ? ((p.purchase_price ?? 0) + (p.shipping_cost ?? 0)) * (p.quantity ?? 1) : null;
+    const cardValue = items.reduce((s, i) => s + val(i), 0);
+    const sealedValue = sealedList.reduce((s, p) => s + sVal(p), 0);
+    const total = cardValue + sealedValue;
+    // Gewinn/Verlust nur über Einträge mit Kaufpreis (wie bei den Einzelkarten)
+    const cardsWithCost = items.filter((i) => cost(i) != null);
+    const sealedWithCost = sealedList.filter((p) => sCost(p) != null);
+    const invested = cardsWithCost.reduce((s, i) => s + cost(i), 0) + sealedWithCost.reduce((s, p) => s + sCost(p), 0);
+    const gainAll =
+      cardsWithCost.reduce((s, i) => s + val(i), 0) + sealedWithCost.reduce((s, p) => s + sVal(p), 0) - invested;
+    const cardCount = items.reduce((s, i) => s + (i.quantity ?? 1), 0);
+    const sealedCount = sealedList.reduce((s, p) => s + (p.quantity ?? 1), 0);
+    const share = (v) => (total > 0 ? `${Math.round((v / total) * 100)} %` : "–");
+    return (
+      <div>
+        {header}
+        <div className="bg-surface border border-line rounded-2xl px-6 py-5 mb-6 shadow-sm">
+          <p className="text-subtle text-sm">Gesamtwert deiner Sammlung</p>
+          <p className="text-4xl font-semibold font-mono">{sealedItems === null ? "…" : eur(total)}</p>
+          {invested > 0 && sealedItems !== null && (
+            <div className="flex gap-6 mt-3">
+              <div>
+                <p className="text-subtle text-xs">Investiert</p>
+                <p className="font-mono text-sm">{eur(invested)}</p>
+              </div>
+              <div>
+                <p className="text-subtle text-xs">Gewinn / Verlust</p>
+                <p className={`font-mono text-sm ${gainAll >= 0 ? "text-mint" : "text-rose"}`}>
+                  {gainAll >= 0 ? "+" : "−"}
+                  {eur(Math.abs(gainAll))}
+                  <span className="text-subtle">
+                    {"  "}({gainAll >= 0 ? "+" : "−"}
+                    {Math.abs((gainAll / invested) * 100).toFixed(1)} %)
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={() => setView("karten")}
+            className="text-left bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm hover:border-ink"
+          >
+            <p className="text-sm font-medium">Einzelkarten</p>
+            <p className="text-2xl font-semibold font-mono mt-1">{eur(cardValue)}</p>
+            <p className="text-xs text-subtle mt-1">
+              {cardCount} Karten · {share(cardValue)} des Gesamtwerts
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("sealed")}
+            className="text-left bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm hover:border-ink"
+          >
+            <p className="text-sm font-medium">Sealed</p>
+            <p className="text-2xl font-semibold font-mono mt-1">{sealedItems === null ? "…" : eur(sealedValue)}</p>
+            <p className="text-xs text-subtle mt-1">
+              {sealedCount} Produkte · {share(sealedValue)} des Gesamtwerts
+            </p>
+          </button>
+        </div>
       </div>
     );
   }
