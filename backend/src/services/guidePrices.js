@@ -2,6 +2,8 @@ import db from "../db/index.js";
 import { recordPrices } from "./cardService.js";
 import { cardmarketRows, AVG30_BAND } from "./priceProvider.js";
 import { loadGuide, expansionOfProduct, resolveInExpansion, guessExpansion } from "./cardmarketGuide.js";
+import { robustPrice, usdToEur } from "./priceProvider.js";
+import { tcgJson, groupKey, TCG_GROUP_ALIAS } from "./sealedPrices.js";
 import { rebuildAnalysisCache } from "./analysisCache.js";
 
 // Der Hauptweg für die Nacht-Preise: Cardmarkets öffentliche Preisliste (eine Datei mit
@@ -11,7 +13,7 @@ import { rebuildAnalysisCache } from "./analysisCache.js";
 // Produkt über Name + Angriffe gesucht (cardmarketGuide.js). Karten, die sich so nicht
 // eindeutig zuordnen lassen, übernimmt weiter der Einzelabruf in priceFetcher.js.
 const cardsStmt = db.prepare(`
-  SELECT id, external_id, name, set_id, rarity, abilities, attacks,
+  SELECT id, external_id, name, number, set_id, rarity, abilities, attacks,
          cardmarket_product_id AS pid, cardmarket_pid_locked AS locked, variant_flags, price_valid_from
   FROM cards WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')
 `);
@@ -100,6 +102,79 @@ export function pairIdenticalProducts(guide, cards, setExpansion) {
   return result;
 }
 
+// Neue Sets: dieselbe Karte in mehreren Fassungen (Double Rare, Illustration Rare, Special Illustration Rare ...).
+// Justus 09.11.2026: Mega Rayquaza ex Delta Reign #138 stand bei 6 EUR statt ca. 350 EUR - TCGdex gibt allen
+// Fassungen das Produkt der günstigsten. Cardmarket vergibt die Produktnummern aber in der Reihenfolge der
+// Kartennummern (Delta Reign: #84 -> 918912, #138 -> 918982, #141 -> 918985). Zuordnung daher: Karten nach Nummer,
+// Produkte nach Produktnummer (Gruppe = gleicher Kartenname). Nur wenn es genau so viele Produkte wie Karten gibt und jede Zuordnung zum
+// TCGplayer-Preis derselben Karte passt (höchstens 3x Abstand, Werte unter 1 EUR zählen nicht); sonst bleibt die
+// Gruppe offen. Gruppen, deren Karten schon fest verschiedenen Produkten zugeordnet sind, bleiben unangetastet.
+const setNameStmt = db.prepare(`SELECT name FROM card_sets WHERE id = ?`);
+const tcgCache = new Map(); // "Tag|Set" -> Map Nummer -> EUR
+const cardNo = (n) => String(n ?? "").split("/")[0].replace(/^0+(?=\d)/, "").toLowerCase();
+async function tcgplayerCardPrices(setId) {
+  const key = `${new Date().toISOString().slice(0, 10)}|${setId}`;
+  if (tcgCache.has(key)) return tcgCache.get(key);
+  const out = new Map();
+  try {
+    const name = setNameStmt.get(setId)?.name;
+    const alias = TCG_GROUP_ALIAS[setId];
+    const hits = (await tcgJson("/groups")).filter((g) => (alias ? g.name === alias : groupKey(g.name) === groupKey(name)));
+    if (hits.length === 1) {
+      const [products, prices] = [await tcgJson(`/${hits[0].groupId}/products`), await tcgJson(`/${hits[0].groupId}/prices`)];
+      const rate = await usdToEur();
+      const bySub = new Map();
+      for (const r of prices) if (r.marketPrice > 0) bySub.set(`${r.productId}|${r.subTypeName}`, r.marketPrice);
+      for (const p of products) {
+        const no = (p.extendedData ?? []).find((e) => e.name === "Number")?.value;
+        if (!no) continue;
+        const usd = ["Normal", "Holofoil", "Reverse Holofoil"].map((t) => bySub.get(`${p.productId}|${t}`)).find((v) => v > 0);
+        if (usd) out.set(cardNo(no), usd * rate);
+      }
+    }
+  } catch (e) {
+    console.warn(`[preisliste] TCGplayer-Abgleich ${setId}: ${e.message}`);
+  }
+  tcgCache.set(key, out);
+  return out;
+}
+
+async function pairByNumberOrder(guide, cards, setExpansion) {
+  const result = new Map();
+  const groups = new Map();
+  for (const c of cards) {
+    const k = `${c.set_id}#${norm(c.name)}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(c);
+  }
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    if (list.every((c) => c.locked != null) && new Set(list.map((c) => c.locked)).size === list.length) continue;
+    const expansion = setExpansion.get(list[0].set_id);
+    if (!expansion) continue;
+    // nur über den Namen: bei neuen Sets übersetzen TCGplayer und Cardmarket die Angriffe verschieden
+    // ("Ruler's Roar" / "Roar of the Ruler") - die TCGplayer-Probe unten sichert die Zuordnung ab
+    const products = (guide.byExpansion.get(expansion) ?? [])
+      .filter((p) => norm(p.name.split(" [")[0]) === norm(list[0].name))
+      .sort((a, b) => a.id - b.id);
+    if (products.length !== list.length) continue;
+    const sorted = [...list].sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
+    if (new Set(sorted.map((c) => parseInt(c.number, 10))).size !== sorted.length) continue;
+    const tcg = await tcgplayerCardPrices(list[0].set_id);
+    let checked = 0;
+    const ok = sorted.every((c, i) => {
+      const cm = robustPrice(guide.prices.get(products[i].id) ?? {});
+      const t = tcg.get(cardNo(c.number));
+      if (!(cm > 0 && t > 0) || Math.max(cm, t) < 1) return true;
+      checked++;
+      return factor(cm, t) <= 3;
+    });
+    if (!ok || !checked) continue;
+    sorted.forEach((c, i) => result.set(c.id, products[i].id));
+  }
+  return result;
+}
+
 const relockStmt = db.prepare(`
   UPDATE cards SET cardmarket_pid_locked = ?, cardmarket_product_id = ?, cardmarket_pid_conflict = NULL WHERE id = ?
 `);
@@ -146,6 +221,9 @@ export async function refreshPricesFromGuide({ onlySetIds = null } = {}) {
   // noch Zufall (kaum Verkäufe) - festgeschrieben bliebe sie aber für immer
   const young = new Set(recentSetsStmt.all(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10).replace(/-/g, "/")).map((r) => r.id));
   const pairs = pairIdenticalProducts(guide, cards.filter((c) => !young.has(c.set_id)), setExpansion);
+  for (const [id, pid] of await pairByNumberOrder(guide, cards.filter((c) => recent.has(c.set_id)), setExpansion)) {
+    if (!pairs.has(id)) pairs.set(id, pid);
+  }
   const changed = new Set();
   db.transaction(() => {
     for (const c of cards) {
@@ -313,4 +391,20 @@ export function catchUpGuidePrices() {
       console.error("[preisliste] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);
     }
   }, 45_000);
+}
+
+// Einmal nach dem Deploy (Marker): Fassungen derselben Karte in neueren Sets nach Kartennummer zuordnen
+// (pairByNumberOrder), damit falsche Preise nicht bis zum nächsten Nachtlauf stehen bleiben
+export function catchUpNumberPairs() {
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'number_pairs_v1'`).get()) return;
+  setTimeout(async () => {
+    try {
+      const since = new Date(Date.now() - 210 * 86400000).toISOString().slice(0, 10).replace(/-/g, "/");
+      await refreshPricesFromGuide({ onlySetIds: recentSetsStmt.all(since).map((r) => r.id) });
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('number_pairs_v1', '1')`).run();
+      rebuildAnalysisCache();
+    } catch (e) {
+      console.error("[preisliste] Nachholen (Fassungen) fehlgeschlagen:", e.message);
+    }
+  }, 120_000);
 }

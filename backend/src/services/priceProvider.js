@@ -202,7 +202,13 @@ export async function getCardmarketPrices(externalId, { force = false } = {}) {
           console.warn(`[preise] Gegenprüfung ${externalId}: ${e.message}`);
           return UNCHECKED;
         });
-        value = checked === UNCHECKED ? { prices: [], meta: null } : (checked ?? value);
+        // TCGdex gibt bei neuen Sets oft allen Fassungen einer Karte das Produkt der günstigsten (Mega Rayquaza ex
+        // Delta Reign #138: 4 statt 350 EUR, Justus 09.11.2026). Liegt der Wert mehr als 3x neben dem TCGplayer-Preis
+        // DERSELBEN Karte (liefert TCGdex mit), wird ohne Korrektur heute nichts geschrieben.
+        const ref = tp && [tp.normal, tp.holofoil, ...Object.values(tp)].find((v) => v?.marketPrice > 0)?.marketPrice;
+        const refEur = ref ? ref * (await usdToEur()) : null;
+        const mismatch = refEur > 0 && cm.trend > 0 && Math.max(cm.trend, refEur) >= 2 && Math.max(cm.trend / refEur, refEur / cm.trend) > 3;
+        value = checked === UNCHECKED || (!checked && mismatch) ? { prices: [], meta: null } : (checked ?? value);
       } else if (tp) {
         // Fallback: TCGplayer-Marktpreis (USD) -> EUR umgerechnet
         const variant = tp.holofoil ?? tp.normal ?? tp.reverseHolofoil ?? Object.values(tp).find((v) => v?.marketPrice);
@@ -375,6 +381,7 @@ async function correctSharedProduct(row, cm, specialVariant) {
 
   // 2) Vergleich mit pokemontcg.io
   const raw = await paced(() => getRawPricesById(row.external_id));
+  if (!raw) return UNCHECKED; // pokemontcg.io kennt die Karte nicht: geteiltes Produkt nicht prüfbar - lieber kein Wert
   const cmOwn = raw?.cardmarket?.prices?.trendPrice;
   const refEur = await tcgplayerEur(raw);
   const ratio = (a, b) => Math.max(a / b, b / a);

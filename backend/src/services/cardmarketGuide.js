@@ -98,6 +98,18 @@ export const expansionOfProduct = (guide, productId) => guide.products.get(produ
 //    Klammer-Zusatz
 // Nur ein EINDEUTIGER Treffer zählt (sonst null).
 // Rückgabe: { idProduct, cm } mit den Preisfeldern der Preisliste (trend, low, avg30 ...).
+// Passt ein Produkt zur Karte? (dieselbe Regel wie resolveInExpansion: Name + alle Angriffe, ein Tippfehler erlaubt)
+export function productMatchesCard(p, card) {
+  const ours = [...parseList(card.abilities), ...parseList(card.attacks)].map((a) => norm(a.name)).filter(Boolean);
+  const wanted = norm(card.name);
+  const { base, bracket } = splitName(p.name);
+  const a = norm(base);
+  if (!ours.length) return a === wanted && !bracket;
+  if (!(a.startsWith(wanted) || wanted.startsWith(a))) return false;
+  const theirs = bracket.split("|").map(norm).filter(Boolean);
+  return ours.every((t) => theirs.some((x) => sameAttack(t, x)));
+}
+
 export function resolveInExpansion(guide, card, expansionId, { preferOldest = false } = {}) {
   if (!expansionId) return null;
   const ours = [...parseList(card.abilities), ...parseList(card.attacks)].map((a) => norm(a.name)).filter(Boolean);
