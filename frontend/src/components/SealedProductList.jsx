@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { getSealedProducts, updateSealedProduct, deleteSealedProduct } from "../api.js";
-import SealedProductDialog from "./SealedProductDialog.jsx";
+import SealedProductDialog, { SEALED_LANGUAGES } from "./SealedProductDialog.jsx";
+
+const LANG_LABEL = Object.fromEntries(SEALED_LANGUAGES);
 import { eur } from "../lib/format.js";
 
 const cost = (p) =>
@@ -114,6 +116,7 @@ export default function SealedProductList() {
                   </p>
                   <p className="text-subtle text-xs truncate">
                     {p.set_name ?? "Kein Set"}
+                    {p.language ? ` · ${LANG_LABEL[p.language] ?? p.language.toUpperCase()}` : ""}
                     {p.purchase_date ? ` · ${new Date(p.purchase_date).toLocaleDateString("de-DE")}` : ""}
                   </p>
                   {(p.cardmarket_url || p.auto_link) && (

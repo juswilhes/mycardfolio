@@ -3,10 +3,10 @@ import db from "../db/index.js";
 const insertStmt = db.prepare(`
   INSERT INTO sealed_products (
     user_id, set_id, set_name, name, image_url, quantity,
-    purchase_price, shipping_cost, purchase_date, current_value, cardmarket_url, notes, catalog_id
+    purchase_price, shipping_cost, purchase_date, current_value, cardmarket_url, notes, catalog_id, language
   ) VALUES (
     @user_id, @set_id, @set_name, @name, @image_url, @quantity,
-    @purchase_price, @shipping_cost, @purchase_date, @current_value, @cardmarket_url, @notes, @catalog_id
+    @purchase_price, @shipping_cost, @purchase_date, @current_value, @cardmarket_url, @notes, @catalog_id, @language
   )
 `);
 
@@ -25,6 +25,7 @@ export function createSealedProduct(userId, values) {
     cardmarket_url: values.cardmarketUrl || null,
     notes: values.notes || null,
     catalog_id: catalogIdOrNull(values.catalogId),
+    language: languageOrNull(values.language),
   });
   return info.lastInsertRowid;
 }
@@ -37,6 +38,8 @@ export const listSealedProducts = db.prepare(`
   WHERE sp.user_id = ? ORDER BY sp.created_at DESC
 `);
 
+const LANGUAGES = ["de", "en", "ja", "fr", "it", "es"];
+const languageOrNull = (v) => (LANGUAGES.includes(v) ? v : null);
 const catalogExists = db.prepare(`SELECT 1 FROM sealed_catalog WHERE id = ?`);
 const catalogIdOrNull = (v) => (v != null && v !== "" && Number.isInteger(Number(v)) && catalogExists.get(Number(v)) ? Number(v) : null);
 
@@ -51,7 +54,8 @@ const updateStmt = db.prepare(`
     cardmarket_url = @cardmarket_url,
     notes = @notes,
     image_url = @image_url,
-    catalog_id = @catalog_id
+    catalog_id = @catalog_id,
+    language = @language
   WHERE id = @id AND user_id = @user_id
 `);
 
@@ -69,6 +73,7 @@ export function updateSealedProduct(userId, id, values) {
     notes: values.notes || null,
     image_url: values.imageUrl || null,
     catalog_id: catalogIdOrNull(values.catalogId),
+    language: languageOrNull(values.language),
   });
 }
 

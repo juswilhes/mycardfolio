@@ -5,6 +5,16 @@ import { eur } from "../lib/format.js";
 const today = () => new Date().toISOString().slice(0, 10);
 const round2 = (n) => Math.round(n * 100) / 100;
 
+// Sprachen für Sealed-Produkte (Justus 09.11.2026); Kürzel wie in der Datenbank
+export const SEALED_LANGUAGES = [
+  ["de", "Deutsch"],
+  ["en", "Englisch"],
+  ["ja", "Japanisch"],
+  ["fr", "Französisch"],
+  ["it", "Italienisch"],
+  ["es", "Spanisch"],
+];
+
 // Dialog zum Erfassen ODER Bearbeiten eines Sealed-Produkts (Booster-Display,
 // Elite Trainer Box, Bundle, ...). Beim Hinzufügen auf der Set-Seite steht oben
 // die Auswahl aus dem Katalog des Sets (Bild + aktueller Wert, jede Nacht neu,
@@ -25,6 +35,7 @@ export default function SealedProductDialog({
   const [catalogId, setCatalogId] = useState(initial?.catalog_id ?? preset?.id ?? null);
   const [autoValue, setAutoValue] = useState(initial?.auto_value ?? (preset?.priceCents != null ? preset.priceCents / 100 : null));
   const [name, setName2] = useState(initial?.name ?? preset?.name ?? "");
+  const [language, setLanguage] = useState(initial?.language ?? "de");
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? 1));
   // Gesamtpreis für diesen Kauf, wie beim Karten-Dialog - nicht pro Stück,
   // damit niemand selbst durch die Menge teilen muss.
@@ -51,7 +62,7 @@ export default function SealedProductDialog({
   }, [onClose]);
 
   useEffect(() => {
-    if (editing || !setId) return;
+    if (editing || !setId || preset) return;
     getSealedCatalog(setId)
       .then(setCatalog)
       .catch(() => setCatalog([]));
@@ -85,6 +96,7 @@ export default function SealedProductDialog({
       cardmarketUrl: catalogId ? null : cardmarketUrl.trim() || null,
       notes: notes.trim() || null,
       catalogId,
+      language,
     });
   }
 
@@ -105,8 +117,22 @@ export default function SealedProductDialog({
         </p>
         {setName && <p className="font-semibold mb-4 truncate">{setName}</p>}
 
-        {catalog === null && !editing && setId && <p className="text-xs text-subtle mb-4">Lade Produkte …</p>}
-        {catalog?.length > 0 && (
+        {/* Schon bewusst gewählt ("+" oder Produktseite): keine zweite Auswahl, nur das Produkt zeigen (Justus 09.11.2026) */}
+        {preset && (
+          <div className="flex items-center gap-3 mb-5 rounded-xl border border-line bg-canvas p-2">
+            {preset.image ? (
+              <img src={preset.image} alt="" className="h-16 w-14 object-contain shrink-0" />
+            ) : (
+              <span className="h-16 w-14 shrink-0" />
+            )}
+            <span className="min-w-0">
+              <span className="block text-sm font-medium leading-tight">{short(preset.name)}</span>
+              <span className="block text-xs font-mono mt-1">{preset.priceCents != null ? eur(preset.priceCents / 100) : "—"}</span>
+            </span>
+          </div>
+        )}
+        {catalog === null && !editing && !preset && setId && <p className="text-xs text-subtle mb-4">Lade Produkte …</p>}
+        {!preset && catalog?.length > 0 && (
           <div className="mb-5">
             <p className="text-xs text-subtle mb-2">Produkt auswählen</p>
             <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
@@ -142,14 +168,26 @@ export default function SealedProductDialog({
         )}
 
         <div className="grid grid-cols-2 gap-3">
+          {!preset && (
+            <label className="text-xs text-subtle col-span-2">
+              Name
+              <input
+                type="text" value={name} onChange={(e) => setName2(e.target.value)}
+                placeholder="z. B. Elite Trainer Box"
+                autoFocus
+                className={inputCls}
+              />
+            </label>
+          )}
           <label className="text-xs text-subtle col-span-2">
-            Name
-            <input
-              type="text" value={name} onChange={(e) => setName2(e.target.value)}
-              placeholder="z. B. Elite Trainer Box"
-              autoFocus
-              className={inputCls}
-            />
+            Sprache
+            <select value={language} onChange={(e) => setLanguage(e.target.value)} className={inputCls}>
+              {SEALED_LANGUAGES.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-xs text-subtle">
             Menge

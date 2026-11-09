@@ -360,6 +360,9 @@ CREATE TABLE IF NOT EXISTS sealed_catalog_prices (
 INSERT OR IGNORE INTO sealed_catalog_prices (catalog_id, day, price_cents, cm_cents, tcg_cents)
   SELECT id, substr(updated_at, 1, 10), price_cents, cm_cents, tcg_cents FROM sealed_catalog WHERE price_cents IS NOT NULL AND updated_at IS NOT NULL;
 `);
+if (!spColumns.has("language")) {
+  db.exec(`ALTER TABLE sealed_products ADD COLUMN language TEXT`); // de, en, ja, fr, it, es
+}
 if (!spColumns.has("catalog_id")) {
   db.exec(`ALTER TABLE sealed_products ADD COLUMN catalog_id INTEGER`);
 }
