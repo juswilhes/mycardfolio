@@ -14,6 +14,11 @@ router.get("/market-movers", (req, res) => {
   res.json(getMarketMovers({ days: parseDays(req.query.days), setName }));
 });
 
+// GET /api/stats/sealed-movers?days=7|30 -> größte Gewinner/Verlierer der Sealed-Produkte (Nacht-Auswertung)
+router.get("/sealed-movers", (req, res) => {
+  res.json(analysis("sealedMovers")[req.query.days === "7" ? 7 : 30]);
+});
+
 // GET /api/stats/pull-rates -> Pull Rates aller Sets, bei denen welche hinterlegt sind
 router.get("/pull-rates", (_req, res) => {
   res.json(analysis("pullRates"));

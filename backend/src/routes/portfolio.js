@@ -8,6 +8,8 @@ import {
   recordPortfolioSnapshot,
 } from "../services/portfolioService.js";
 
+import { getOwnSealedMovers } from "../services/sealedMovers.js";
+
 const router = Router();
 
 // GET /api/portfolio/history -> Tagespunkte für den Wert-über-Zeit-Graphen.
@@ -30,6 +32,11 @@ router.get("/history", (req, res) => {
   const rows = portfolioHistory.all(req.user.id);
   // ?scope=all: Gesamt-Ansicht der Sammlung, mit Sealed-Produkten
   res.json(req.query.scope === "all" ? addSealedToHistory(req.user.id, rows) : rows);
+});
+
+// GET /api/portfolio/sealed-movers -> Top-Gewinner / -Verlierer der eigenen Sealed-Produkte (7 Tage)
+router.get("/sealed-movers", (req, res) => {
+  res.json(getOwnSealedMovers(req.user.id, 7));
 });
 
 // GET /api/portfolio/movers -> Top-Gewinner / -Verlierer der letzten 7 Tage

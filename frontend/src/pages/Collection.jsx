@@ -4,6 +4,7 @@ import {
   getCollection,
   getPortfolioHistory,
   getMovers,
+  getSealedMovers,
   getSets,
   getSetProgress,
   getAchievements,
@@ -121,6 +122,20 @@ const savePref = (k, v) => {
   }
 };
 
+// Top-Bewegungen der eigenen Sealed-Produkte (7 Tage). Die Tageswerte der Sealed-Produkte werden erst seit dem
+// 09.11.2026 gespeichert: ist der Verlauf kürzer, gilt der Zeitraum seit dem ersten Tag (steht im Titel).
+function SealedMoversBox({ data }) {
+  const span = data?.spanDays ?? 0;
+  const label = span >= 7 || span === 0 ? "7 Tage" : `${span} Tage`;
+  return (
+    <Movers
+      data={data}
+      title={`Sealed: Top-Bewegungen (${label})`}
+      emptyText="Noch keine Preisbewegungen. Die Preise der Sealed-Produkte werden seit dem 09.11.2026 täglich gespeichert; ab 2 Tagen Verlauf siehst du hier die Veränderungen. Produkte mit eigenem Wert zählen nicht."
+    />
+  );
+}
+
 // Kopfbereich des Reiters "Sealed": Wert, Anzahl, Investiert, Gewinn/Verlust und Verlaufsgraph - gleich aufgebaut
 // wie bei den Einzelkarten (Justus 09.11.2026). Eigener Wert geht vor dem automatischen aus dem Katalog.
 function SealedOverview({ items, history }) {
@@ -202,6 +217,7 @@ export default function Collection() {
   const [sealedItems, setSealedItems] = useState(null);
   const [historyAll, setHistoryAll] = useState(null);
   const [historySealed, setHistorySealed] = useState(null);
+  const [sealedMovers, setSealedMovers] = useState(null);
   // zählt hoch, wenn in der Sealed-Liste etwas bearbeitet/entfernt wurde (Kennzahlen + Graph oben sollen mitgehen)
   const [sealedTick, setSealedTick] = useState(0);
   useEffect(() => {
@@ -223,6 +239,9 @@ export default function Collection() {
     getSealedProducts()
       .then(setSealedItems)
       .catch(() => setSealedItems([]));
+    getSealedMovers()
+      .then(setSealedMovers)
+      .catch(() => setSealedMovers({ gainers: [], losers: [], spanDays: 0 }));
   }, [view, sealedKey, sealedTick]);
   const down = useMemo(
     () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
@@ -461,6 +480,7 @@ export default function Collection() {
       <div>
         {header}
         <SealedOverview items={sealedItems} history={historySealed} />
+        {sealedItems?.length > 0 && <SealedMoversBox data={sealedMovers} />}
         <SealedProductList key={sealedKey} onChange={() => setSealedTick((t) => t + 1)} />
       </div>
     );
@@ -645,6 +665,7 @@ export default function Collection() {
       </div>
 
       <Movers data={movers} />
+      {isAll && sealedList.length > 0 && <SealedMoversBox data={sealedMovers} />}
 
       {isAll && <SealedProductList key={sealedKey} />}
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { searchCards, searchSealed, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
+import { searchCards, searchSealed, getSealedMarketMovers, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
 import { eur } from "../lib/format.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
@@ -422,20 +422,71 @@ export default function AllCards() {
 // hinweg - Vorschläge, welche Karten einen Blick wert sein könnten, nicht
 // nur die eigene Sammlung (die hat Collection.jsx/Movers.jsx schon).
 function MoversBrowser({ data, loading }) {
-  if (loading || !data) return <p className="text-subtle text-sm">Lade Preisbewegungen …</p>;
+  // Einzelkarten | Sealed (Justus 09.11.2026); Sealed wird erst beim Umschalten geladen
+  const [kind, setKind] = useState("karten");
+  const [sealedData, setSealedData] = useState(null);
+  useEffect(() => {
+    if (kind !== "sealed" || sealedData) return;
+    getSealedMarketMovers(30)
+      .then(setSealedData)
+      .catch(() => setSealedData({ gainers: [], losers: [], trackedCount: 0, spanDays: 0 }));
+  }, [kind, sealedData]);
+
+  const toggle = (
+    <SegmentedToggle
+      options={[
+        { id: "karten", label: "Einzelkarten" },
+        { id: "sealed", label: "Sealed" },
+      ]}
+      value={kind}
+      onChange={setKind}
+    />
+  );
+
+  if (kind === "sealed") {
+    if (!sealedData) return <div>{toggle}<p className="text-subtle text-sm">Lade Preisbewegungen …</p></div>;
+    const span = sealedData.spanDays ?? 0;
+    const label = span >= 30 || span === 0 ? "30 Tage" : `${span} Tage`;
+    return (
+      <div>
+        {toggle}
+        {!sealedData.gainers.length && !sealedData.losers.length ? (
+          <p className="text-subtle text-sm">
+            Noch keine Preisbewegungen: Die Preise der Sealed-Produkte werden seit dem 09.11.2026 täglich gespeichert,
+            ab 2 Tagen Verlauf erscheinen hier die größten Veränderungen.
+          </p>
+        ) : (
+          <>
+            <p className="text-subtle text-sm mb-6">
+              Größte Preisausschläge der letzten {label} über {sealedData.trackedCount ?? 0} Sealed-Produkte hinweg
+              {span > 0 && span < 30 ? " (der Verlauf wächst jeden Tag)" : ""}.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-6">
+              <MoverColumn title="Größte Gewinner" items={sealedData.gainers} positive />
+              <MoverColumn title="Größte Verlierer" items={sealedData.losers} positive={false} />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (loading || !data) return <div>{toggle}<p className="text-subtle text-sm">Lade Preisbewegungen …</p></div>;
 
   const gainers = data.gainers ?? [];
   const losers = data.losers ?? [];
   if (!gainers.length && !losers.length) {
     return (
-      <p className="text-subtle text-sm">
-        Noch keine ausreichenden Preisdaten für die letzten 30 Tage.
-      </p>
+      <div>
+        {toggle}
+        <p className="text-subtle text-sm">Noch keine ausreichenden Preisdaten für die letzten 30 Tage.</p>
+      </div>
     );
   }
 
   return (
     <div>
+      {toggle}
       <p className="text-subtle text-sm mb-6">
         Größte Preisausschläge der letzten 30 Tage über {data.trackedCount ?? 0} beobachtete
         Karten hinweg – vielleicht einen Blick wert.
@@ -448,6 +499,7 @@ function MoversBrowser({ data, loading }) {
   );
 }
 
+// Karten (external_id) und Sealed-Produkte (catalog_id) teilen sich diese Spalte
 function MoverColumn({ title, items, positive }) {
   return (
     <div>
@@ -456,11 +508,17 @@ function MoverColumn({ title, items, positive }) {
         <div className="space-y-1">
           {items.map((m) => (
             <Link
-              key={m.external_id}
-              to={cardPath(m)}
+              key={m.external_id ?? `s${m.catalog_id}`}
+              to={m.catalog_id ? `/sealed/${m.catalog_id}` : cardPath(m)}
               className="flex items-center gap-2 py-1.5 text-sm hover:opacity-80"
             >
-              <img src={m.image_small} alt="" className="w-8 h-auto rounded shrink-0" />
+              {m.catalog_id ? (
+                <span className="w-8 h-10 shrink-0 flex items-center justify-center">
+                  {m.image && <img src={m.image} alt="" loading="lazy" className="max-w-full max-h-full object-contain" />}
+                </span>
+              ) : (
+                <img src={m.image_small} alt="" className="w-8 h-auto rounded shrink-0" />
+              )}
               <span className="flex-1 min-w-0 truncate">
                 {m.name}
                 <span className="text-subtle text-xs block truncate">{m.set_name}</span>

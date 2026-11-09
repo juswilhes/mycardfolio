@@ -83,6 +83,8 @@ export function getPortfolioHistory(filter = {}) {
   return request(`/portfolio/history${qs.toString() ? `?${qs}` : ""}`);
 }
 export const getMovers = () => request("/portfolio/movers");
+export const getSealedMovers = () => request("/portfolio/sealed-movers"); // eigene Sealed-Produkte
+export const getSealedMarketMovers = (days = 30) => request(`/stats/sealed-movers?days=${days}`); // alle Sealed-Produkte
 export const getSales = () => request("/sales");
 export const undoSale = (id) => request(`/sales/${id}/undo`, { method: "POST" });
 
