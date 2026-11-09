@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   getCollection,
   getPortfolioHistory,
@@ -10,6 +10,8 @@ import {
 } from "../api.js";
 import CollectionGroup from "../components/CollectionGroup.jsx";
 import SealedProductList from "../components/SealedProductList.jsx";
+import SealedAddDialog from "../components/SealedAddDialog.jsx";
+import SegmentedToggle from "../components/SegmentedToggle.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
 import OrdenBadge from "../components/OrdenBadge.jsx";
@@ -126,6 +128,12 @@ export default function Collection() {
   const [setOwned, setSetOwned] = useState({});
   const [achievements, setAchievements] = useState(null);
   const [unlockQueue, setUnlockQueue] = useState([]);
+  // Einzelkarten und Sealed getrennt (Justus 09.11.2026); die Ansicht steht in der Adresse (bleibt nach Zurück)
+  const [params, setParams] = useSearchParams();
+  const view = params.get("ansicht") === "sealed" ? "sealed" : "karten";
+  const setView = (v) => setParams(v === "sealed" ? { ansicht: "sealed" } : {}, { replace: true });
+  const [sealedAddOpen, setSealedAddOpen] = useState(false);
+  const [sealedKey, setSealedKey] = useState(0);
   const down = useMemo(
     () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
     []
@@ -309,20 +317,70 @@ export default function Collection() {
     );
   }
 
+  const header = (
+    <>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h1 className="text-xl font-semibold">Meine Sammlung</h1>
+        <div className="flex items-center gap-2">
+          <Link to="/watchlist" className="border border-line px-4 py-2 rounded-full text-sm hover:border-ink">
+            Watchlist
+          </Link>
+          {view === "sealed" ? (
+            <button
+              type="button"
+              onClick={() => setSealedAddOpen(true)}
+              className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
+            >
+              + Sealed-Produkt hinzufügen
+            </button>
+          ) : (
+            <Link to="/sets" className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm">
+              + Karte hinzufügen
+            </Link>
+          )}
+        </div>
+      </div>
+      <SegmentedToggle
+        options={[
+          { id: "karten", label: "Einzelkarten" },
+          { id: "sealed", label: "Sealed" },
+        ]}
+        value={view}
+        onChange={setView}
+      />
+      {sealedAddOpen && (
+        <SealedAddDialog
+          sets={setDefs}
+          onAdded={() => {
+            setSealedAddOpen(false);
+            setSealedKey((k) => k + 1);
+          }}
+          onClose={() => setSealedAddOpen(false)}
+        />
+      )}
+    </>
+  );
+
+  if (view === "sealed") {
+    return (
+      <div>
+        {header}
+        <SealedProductList key={sealedKey} />
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div>
+        {header}
         <div className="text-center py-24">
           <p className="text-lg font-medium mb-1">Noch keine Karten</p>
           <p className="text-subtle mb-6">Füge deine erste Karte hinzu, um den Wert zu verfolgen.</p>
           <Link to="/sets" className="inline-block bg-yellow text-yellowInk font-medium px-5 py-2.5 rounded-full">
             Karte hinzufügen
           </Link>
-          <Link to="/watchlist" className="inline-block ml-2 border border-line px-5 py-2.5 rounded-full hover:border-ink">
-            Watchlist
-          </Link>
         </div>
-        <SealedProductList />
       </div>
     );
   }
@@ -340,26 +398,13 @@ export default function Collection() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Meine Sammlung</h1>
-        <div className="flex items-center gap-2">
-          <Link to="/watchlist" className="border border-line px-4 py-2 rounded-full text-sm hover:border-ink">
-            Watchlist
-          </Link>
-          <Link
-            to="/sets"
-            className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
-          >
-            + Karte hinzufügen
-          </Link>
-        </div>
-      </div>
+      {header}
 
       <div className="bg-surface border border-line rounded-2xl px-6 py-5 mb-6 shadow-sm">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
           <div>
             <p className="text-subtle text-sm">
-              {anyFilter ? "Wert der gefilterten Auswahl" : "Gesamtwert deiner Sammlung"}
+              {anyFilter ? "Wert der gefilterten Auswahl" : "Gesamtwert deiner Einzelkarten"}
             </p>
             <p className="text-4xl font-semibold font-mono">{eur(totalValue)}</p>
             <span className="text-xs text-subtle">
@@ -473,8 +518,6 @@ export default function Collection() {
       </div>
 
       <Movers data={movers} />
-
-      <SealedProductList />
 
       {/* Suchen, Sortieren & Filtern */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">

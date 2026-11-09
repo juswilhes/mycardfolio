@@ -76,8 +76,8 @@ export default function SealedProductList() {
 
       {items.length === 0 ? (
         <p className="text-subtle text-sm">
-          Noch keine Sealed-Produkte. Auf der Seite eines Sets (unter „Alle Karten") gibt es
-          den Button „Sealed-Produkt hinzufügen".
+          Noch keine Sealed-Produkte. Füge sie oben über „+ Sealed-Produkt hinzufügen" hinzu oder direkt auf der
+          Seite eines Sets.
         </p>
       ) : (
         <div className="border border-line rounded-2xl divide-y divide-line overflow-hidden">
