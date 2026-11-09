@@ -8,13 +8,15 @@ import { expandQuery } from "./cardRepository.js";
 // Set-Namen, Treffer müssen am Wortanfang liegen ("ex" findet nicht "Complex", aber "Elit" findet "Elite" -
 // die Suche läuft schon beim Tippen). Deutsche Set-Namen stehen in card_sets.name_de (setNamesDe.js, von TCGdex).
 
-// Akzente/Satzzeichen weg, klein: "Top-Trainer-Box" -> "top trainer box", "Pokémon" -> "pokemon", "Größe" -> "grosse"
+// Akzente/Satzzeichen weg, klein: "Top-Trainer-Box" -> "top trainer box", "Pokémon" -> "pokemon", "Größe" -> "grosse".
+// Apostrophe fallen ersatzlos weg ("Cynthia's" = "Cynthias", wie man es tippt; "Hop's" = "hops"), nicht zu Leerzeichen
 const norm = (s) =>
   String(s ?? "")
     .toLowerCase()
     .replace(/ß/g, "ss")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
+    .replace(/['’‘`´]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
