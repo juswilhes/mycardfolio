@@ -120,6 +120,68 @@ const savePref = (k, v) => {
   }
 };
 
+// Kopfbereich des Reiters "Sealed": Wert, Anzahl, Investiert, Gewinn/Verlust und Verlaufsgraph - gleich aufgebaut
+// wie bei den Einzelkarten (Justus 09.11.2026). Eigener Wert geht vor dem automatischen aus dem Katalog.
+function SealedOverview({ items, history }) {
+  if (items === null) return <p className="text-subtle text-sm mb-6">Lade Sealed-Produkte …</p>;
+  if (!items.length) return null; // leere Liste: der Hinweis darunter erklärt das Hinzufügen
+  const unit = (p) => p.current_value ?? p.auto_value ?? null;
+  const val = (p) => (unit(p) ?? 0) * (p.quantity ?? 1);
+  const cost = (p) =>
+    p.purchase_price != null || p.shipping_cost != null ? ((p.purchase_price ?? 0) + (p.shipping_cost ?? 0)) * (p.quantity ?? 1) : null;
+  const total = items.reduce((s, p) => s + val(p), 0);
+  const count = items.reduce((s, p) => s + (p.quantity ?? 1), 0);
+  const withCost = items.filter((p) => cost(p) != null);
+  const invested = withCost.reduce((s, p) => s + cost(p), 0);
+  const gain = withCost.reduce((s, p) => s + val(p) - cost(p), 0);
+  const noValue = items.filter((p) => unit(p) == null).length;
+  return (
+    <div className="bg-surface border border-line rounded-2xl px-6 py-5 mb-6 shadow-sm">
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
+        <div>
+          <p className="text-subtle text-sm">Gesamtwert deiner Sealed-Produkte</p>
+          <p className="text-4xl font-semibold font-mono">{eur(total)}</p>
+          <span className="text-xs text-subtle">{count} {count === 1 ? "Produkt" : "Produkte"} in der Sammlung</span>
+        </div>
+        {withCost.length > 0 && (
+          <div className="flex gap-6 pb-1">
+            <div>
+              <p className="text-subtle text-xs">Investiert</p>
+              <p className="font-mono text-sm">{eur(invested)}</p>
+            </div>
+            <div>
+              <p className="text-subtle text-xs">Gewinn / Verlust</p>
+              <p className={`font-mono text-sm ${gain >= 0 ? "text-mint" : "text-rose"}`}>
+                {gain >= 0 ? "+" : "−"}
+                {eur(Math.abs(gain))}
+                {invested > 0 && (
+                  <span className="text-subtle">
+                    {"  "}({gain >= 0 ? "+" : "−"}
+                    {Math.abs((gain / invested) * 100).toFixed(1)} %)
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="mt-4">
+        {history === null ? <p className="text-subtle text-sm py-4">Lade Verlauf …</p> : <PortfolioChart data={history} />}
+      </div>
+      {withCost.length > 0 && withCost.length < items.length && (
+        <p className="text-[11px] text-subtle mt-1">
+          G/V basiert auf {withCost.length} von {items.length} Produkten mit hinterlegtem Kaufpreis.
+        </p>
+      )}
+      {noValue > 0 && (
+        <p className="text-[11px] text-subtle mt-1">
+          {noValue} {noValue === 1 ? "Produkt hat" : "Produkte haben"} keinen Wert und {noValue === 1 ? "zählt" : "zählen"} mit 0 €.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Collection() {
   const [items, setItems] = useState(null);
   const [loadError, setLoadError] = useState(false);
@@ -137,19 +199,29 @@ export default function Collection() {
   const [sealedKey, setSealedKey] = useState(0);
   const [sealedItems, setSealedItems] = useState(null);
   const [historyAll, setHistoryAll] = useState(null);
+  const [historySealed, setHistorySealed] = useState(null);
+  // zählt hoch, wenn in der Sealed-Liste etwas bearbeitet/entfernt wurde (Kennzahlen + Graph oben sollen mitgehen)
+  const [sealedTick, setSealedTick] = useState(0);
   useEffect(() => {
     if (view !== "gesamt" || !items) return;
     getPortfolioHistory({ scope: "all" })
       .then(setHistoryAll)
       .catch(() => setHistoryAll([]));
-  }, [view, items, sealedKey]);
-  // für "Gesamt" frisch laden (Änderungen unter "Sealed" sollen sofort mitzählen)
+  }, [view, items, sealedKey, sealedTick]);
+  // Reiter "Sealed": Graph nur der versiegelten Produkte (wie bei den Einzelkarten)
   useEffect(() => {
-    if (view !== "gesamt") return;
+    if (view !== "sealed") return;
+    getPortfolioHistory({ scope: "sealed" })
+      .then(setHistorySealed)
+      .catch(() => setHistorySealed([]));
+  }, [view, sealedKey, sealedTick]);
+  // für "Gesamt" und "Sealed" frisch laden (Änderungen unter "Sealed" sollen sofort mitzählen)
+  useEffect(() => {
+    if (view === "karten") return;
     getSealedProducts()
       .then(setSealedItems)
       .catch(() => setSealedItems([]));
-  }, [view, sealedKey]);
+  }, [view, sealedKey, sealedTick]);
   const down = useMemo(
     () => DOWN_MESSAGES[Math.floor(Math.random() * DOWN_MESSAGES.length)],
     []
@@ -382,7 +454,8 @@ export default function Collection() {
     return (
       <div>
         {header}
-        <SealedProductList key={sealedKey} />
+        <SealedOverview items={sealedItems} history={historySealed} />
+        <SealedProductList key={sealedKey} onChange={() => setSealedTick((t) => t + 1)} />
       </div>
     );
   }

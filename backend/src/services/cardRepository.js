@@ -564,7 +564,7 @@ export function getCardsByArtistLocal(artist) {
 }
 
 const setsStmt = db.prepare(`
-  SELECT id, name, series, printed_total, total, release_date, logo, symbol, box_price_cents, booster_price_cents, prices_updated_at,
+  SELECT id, name, name_de, series, printed_total, total, release_date, logo, symbol, box_price_cents, booster_price_cents, prices_updated_at,
          auto_box_price_cents, auto_booster_price_cents, manual_prices_override
   FROM card_sets
   WHERE game_id = (SELECT id FROM games WHERE slug = 'pokemon')
@@ -596,6 +596,7 @@ function mapSetRow(s) {
     id: s.id,
     slug: slugOfSet(s.id),
     name: s.name,
+    name_de: s.name_de ?? null,
     series: s.series,
     release_date: s.release_date,
     total: s.total,

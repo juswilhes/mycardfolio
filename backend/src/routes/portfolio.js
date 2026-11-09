@@ -3,6 +3,7 @@ import {
   portfolioHistory,
   computePortfolioHistory,
   addSealedToHistory,
+  sealedOnlyHistory,
   getMovers,
   recordPortfolioSnapshot,
 } from "../services/portfolioService.js";
@@ -14,6 +15,8 @@ const router = Router();
 // ?artist=: aus den Preis-Snapshots berechnete Teilmenge.
 router.get("/history", (req, res) => {
   const { set, language, artist } = req.query;
+  // ?scope=sealed: Reiter "Sealed" - Verlauf nur der versiegelten Produkte
+  if (req.query.scope === "sealed") return res.json(sealedOnlyHistory(req.user.id));
   if (set || language || artist) {
     return res.json(
       computePortfolioHistory(req.user.id, {

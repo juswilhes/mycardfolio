@@ -385,6 +385,8 @@ for (const [col, type] of [
   // Produktbilder von TCGplayer (über unseren Bild-Umweg ausgeliefert, imageProxy.js)
   ["auto_booster_image", "TEXT"],
   ["auto_box_image", "TEXT"],
+  // deutscher Set-Name von TCGdex (services/setNamesDe.js), nur für die Suche - Justus 09.11.2026 ("Mega Entwicklung Display")
+  ["name_de", "TEXT"],
 ]) {
   if (!csColumns.has(col)) db.exec(`ALTER TABLE card_sets ADD COLUMN ${col} ${type}`);
 }

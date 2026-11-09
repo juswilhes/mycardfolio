@@ -6,7 +6,7 @@ import { expandQuery } from "./cardRepository.js";
 // ("Top-Trainer-Box", "Kollektion", "Themendeck"), wird jedes Suchwort - oder jede feste Wortgruppe - in englische
 // Entsprechungen übersetzt. Alle Teile der Suche müssen vorkommen (UND); gesucht wird im Produktnamen sowie im
 // Set-Namen, Treffer müssen am Wortanfang liegen ("ex" findet nicht "Complex", aber "Elit" findet "Elite" -
-// die Suche läuft schon beim Tippen). Deutsche Set-Namen kennt die App (auch bei den Karten) nicht.
+// die Suche läuft schon beim Tippen). Deutsche Set-Namen stehen in card_sets.name_de (setNamesDe.js, von TCGdex).
 
 // Akzente/Satzzeichen weg, klein: "Top-Trainer-Box" -> "top trainer box", "Pokémon" -> "pokemon", "Größe" -> "grosse"
 const norm = (s) =>
@@ -41,6 +41,8 @@ const PHRASES = [
 const WORDS = [
   [/^kollektion(?:en)?$|^collections?$/, ["collection"]],
   [/^spezial$|^special$/, ["special"]],
+  // Teile deutscher Set-Namen, falls der ganze deutsche Name (card_sets.name_de) nicht passt
+  [/^entwicklung(?:en)?$|^evolution(?:s)?$/, ["entwicklung", "evolution", "evolved"]],
   [/^dose(?:n)?$|^tins?$/, ["tin"]],
   [/^blister$|^blisters$/, ["blister"]],
   [/^booster$|^boosters$/, ["booster"]],
@@ -57,7 +59,10 @@ const WORDS = [
 ];
 
 // Füllwörter, die in keinem Produktnamen helfen
-const STOP = new Set(["pokemon", "tcg", "karten", "karte", "sealed", "versiegelt", "the", "and", "und", "der", "die", "das", "von", "of"]);
+const STOP = new Set([
+  "pokemon", "tcg", "karten", "karte", "sealed", "versiegelt", "the", "and", "of",
+  "und", "der", "die", "das", "des", "den", "dem", "von", "in", "im", "am", "zu", "zum",
+]);
 
 // Eine Suche -> Liste von Bedingungen; jede Bedingung = englische/deutsche Varianten, von denen eine vorkommen muss
 export function parseSealedQuery(query) {
@@ -83,7 +88,7 @@ export function parseSealedQuery(query) {
 }
 
 const allStmt = db.prepare(`
-  SELECT c.id, c.set_id, c.name, c.image, c.price_cents, s.name AS set_name, s.series, s.release_date
+  SELECT c.id, c.set_id, c.name, c.image, c.price_cents, s.name AS set_name, s.name_de AS set_name_de, s.series, s.release_date
   FROM sealed_catalog c LEFT JOIN card_sets s ON s.id = c.set_id
 `);
 
@@ -96,7 +101,7 @@ function rows() {
   cache = allStmt.all().map((r) => ({
     ...r,
     nameNorm: ` ${norm(r.name)}`,
-    hay: ` ${norm(`${r.name} ${r.set_name ?? ""} ${r.series ?? ""} ${r.set_id}`)}`,
+    hay: ` ${norm(`${r.name} ${r.set_name ?? ""} ${r.set_name_de ?? ""} ${r.series ?? ""} ${r.set_id}`)}`,
   }));
   cacheAt = Date.now();
   return cache;

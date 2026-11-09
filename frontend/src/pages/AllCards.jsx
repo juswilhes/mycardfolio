@@ -113,11 +113,13 @@ export default function AllCards() {
 
   // Sets, die zum Suchtext passen (Name, Serie oder Kürzel) - stehen über den Karten
   const matchingSets = useMemo(() => {
-    const norm = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    // Umlaute -> Grundbuchstabe, damit "Sturmische Funken" auch "Stürmische Funken" findet
+    const norm = (s) =>
+      String(s ?? "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
     const q = norm(query);
     if (q.length < 2 || !sets) return [];
     return sets
-      .filter((s) => norm(s.name).includes(q) || norm(s.id) === q || norm(s.slug) === q || norm(s.series).includes(q))
+      .filter((s) => norm(s.name).includes(q) || norm(s.name_de).includes(q) || norm(s.id) === q || norm(s.slug) === q || norm(s.series).includes(q))
       .slice(0, 8);
   }, [query, sets]);
 

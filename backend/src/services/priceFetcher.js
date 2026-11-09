@@ -11,6 +11,7 @@ import { rebuildAnalysisCache } from "./analysisCache.js";
 import { recordSetValueSnapshots } from "./setValueSnapshots.js";
 import { refreshSealedPrices } from "./sealedPrices.js";
 import { refreshSealedCatalog } from "./sealedCatalog.js";
+import { refreshGermanSetNames } from "./setNamesDe.js";
 import { rebuildSitemap } from "./seo.js";
 import { refreshVariantFlags } from "./variantFlags.js";
 import { refreshPricesFromGuide } from "./guidePrices.js";
@@ -106,6 +107,7 @@ export async function runDailyPriceJob() {
     const steps = [
       ["Löschfristen", runDataRetention],
       ["Neu-Check", syncNewCards],
+      ["Set-Namen DE", refreshGermanSetNames],
       ["Ausführungen", refreshVariantFlags],
       ["Preisliste", refreshPricesFromGuide],
       ["Preise", refreshAllPrices],

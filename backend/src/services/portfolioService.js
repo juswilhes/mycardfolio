@@ -125,9 +125,8 @@ const sealedForHistoryStmt = db.prepare(`
   FROM sealed_products sp LEFT JOIN sealed_catalog sc ON sc.id = sp.catalog_id WHERE sp.user_id = ?
 `);
 const catalogSeriesStmt = db.prepare(`SELECT day, price_cents FROM sealed_catalog_prices WHERE catalog_id = ? ORDER BY day`);
-export function addSealedToHistory(userId, rows) {
+function sealedContext(userId) {
   const items = sealedForHistoryStmt.all(userId);
-  if (!items.length) return rows;
   const series = new Map();
   for (const it of items) if (it.catalog_id && !series.has(it.catalog_id)) series.set(it.catalog_id, catalogSeriesStmt.all(it.catalog_id));
   const unitOn = (it, day) => {
@@ -141,24 +140,51 @@ export function addSealedToHistory(userId, rows) {
     p = p ?? s[0]?.price_cents ?? it.price_cents;
     return p != null ? p / 100 : 0;
   };
+  // Wert und Einstand aller Sealed-Produkte, die am Tag schon in der Sammlung waren
+  const totalsOn = (day) => {
+    let value = 0;
+    let cost = 0;
+    let count = 0;
+    for (const it of items) {
+      if (it.added > day) continue;
+      const q = it.quantity || 1;
+      value += unitOn(it, day) * q;
+      if (it.purchase_price != null || it.shipping_cost != null) cost += (n(it.purchase_price) + n(it.shipping_cost)) * q;
+      count += q;
+    }
+    return { value, cost, count };
+  };
+  return { items, series, totalsOn };
+}
+
+// Nur Sealed (Reiter "Sealed", Justus 09.11.2026: Graph wie bei den Einzelkarten): Punkte an den Tagen, an denen ein
+// Produkt dazukam oder sich ein Katalogwert änderte - ab dem ersten Hinzufügen, davor war nichts in der Sammlung.
+export function sealedOnlyHistory(userId) {
+  const { items, series, totalsOn } = sealedContext(userId);
+  if (!items.length) return [];
+  const first = items.map((i) => i.added).sort()[0];
+  const seriesDays = [...series.values()].flat().map((r) => r.day).filter((d) => d >= first);
+  const days = [...new Set([...items.map((i) => i.added), ...seriesDays, today()])].sort();
+  return days.map((day) => {
+    const t = totalsOn(day);
+    return { captured_on: day, total_value: round2(t.value), total_cost: round2(t.cost), card_count: t.count };
+  });
+}
+
+export function addSealedToHistory(userId, rows) {
+  const { items, totalsOn } = sealedContext(userId);
+  if (!items.length) return rows;
   const byDay = new Map(rows.map((r) => [r.captured_on, r]));
   const days = [...new Set([...byDay.keys(), ...items.map((i) => i.added), today()])].sort();
   let prev = { total_value: 0, total_cost: 0, card_count: 0 };
   return days.map((day) => {
     const base = byDay.get(day) ?? prev;
     prev = base;
-    let value = 0;
-    let cost = 0;
-    for (const it of items) {
-      if (it.added > day) continue;
-      const q = it.quantity || 1;
-      value += unitOn(it, day) * q;
-      if (it.purchase_price != null || it.shipping_cost != null) cost += (n(it.purchase_price) + n(it.shipping_cost)) * q;
-    }
+    const t = totalsOn(day);
     return {
       captured_on: day,
-      total_value: round2(n(base.total_value) + value),
-      total_cost: round2(n(base.total_cost) + cost),
+      total_value: round2(n(base.total_value) + t.value),
+      total_cost: round2(n(base.total_cost) + t.cost),
       card_count: base.card_count,
     };
   });

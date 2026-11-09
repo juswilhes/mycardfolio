@@ -19,7 +19,8 @@ const value = (p) => (unitValue(p) != null ? unitValue(p) * (p.quantity ?? 1) : 
 // Abschnitt in der Sammlung, damit sie nicht in einem separaten Reiter
 // untergehen. Lädt sich selbst nach, damit Collection.jsx davon nichts
 // wissen muss.
-export default function SealedProductList() {
+// onChange: wird nach Bearbeiten/Entfernen aufgerufen (Collection.jsx aktualisiert damit Kennzahlen + Graph oben)
+export default function SealedProductList({ onChange }) {
   const [items, setItems] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
@@ -42,6 +43,7 @@ export default function SealedProductList() {
       await updateSealedProduct(editItem.id, values);
       setEditItem(null);
       load();
+      onChange?.();
     } catch (err) {
       setError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
     } finally {
@@ -55,6 +57,7 @@ export default function SealedProductList() {
       await deleteSealedProduct(id);
       setConfirmId(null);
       load();
+      onChange?.();
     } finally {
       setBusy(false);
     }
