@@ -35,6 +35,8 @@ export default function SealedProductDialog({
   const [catalogId, setCatalogId] = useState(initial?.catalog_id ?? preset?.id ?? null);
   const [autoValue, setAutoValue] = useState(initial?.auto_value ?? (preset?.priceCents != null ? preset.priceCents / 100 : null));
   const [name, setName2] = useState(initial?.name ?? preset?.name ?? "");
+  // Bild des gewählten Katalog-Produkts - nur für die Animation nach dem Hinzufügen (2. Argument von onConfirm)
+  const [chosenImage, setChosenImage] = useState(preset?.image ?? null);
   const [language, setLanguage] = useState(initial?.language ?? "de");
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? 1));
   // Gesamtpreis für diesen Kauf, wie beim Karten-Dialog - nicht pro Stück,
@@ -72,6 +74,7 @@ export default function SealedProductDialog({
     setCatalogId(item?.id ?? null);
     setAutoValue(item?.priceCents != null ? item.priceCents / 100 : null);
     setName2(item?.name ?? "");
+    setChosenImage(item?.image ?? null);
     setImageUrl("");
     setCardmarketUrl("");
   }
@@ -97,7 +100,7 @@ export default function SealedProductDialog({
       notes: notes.trim() || null,
       catalogId,
       language,
-    });
+    }, { image: catalogId ? chosenImage : imageUrl.trim() || null });
   }
 
   const inputCls =

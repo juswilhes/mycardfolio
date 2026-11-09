@@ -6,6 +6,7 @@ import { getSet, getCardsForSet, getOwnedInSet, getWatchlistIds, addSealedProduc
 import { useAuth } from "../context/AuthContext.jsx";
 import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
+import SealedAddedAnimation from "../components/SealedAddedAnimation.jsx";
 import SealedPrices from "../components/SealedPrices.jsx";
 import { eur } from "../lib/format.js";
 import Icon from "../components/Icon.jsx";
@@ -53,6 +54,7 @@ export default function SetDetail() {
   const [sealedBusy, setSealedBusy] = useState(false);
   const [sealedError, setSealedError] = useState(null);
   const [sealedAdded, setSealedAdded] = useState(false);
+  const [sealedCelebrate, setSealedCelebrate] = useState(null);
 
   // alte ID-Adresse (/sets/me1) -> lesbare Adresse (/sets/mega-evolution)
   useEffect(() => {
@@ -115,13 +117,14 @@ export default function SetDetail() {
   const total = cards?.length ?? 0;
   const have = cards ? cards.filter((c) => owned.has(c.external_id)).length : 0;
 
-  async function confirmSealed(values) {
+  async function confirmSealed(values, meta) {
     setSealedBusy(true);
     setSealedError(null);
     try {
       await addSealedProduct({ ...values, setId: set?.id ?? setId, setName: set?.name });
       setSealedOpen(false);
       setSealedPreset(null);
+      setSealedCelebrate({ name: values.name, image: meta?.image ?? null });
       setSealedAdded(true);
       setTimeout(() => setSealedAdded(false), 3000);
     } catch (err) {
@@ -316,6 +319,9 @@ export default function SetDetail() {
           onConfirm={confirmSealed}
           onClose={() => !sealedBusy && (setSealedOpen(false), setSealedError(null), setSealedPreset(null))}
         />
+      )}
+      {sealedCelebrate && (
+        <SealedAddedAnimation name={sealedCelebrate.name} image={sealedCelebrate.image} onDone={() => setSealedCelebrate(null)} />
       )}
     </div>
   );

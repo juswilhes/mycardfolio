@@ -4,6 +4,7 @@ import { getSealedCatalogItem, addSealedProduct } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
+import SealedAddedAnimation from "../components/SealedAddedAnimation.jsx";
 import { usePageTitle } from "../hooks/usePageTitle.js";
 
 // Route /sealed/:id - Produktseite eines versiegelten Produkts, aufgebaut wie die Kartenseite
@@ -20,6 +21,7 @@ export default function SealedInfo() {
   const [busy, setBusy] = useState(false);
   const [addError, setAddError] = useState(null);
   const [added, setAdded] = useState(false);
+  const [celebrate, setCelebrate] = useState(null);
   usePageTitle(item ? `${item.name} – Wert & Preis | mycardfolio` : null);
 
   useEffect(() => {
@@ -30,13 +32,14 @@ export default function SealedInfo() {
       .catch(() => setError(true));
   }, [id]);
 
-  async function confirmAdd(values) {
+  async function confirmAdd(values, meta) {
     setBusy(true);
     setAddError(null);
     try {
       await addSealedProduct({ ...values, setId: item.setId, setName: item.setName });
       setDialogOpen(false);
       setAdded(true);
+      setCelebrate({ name: values.name, image: meta?.image ?? item.image ?? null });
     } catch (err) {
       setAddError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
     } finally {
@@ -129,6 +132,7 @@ export default function SealedInfo() {
           onClose={() => !busy && (setDialogOpen(false), setAddError(null))}
         />
       )}
+      {celebrate && <SealedAddedAnimation name={celebrate.name} image={celebrate.image} onDone={() => setCelebrate(null)} />}
     </div>
   );
 }

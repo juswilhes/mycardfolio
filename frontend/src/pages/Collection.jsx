@@ -12,6 +12,7 @@ import {
 import CollectionGroup from "../components/CollectionGroup.jsx";
 import SealedProductList from "../components/SealedProductList.jsx";
 import SealedAddDialog from "../components/SealedAddDialog.jsx";
+import SealedAddedAnimation from "../components/SealedAddedAnimation.jsx";
 import SegmentedToggle from "../components/SegmentedToggle.jsx";
 import PortfolioChart from "../components/PortfolioChart.jsx";
 import Movers from "../components/Movers.jsx";
@@ -196,6 +197,7 @@ export default function Collection() {
   const view = ["karten", "sealed"].includes(params.get("ansicht")) ? params.get("ansicht") : "gesamt";
   const setView = (v) => setParams(v === "gesamt" ? {} : { ansicht: v }, { replace: true });
   const [sealedAddOpen, setSealedAddOpen] = useState(false);
+  const [sealedCelebrate, setSealedCelebrate] = useState(null); // { name, image } -> Animation nach dem Hinzufügen
   const [sealedKey, setSealedKey] = useState(0);
   const [sealedItems, setSealedItems] = useState(null);
   const [historyAll, setHistoryAll] = useState(null);
@@ -437,12 +439,16 @@ export default function Collection() {
         value={view}
         onChange={setView}
       />
+      {sealedCelebrate && (
+        <SealedAddedAnimation name={sealedCelebrate.name} image={sealedCelebrate.image} onDone={() => setSealedCelebrate(null)} />
+      )}
       {sealedAddOpen && (
         <SealedAddDialog
           sets={setDefs}
-          onAdded={() => {
+          onAdded={(added) => {
             setSealedAddOpen(false);
             setSealedKey((k) => k + 1);
+            if (added) setSealedCelebrate(added);
           }}
           onClose={() => setSealedAddOpen(false)}
         />

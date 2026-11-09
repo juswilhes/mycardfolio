@@ -22,12 +22,12 @@ export default function SealedAddDialog({ sets, onAdded, onClose }) {
     return (sets ?? []).filter((s) => !q || s.name.toLowerCase().includes(q)).slice(0, 60);
   }, [sets, query]);
 
-  async function confirm(values) {
+  async function confirm(values, meta) {
     setBusy(true);
     setError(null);
     try {
       await addSealedProduct({ ...values, setId: set?.id ?? null, setName: set?.name ?? null });
-      onAdded();
+      onAdded({ name: values.name, image: meta?.image ?? null });
     } catch (err) {
       setError(err.message || "Speichern fehlgeschlagen. Bitte nochmal versuchen.");
     } finally {
