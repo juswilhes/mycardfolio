@@ -280,6 +280,25 @@ export default function CardInfo() {
         ))}
       </div>
 
+      {/* Promo-Karte: in welchen Sealed-Produkten sie beiliegt (aus der Produktbeschreibung, nur wenn eindeutig) */}
+      {card.sealed_products?.length > 0 && (
+        <div className="mb-8">
+          <p className="text-xs text-subtle mb-2">Liegt diesen Sealed-Produkten bei</p>
+          <div className="flex flex-wrap gap-2">
+            {card.sealed_products.map((p) => (
+              <Link
+                key={p.id}
+                to={`/sealed/${p.id}`}
+                className="flex items-center gap-2 border border-line rounded-xl px-2 py-1.5 hover:border-ink max-w-full"
+              >
+                {p.image && <img src={p.image} alt="" loading="lazy" className="h-10 w-8 object-contain shrink-0" />}
+                <span className="text-sm min-w-0 truncate">{p.name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <PriceSection
         card={card}
         history={history}

@@ -213,7 +213,7 @@ export function metaFor(rawPath) {
     const description =
       price != null
         ? `Wie viel ist ${p.name} wert? Aktueller Wert: ${eur(price)} (Stand ${dateDe(p.updated_at)}). Mit Preisverlauf.`
-        : `${p.name} aus dem Pokémon-Set ${p.set_name ?? ""}. Mit Preisverlauf.`;
+        : `${p.name}${p.set_name ? ` aus dem Pokémon-Set ${p.set_name}` : ""}. Mit Preisverlauf.`;
     const body = wrap(
       `<nav>${link("/", "Start")} › ${link("/sets", "Alle Karten")}${p.set_name ? ` › ${link(setPath, p.set_name)}` : ""}</nav>` +
         `<h1>${esc(p.name)}: Wert und Preis</h1><p>${esc(description)}</p>`

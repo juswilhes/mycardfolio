@@ -360,6 +360,23 @@ CREATE TABLE IF NOT EXISTS sealed_catalog_prices (
 INSERT OR IGNORE INTO sealed_catalog_prices (catalog_id, day, price_cents, cm_cents, tcg_cents)
   SELECT id, substr(updated_at, 1, 10), price_cents, cm_cents, tcg_cents FROM sealed_catalog WHERE price_cents IS NOT NULL AND updated_at IS NOT NULL;
 `);
+// Inhalt der Sealed-Produkte aus der TCGplayer-Beschreibung (services/sealedContents.js, Nachtlauf "Sealed-Katalog"):
+// weitere Sets, aus denen Booster im Produkt stecken (sealed_catalog.set_id ist das Haupt-Set; das Produkt steht
+// dann auch auf den Set-Seiten dieser Sets) und die Promo-Karten, die beiliegen (Justus 09.11.2026)
+db.exec(`
+CREATE TABLE IF NOT EXISTS sealed_catalog_sets (
+  catalog_id INTEGER NOT NULL,
+  set_id     TEXT NOT NULL,
+  PRIMARY KEY (catalog_id, set_id)
+);
+CREATE INDEX IF NOT EXISTS idx_sealed_catalog_sets_set ON sealed_catalog_sets(set_id);
+CREATE TABLE IF NOT EXISTS sealed_catalog_promos (
+  catalog_id       INTEGER NOT NULL,
+  card_external_id TEXT NOT NULL,
+  PRIMARY KEY (catalog_id, card_external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_sealed_catalog_promos_card ON sealed_catalog_promos(card_external_id);
+`);
 if (!spColumns.has("language")) {
   db.exec(`ALTER TABLE sealed_products ADD COLUMN language TEXT`); // de, en, ja, fr, it, es
 }

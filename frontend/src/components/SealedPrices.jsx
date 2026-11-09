@@ -66,7 +66,11 @@ export default function SealedPrices({ sealed, setId, setName, catalogCount = 0,
                     ) : (
                       <span className="h-12 w-10 shrink-0" />
                     )}
-                    <span className="flex-1 min-w-0 text-sm truncate">{short(item.name)}</span>
+                    <span className="flex-1 min-w-0 text-sm">
+                      <span className="block truncate">{short(item.name)}</span>
+                      {/* Produkt mit Boostern aus mehreren Sets: steht auf allen diesen Set-Seiten */}
+                      {item.homeSetName && <span className="block text-[11px] text-subtle truncate">auch aus {item.homeSetName}</span>}
+                    </span>
                     <span className="text-sm font-mono shrink-0">{item.priceCents != null ? eur(item.priceCents / 100) : "—"}</span>
                   </Link>
                   {onAdd && (

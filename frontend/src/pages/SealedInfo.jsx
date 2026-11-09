@@ -6,6 +6,7 @@ import PriceSection from "../components/PriceSection.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
 import SealedAddedAnimation from "../components/SealedAddedAnimation.jsx";
 import { usePageTitle } from "../hooks/usePageTitle.js";
+import { cardPath } from "../lib/paths.js";
 
 // Route /sealed/:id - Produktseite eines versiegelten Produkts, aufgebaut wie die Kartenseite
 // (Justus 09.11.2026): Bild, Steckbrief, aktueller Wert, Preisgraph, Link zu Cardmarket, "Zur Sammlung".
@@ -117,7 +118,44 @@ export default function SealedInfo() {
             <p className="text-sm">{value}</p>
           </div>
         ))}
+        {/* Booster aus mehreren Sets: das Produkt steht auf allen diesen Set-Seiten */}
+        {item.sets?.length > 1 && (
+          <div className="col-span-2 sm:col-span-3">
+            <p className="text-xs text-subtle">Enthält Booster aus</p>
+            <p className="text-sm">
+              {item.sets.map((s, i) => (
+                <span key={s.id}>
+                  {i > 0 && ", "}
+                  <Link to={`/sets/${s.slug ?? s.id}`} className="underline hover:text-ink">
+                    {s.name}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* Beiliegende Promo-Karten (aus der Produktbeschreibung, nur eindeutig erkannte) */}
+      {item.promos?.length > 0 && (
+        <div className="mb-8">
+          <p className="text-xs text-subtle mb-2">Beiliegende Promo-Karten</p>
+          <div className="flex flex-wrap gap-3">
+            {item.promos.map((c) => (
+              <Link key={c.external_id} to={cardPath(c)} className="w-24 group">
+                <img
+                  src={c.image_small}
+                  alt={c.name}
+                  loading="lazy"
+                  className="w-full h-auto rounded-lg border border-line group-hover:border-ink"
+                />
+                <span className="block text-[11px] mt-1 leading-tight">{c.name}</span>
+                <span className="block text-[10px] text-subtle truncate">{c.set_name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <PriceSection card={card} history={item.history} sealed />
 

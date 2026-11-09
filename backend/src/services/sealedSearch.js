@@ -88,7 +88,9 @@ export function parseSealedQuery(query) {
 }
 
 const allStmt = db.prepare(`
-  SELECT c.id, c.set_id, c.name, c.image, c.price_cents, s.name AS set_name, s.name_de AS set_name_de, s.series, s.release_date
+  SELECT c.id, c.set_id, c.name, c.image, c.price_cents, s.name AS set_name, s.name_de AS set_name_de, s.series, s.release_date,
+    (SELECT group_concat(s2.name || ' ' || COALESCE(s2.name_de, ''), ' ') FROM sealed_catalog_sets x
+       JOIN card_sets s2 ON s2.id = x.set_id WHERE x.catalog_id = c.id) AS extra_sets
   FROM sealed_catalog c LEFT JOIN card_sets s ON s.id = c.set_id
 `);
 
@@ -101,7 +103,7 @@ function rows() {
   cache = allStmt.all().map((r) => ({
     ...r,
     nameNorm: ` ${norm(r.name)}`,
-    hay: ` ${norm(`${r.name} ${r.set_name ?? ""} ${r.set_name_de ?? ""} ${r.series ?? ""} ${r.set_id}`)}`,
+    hay: ` ${norm(`${r.name} ${r.set_name ?? ""} ${r.set_name_de ?? ""} ${r.extra_sets ?? ""} ${r.series ?? ""} ${r.set_id}`)}`,
   }));
   cacheAt = Date.now();
   return cache;

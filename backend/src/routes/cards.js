@@ -15,6 +15,7 @@ import {
 } from "../services/cardRepository.js";
 import { cardmarketLink } from "../services/cardmarketLinks.js";
 import { analysis } from "../services/analysisCache.js";
+import { sealedOfCard } from "../services/sealedCatalog.js";
 import { resolveCardParam } from "../services/cardSlugs.js";
 import { authRequired } from "../middleware/auth.js";
 import { isOperatorUser } from "../lib/admin.js";
@@ -69,6 +70,7 @@ router.get("/external/:externalId", async (req, res) => {
       price_breakdown: breakdown,
       cardmarket_updated: dbMeta?.cardmarket_updated ?? null,
       cardmarket_url: cardmarketLink(dbMeta ?? local),
+      sealed_products: sealedOfCard(externalId), // Promo-Karte: in welchen Sealed-Produkten sie beiliegt (sonst leer)
     });
   }
 

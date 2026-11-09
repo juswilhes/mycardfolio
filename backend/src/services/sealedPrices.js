@@ -42,7 +42,10 @@ const updateStmt = db.prepare(`
 // "&"/"and" gleich behandelt; Sonderfälle mit festem Namen
 export const TCG_GROUP_ALIAS = { base1: "Base Set", sm1: "SM Base Set", sv3pt5: "SV: Scarlet & Violet 151" };
 export const groupKey = (name) => {
+  // Akzente weg: TCGplayer schreibt "Pokemon GO", wir "Pokémon GO"
   let n = String(name ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/^[A-Za-z0-9 .]+:\s*/, "")
     .replace(/^(SM|XY|SWSH|SV|BW|DP|HGSS|ME)\s+-\s+/i, "")
     .replace(/^EX\s+/i, "")
