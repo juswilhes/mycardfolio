@@ -136,6 +136,13 @@ export default function Collection() {
   const [sealedAddOpen, setSealedAddOpen] = useState(false);
   const [sealedKey, setSealedKey] = useState(0);
   const [sealedItems, setSealedItems] = useState(null);
+  const [historyAll, setHistoryAll] = useState(null);
+  useEffect(() => {
+    if (view !== "gesamt" || !items) return;
+    getPortfolioHistory({ scope: "all" })
+      .then(setHistoryAll)
+      .catch(() => setHistoryAll([]));
+  }, [view, items, sealedKey]);
   // für "Gesamt" frisch laden (Änderungen unter "Sealed" sollen sofort mitzählen)
   useEffect(() => {
     if (view !== "gesamt") return;
@@ -380,77 +387,15 @@ export default function Collection() {
     );
   }
 
-  if (view === "gesamt") {
-    const sealedList = sealedItems ?? [];
-    const sUnit = (p) => p.current_value ?? p.auto_value ?? null;
-    const sVal = (p) => (sUnit(p) ?? 0) * (p.quantity ?? 1);
-    const sCost = (p) =>
-      p.purchase_price != null || p.shipping_cost != null ? ((p.purchase_price ?? 0) + (p.shipping_cost ?? 0)) * (p.quantity ?? 1) : null;
-    const cardValue = items.reduce((s, i) => s + val(i), 0);
-    const sealedValue = sealedList.reduce((s, p) => s + sVal(p), 0);
-    const total = cardValue + sealedValue;
-    // Gewinn/Verlust nur über Einträge mit Kaufpreis (wie bei den Einzelkarten)
-    const cardsWithCost = items.filter((i) => cost(i) != null);
-    const sealedWithCost = sealedList.filter((p) => sCost(p) != null);
-    const invested = cardsWithCost.reduce((s, i) => s + cost(i), 0) + sealedWithCost.reduce((s, p) => s + sCost(p), 0);
-    const gainAll =
-      cardsWithCost.reduce((s, i) => s + val(i), 0) + sealedWithCost.reduce((s, p) => s + sVal(p), 0) - invested;
-    const cardCount = items.reduce((s, i) => s + (i.quantity ?? 1), 0);
-    const sealedCount = sealedList.reduce((s, p) => s + (p.quantity ?? 1), 0);
-    const share = (v) => (total > 0 ? `${Math.round((v / total) * 100)} %` : "–");
-    return (
-      <div>
-        {header}
-        <div className="bg-surface border border-line rounded-2xl px-6 py-5 mb-6 shadow-sm">
-          <p className="text-subtle text-sm">Gesamtwert deiner Sammlung</p>
-          <p className="text-4xl font-semibold font-mono">{sealedItems === null ? "…" : eur(total)}</p>
-          {invested > 0 && sealedItems !== null && (
-            <div className="flex gap-6 mt-3">
-              <div>
-                <p className="text-subtle text-xs">Investiert</p>
-                <p className="font-mono text-sm">{eur(invested)}</p>
-              </div>
-              <div>
-                <p className="text-subtle text-xs">Gewinn / Verlust</p>
-                <p className={`font-mono text-sm ${gainAll >= 0 ? "text-mint" : "text-rose"}`}>
-                  {gainAll >= 0 ? "+" : "−"}
-                  {eur(Math.abs(gainAll))}
-                  <span className="text-subtle">
-                    {"  "}({gainAll >= 0 ? "+" : "−"}
-                    {Math.abs((gainAll / invested) * 100).toFixed(1)} %)
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => setView("karten")}
-            className="text-left bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm hover:border-ink"
-          >
-            <p className="text-sm font-medium">Einzelkarten</p>
-            <p className="text-2xl font-semibold font-mono mt-1">{eur(cardValue)}</p>
-            <p className="text-xs text-subtle mt-1">
-              {cardCount} Karten · {share(cardValue)} des Gesamtwerts
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("sealed")}
-            className="text-left bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm hover:border-ink"
-          >
-            <p className="text-sm font-medium">Sealed</p>
-            <p className="text-2xl font-semibold font-mono mt-1">{sealedItems === null ? "…" : eur(sealedValue)}</p>
-            <p className="text-xs text-subtle mt-1">
-              {sealedCount} Produkte · {share(sealedValue)} des Gesamtwerts
-            </p>
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Gesamt = Einzelkarten + Sealed (Justus 09.11.2026: "unter Gesamt alle Daten, auch Graphen")
+  const isAll = view === "gesamt";
+  const sealedList = sealedItems ?? [];
+  const sUnit = (p) => p.current_value ?? p.auto_value ?? null;
+  const sVal = (p) => (sUnit(p) ?? 0) * (p.quantity ?? 1);
+  const sCost = (p) =>
+    p.purchase_price != null || p.shipping_cost != null ? ((p.purchase_price ?? 0) + (p.shipping_cost ?? 0)) * (p.quantity ?? 1) : null;
+  const sealedValue = sealedList.reduce((s2, p) => s2 + sVal(p), 0);
+  const sealedCount = sealedList.reduce((s2, p) => s2 + (p.quantity ?? 1), 0);
 
   if (items.length === 0) {
     return (
@@ -463,6 +408,7 @@ export default function Collection() {
             Karte hinzufügen
           </Link>
         </div>
+        {isAll && <SealedProductList key={sealedKey} />}
       </div>
     );
   }
@@ -473,7 +419,14 @@ export default function Collection() {
   const totalCards = base.reduce((s, i) => s + (i.quantity ?? 1), 0);
   const withCost = base.filter((i) => cost(i) != null);
   const totalCost = withCost.reduce((s, i) => s + cost(i), 0);
-  const gain = withCost.reduce((s, i) => s + val(i), 0) - totalCost;
+  const cardsGain = withCost.reduce((s, i) => s + val(i), 0) - totalCost;
+  const withSealed = isAll && !anyFilter;
+  const sealedWithCost = withSealed ? sealedList.filter((p) => sCost(p) != null) : [];
+  const shownValue = totalValue + (withSealed ? sealedValue : 0);
+  const shownCost = totalCost + sealedWithCost.reduce((s2, p) => s2 + sCost(p), 0);
+  const gain = cardsGain + sealedWithCost.reduce((s2, p) => s2 + sVal(p) - sCost(p), 0);
+  const chartData = withSealed ? historyAll : history;
+  const share = (v) => (shownValue > 0 ? `${Math.round((v / shownValue) * 100)} %` : "–");
 
   const selectCls =
     "border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink";
@@ -486,28 +439,29 @@ export default function Collection() {
         <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
           <div>
             <p className="text-subtle text-sm">
-              {anyFilter ? "Wert der gefilterten Auswahl" : "Gesamtwert deiner Einzelkarten"}
+              {anyFilter ? "Wert der gefilterten Auswahl" : withSealed ? "Gesamtwert deiner Sammlung" : "Gesamtwert deiner Einzelkarten"}
             </p>
-            <p className="text-4xl font-semibold font-mono">{eur(totalValue)}</p>
+            <p className="text-4xl font-semibold font-mono">{withSealed && sealedItems === null ? "…" : eur(shownValue)}</p>
             <span className="text-xs text-subtle">
               {totalCards} {anyFilter ? "gefilterte Karten" : "Karten im Portfolio"}
+              {withSealed && sealedCount > 0 ? ` · ${sealedCount} Sealed-Produkte` : ""}
             </span>
           </div>
-          {withCost.length > 0 && (
+          {(withCost.length > 0 || sealedWithCost.length > 0) && (
             <div className="flex gap-6 pb-1">
               <div>
                 <p className="text-subtle text-xs">Investiert</p>
-                <p className="font-mono text-sm">{eur(totalCost)}</p>
+                <p className="font-mono text-sm">{eur(shownCost)}</p>
               </div>
               <div>
                 <p className="text-subtle text-xs">Gewinn / Verlust</p>
                 <p className={`font-mono text-sm ${gain >= 0 ? "text-mint" : "text-rose"}`}>
                   {gain >= 0 ? "+" : "−"}
                   {eur(Math.abs(gain))}
-                  {totalCost > 0 && (
+                  {shownCost > 0 && (
                     <span className="text-subtle">
                       {"  "}({gain >= 0 ? "+" : "−"}
-                      {Math.abs((gain / totalCost) * 100).toFixed(1)} %)
+                      {Math.abs((gain / shownCost) * 100).toFixed(1)} %)
                     </span>
                   )}
                 </p>
@@ -517,12 +471,24 @@ export default function Collection() {
         </div>
 
         <div className="mt-4">
-          {history === null ? (
+          {chartData === null ? (
             <p className="text-subtle text-sm py-4">Lade Verlauf …</p>
           ) : (
-            <PortfolioChart data={history} />
+            <PortfolioChart data={chartData} />
           )}
         </div>
+        {withSealed && sealedCount > 0 && (
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <button type="button" onClick={() => setView("karten")} className="text-left rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink">
+              <span className="block text-[11px] text-subtle">Einzelkarten · {share(totalValue)}</span>
+              <span className="block font-mono text-sm">{eur(totalValue)}</span>
+            </button>
+            <button type="button" onClick={() => setView("sealed")} className="text-left rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink">
+              <span className="block text-[11px] text-subtle">Sealed · {share(sealedValue)}</span>
+              <span className="block font-mono text-sm">{eur(sealedValue)}</span>
+            </button>
+          </div>
+        )}
         {anyFilter && (
           <p className="text-[11px] text-subtle mt-1">
             Wert &amp; Verlauf zeigen nur die gefilterte Auswahl
@@ -600,6 +566,8 @@ export default function Collection() {
       </div>
 
       <Movers data={movers} />
+
+      {isAll && <SealedProductList key={sealedKey} />}
 
       {/* Suchen, Sortieren & Filtern */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">

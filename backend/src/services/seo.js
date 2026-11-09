@@ -13,6 +13,9 @@ import { analysis } from "./analysisCache.js";
 // sehen nur das HTML vom Server, nicht das, was React danach anzeigt.
 
 const SITE_URL = "https://mycardfolio.de";
+const sealedItemStmt = db.prepare(
+  `SELECT c.name, c.set_id, c.price_cents, c.updated_at, s.name AS set_name FROM sealed_catalog c LEFT JOIN card_sets s ON s.id = c.set_id WHERE c.id = ?`
+);
 const SITE_NAME = "mycardfolio";
 const DEFAULT_IMAGE = `${SITE_URL}/logo.png`;
 const DEFAULT_TITLE = "mycardfolio – Pokémon-Sammlung & Portfolio-Wert im Blick";
@@ -200,6 +203,27 @@ export function metaFor(rawPath) {
       image: s.logo || DEFAULT_IMAGE,
       body,
       jsonld: [crumbs([["Start", "/"], ["Alle Karten", "/sets"], [s.name, setPath]])],
+    };
+  }
+  if ((m = path.match(/^\/sealed\/(\d+)$/))) {
+    const p = sealedItemStmt.get(Number(m[1]));
+    if (!p) return { ...base, robots: false, missing: true };
+    const setPath = p.set_id ? `/sets/${encodeURIComponent(slugOfSet(p.set_id))}` : "/sets";
+    const price = p.price_cents != null ? p.price_cents / 100 : null;
+    const description =
+      price != null
+        ? `Wie viel ist ${p.name} wert? Aktueller Wert: ${eur(price)} (Stand ${dateDe(p.updated_at)}). Mit Preisverlauf.`
+        : `${p.name} aus dem Pokémon-Set ${p.set_name ?? ""}. Mit Preisverlauf.`;
+    const body = wrap(
+      `<nav>${link("/", "Start")} › ${link("/sets", "Alle Karten")}${p.set_name ? ` › ${link(setPath, p.set_name)}` : ""}</nav>` +
+        `<h1>${esc(p.name)}: Wert und Preis</h1><p>${esc(description)}</p>`
+    );
+    return {
+      ...base,
+      title: shorten(`${p.name} – Wert & Preis | ${SITE_NAME}`, 70),
+      description: shorten(description, 200),
+      body,
+      jsonld: [crumbs([["Start", "/"], ["Alle Karten", "/sets"], ...(p.set_name ? [[p.set_name, setPath]] : []), [p.name, path]])],
     };
   }
   if ((m = path.match(/^\/illustrator\/([^/]+)$/))) {

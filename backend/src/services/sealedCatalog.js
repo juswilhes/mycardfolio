@@ -13,6 +13,10 @@ const MAX_FACTOR = 2.5;
 const EXCLUDE = /\bcase\b|code card/i;
 
 const setsStmt = db.prepare(`SELECT id, name FROM card_sets`);
+const idByTcgStmt = db.prepare(`SELECT id FROM sealed_catalog WHERE tcg_product_id = ?`);
+const upsertPriceStmt = db.prepare(`
+  INSERT OR REPLACE INTO sealed_catalog_prices (catalog_id, day, price_cents, cm_cents, tcg_cents) VALUES (?, ?, ?, ?, ?)
+`);
 const upsertStmt = db.prepare(`
   INSERT INTO sealed_catalog (set_id, tcg_product_id, name, image, cm_product_id, cm_name, cm_cents, tcg_cents, price_cents, updated_at)
   VALUES (@set_id, @tcg_product_id, @name, @image, @cm_product_id, @cm_name, @cm_cents, @tcg_cents, @price_cents, @updated_at)
@@ -101,6 +105,7 @@ export async function refreshSealedCatalog() {
           price_cents: price,
           updated_at: now,
         });
+        if (price) upsertPriceStmt.run(idByTcgStmt.get(p.productId).id, now.slice(0, 10), price, cmCents, tcgCents);
         stats.produkte++;
         if (cm) stats.mitCardmarket++;
         if (price) stats.mitPreis++;
@@ -130,6 +135,30 @@ export function catalogForSet(setId) {
     updated: c.updated_at,
     link: searchLink(c.cm_name ?? c.name),
   }));
+}
+
+// Produktseite (/sealed/:id): Daten + Preisverlauf im Format des Karten-Graphen (fetched_at, price, variant)
+const itemStmt = db.prepare(`
+  SELECT c.id, c.set_id, c.name, c.image, c.price_cents, c.cm_name, c.updated_at, s.name AS set_name, s.release_date, s.logo
+  FROM sealed_catalog c LEFT JOIN card_sets s ON s.id = c.set_id WHERE c.id = ?
+`);
+const historyStmt = db.prepare(`SELECT day, price_cents FROM sealed_catalog_prices WHERE catalog_id = ? ORDER BY day`);
+export function catalogItem(id) {
+  const c = itemStmt.get(id);
+  if (!c) return null;
+  return {
+    id: c.id,
+    name: c.name,
+    image: c.image,
+    setId: c.set_id,
+    setName: c.set_name,
+    setLogo: c.logo,
+    releaseDate: c.release_date,
+    priceCents: c.price_cents,
+    updated: c.updated_at,
+    link: searchLink(c.cm_name ?? c.name),
+    history: historyStmt.all(id).map((h) => ({ fetched_at: `${h.day}T00:00:00.000Z`, price: h.price_cents / 100, variant: "normal" })),
+  };
 }
 
 // Einmal nach dem Deploy (Marker), damit die Auswahl nicht erst nach dem nächsten Nachtlauf da ist

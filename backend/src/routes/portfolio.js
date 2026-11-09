@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   portfolioHistory,
   computePortfolioHistory,
+  addSealedToHistory,
   getMovers,
   recordPortfolioSnapshot,
 } from "../services/portfolioService.js";
@@ -23,7 +24,9 @@ router.get("/history", (req, res) => {
     );
   }
   recordPortfolioSnapshot(req.user.id);
-  res.json(portfolioHistory.all(req.user.id));
+  const rows = portfolioHistory.all(req.user.id);
+  // ?scope=all: Gesamt-Ansicht der Sammlung, mit Sealed-Produkten
+  res.json(req.query.scope === "all" ? addSealedToHistory(req.user.id, rows) : rows);
 });
 
 // GET /api/portfolio/movers -> Top-Gewinner / -Verlierer der letzten 7 Tage

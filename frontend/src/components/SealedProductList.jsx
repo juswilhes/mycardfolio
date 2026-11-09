@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { getSealedProducts, updateSealedProduct, deleteSealedProduct } from "../api.js";
 import SealedProductDialog from "./SealedProductDialog.jsx";
@@ -100,7 +101,13 @@ export default function SealedProductList() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
-                    {p.name}
+                    {p.catalog_id ? (
+                      <Link to={`/sealed/${p.catalog_id}`} className="hover:underline">
+                        {p.name}
+                      </Link>
+                    ) : (
+                      p.name
+                    )}
                     {(p.quantity ?? 1) > 1 && (
                       <span className="text-subtle font-normal"> · {p.quantity}×</span>
                     )}

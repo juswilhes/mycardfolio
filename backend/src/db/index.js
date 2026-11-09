@@ -347,6 +347,18 @@ CREATE TABLE IF NOT EXISTS sealed_catalog (
   updated_at     TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_sealed_catalog_set ON sealed_catalog(set_id);
+-- Tageswert je Katalog-Produkt (Preisgraph der Produktseite, Gesamt-Verlauf der Sammlung), ab 09.11.2026
+CREATE TABLE IF NOT EXISTS sealed_catalog_prices (
+  catalog_id  INTEGER NOT NULL,
+  day         TEXT NOT NULL,
+  price_cents INTEGER NOT NULL,
+  cm_cents    INTEGER,
+  tcg_cents   INTEGER,
+  PRIMARY KEY (catalog_id, day)
+);
+-- der Stand aus dem ersten Katalog-Abgleich zählt als erster Tag
+INSERT OR IGNORE INTO sealed_catalog_prices (catalog_id, day, price_cents, cm_cents, tcg_cents)
+  SELECT id, substr(updated_at, 1, 10), price_cents, cm_cents, tcg_cents FROM sealed_catalog WHERE price_cents IS NOT NULL AND updated_at IS NOT NULL;
 `);
 if (!spColumns.has("catalog_id")) {
   db.exec(`ALTER TABLE sealed_products ADD COLUMN catalog_id INTEGER`);

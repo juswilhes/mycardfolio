@@ -6,6 +6,7 @@ import Collection from "./pages/Collection.jsx";
 import AllCards from "./pages/AllCards.jsx";
 import SetDetail from "./pages/SetDetail.jsx";
 import CardInfo from "./pages/CardInfo.jsx";
+import SealedInfo from "./pages/SealedInfo.jsx";
 import Landing from "./pages/Landing.jsx";
 import Sales from "./pages/Sales.jsx";
 import Stats from "./pages/Stats.jsx";
@@ -188,6 +189,7 @@ export default function App() {
             <Route path="/news/:slug" element={<Article />} />
             <Route path="/sets/:setId" element={<SetDetail />} />
             <Route path="/database/:externalId" element={<CardInfo />} />
+            <Route path="/sealed/:id" element={<SealedInfo />} />
             <Route path="/illustrator/:name" element={<ArtistCards />} />
             {/* "Hinzufügen" ist jetzt Teil von "Alle Karten" */}
             <Route path="/add" element={<Navigate to="/sets" replace />} />

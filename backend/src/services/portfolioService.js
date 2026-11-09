@@ -115,6 +115,55 @@ export function computePortfolioHistory(userId, { set, language, artist } = {}) 
   });
 }
 
+// --- Gesamt-Verlauf: Karten + Sealed (Justus 09.11.2026) -------------------
+// Zu jedem Tagespunkt der Karten kommt der Wert der Sealed-Produkte, die an dem Tag schon in der Sammlung waren
+// (wie die Karten-Snapshots, die nur den damaligen Bestand kennen): eigener Wert, sonst der Katalog-Tageswert
+// (vor dem ersten bekannten Tag der erste Wert, wie bei computePortfolioHistory).
+const sealedForHistoryStmt = db.prepare(`
+  SELECT sp.catalog_id, sp.current_value, sp.quantity, sp.purchase_price, sp.shipping_cost,
+         substr(sp.created_at, 1, 10) AS added, sc.price_cents
+  FROM sealed_products sp LEFT JOIN sealed_catalog sc ON sc.id = sp.catalog_id WHERE sp.user_id = ?
+`);
+const catalogSeriesStmt = db.prepare(`SELECT day, price_cents FROM sealed_catalog_prices WHERE catalog_id = ? ORDER BY day`);
+export function addSealedToHistory(userId, rows) {
+  const items = sealedForHistoryStmt.all(userId);
+  if (!items.length) return rows;
+  const series = new Map();
+  for (const it of items) if (it.catalog_id && !series.has(it.catalog_id)) series.set(it.catalog_id, catalogSeriesStmt.all(it.catalog_id));
+  const unitOn = (it, day) => {
+    if (it.current_value != null) return n(it.current_value);
+    const s = series.get(it.catalog_id) ?? [];
+    let p = null;
+    for (const r of s) {
+      if (r.day <= day) p = r.price_cents;
+      else break;
+    }
+    p = p ?? s[0]?.price_cents ?? it.price_cents;
+    return p != null ? p / 100 : 0;
+  };
+  const byDay = new Map(rows.map((r) => [r.captured_on, r]));
+  const days = [...new Set([...byDay.keys(), ...items.map((i) => i.added), today()])].sort();
+  let prev = { total_value: 0, total_cost: 0, card_count: 0 };
+  return days.map((day) => {
+    const base = byDay.get(day) ?? prev;
+    prev = base;
+    let value = 0;
+    let cost = 0;
+    for (const it of items) {
+      if (it.added > day) continue;
+      const q = it.quantity || 1;
+      value += unitOn(it, day) * q;
+      if (it.purchase_price != null || it.shipping_cost != null) cost += (n(it.purchase_price) + n(it.shipping_cost)) * q;
+    }
+    return {
+      captured_on: day,
+      total_value: round2(n(base.total_value) + value),
+      total_cost: round2(n(base.total_cost) + cost),
+      card_count: base.card_count,
+    };
+  });
+}
+
 // --- Top-Gewinner / -Verlierer (7 Tage) ---------------------------------
 
 export function getMovers(userId) {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { eur, formatDate } from "../lib/format.js";
 import { getSealedCatalog } from "../api.js";
 
@@ -56,11 +57,8 @@ export default function SealedPrices({ sealed, setId, setName, catalogCount = 0,
               ) : (
                 catalog.map((item) => (
                   <div key={item.id} className="flex items-center gap-2 border-b border-line last:border-b-0">
-                  <a
-                    href={item.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={`${item.name} auf Cardmarket ansehen`}
+                  <Link
+                    to={`/sealed/${item.id}`}
                     className="flex-1 min-w-0 flex items-center gap-3 py-2 hover:bg-canvas rounded"
                   >
                     {item.image ? (
@@ -70,7 +68,7 @@ export default function SealedPrices({ sealed, setId, setName, catalogCount = 0,
                     )}
                     <span className="flex-1 min-w-0 text-sm truncate">{short(item.name)}</span>
                     <span className="text-sm font-mono shrink-0">{item.priceCents != null ? eur(item.priceCents / 100) : "—"}</span>
-                  </a>
+                  </Link>
                   {onAdd && (
                     <button
                       type="button"
@@ -102,14 +100,9 @@ function SealedPrice({ label, item }) {
       </div>
     );
   }
-  return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={`${item.name} auf Cardmarket ansehen`}
-      className="rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink flex items-center gap-3"
-    >
+  const cls = "rounded-xl bg-canvas border border-line px-3 py-2 hover:border-ink flex items-center gap-3";
+  const inner = (
+    <>
       {item.image && (
         <img src={item.image} alt={item.name} loading="lazy" className="h-20 w-16 object-contain shrink-0 rounded" />
       )}
@@ -117,6 +110,16 @@ function SealedPrice({ label, item }) {
         <span className="block text-[11px] text-subtle">{label}</span>
         <span className="block text-base font-semibold font-mono">{eur(item.priceCents / 100)}</span>
       </span>
+    </>
+  );
+  // mit Katalog-Eintrag zur eigenen Produktseite (Preisgraph), sonst direkt zu Cardmarket
+  return item.catalogId ? (
+    <Link to={`/sealed/${item.catalogId}`} className={cls}>
+      {inner}
+    </Link>
+  ) : (
+    <a href={item.link} target="_blank" rel="noopener noreferrer" title={`${item.name} auf Cardmarket ansehen`} className={cls}>
+      {inner}
     </a>
   );
 }

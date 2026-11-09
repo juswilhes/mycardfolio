@@ -223,12 +223,15 @@ export const searchLink = (name) =>
 const item = (name, priceCents, cardmarketCents, tcgplayerCents, image) =>
   priceCents ? { name, priceCents, cardmarketCents, tcgplayerCents, image: image ? `${image}?v=2` : null, link: searchLink(name) } : null;
 
+const catalogIdStmt = db.prepare(`SELECT id FROM sealed_catalog WHERE set_id = ? AND cm_name = ? LIMIT 1`);
+const withCatalog = (setId, it) => (it ? { ...it, catalogId: catalogIdStmt.get(setId, it.name)?.id ?? null } : null);
+
 export function sealedForSet(setId) {
   const s = sealedOfSetStmt.get(setId);
   if (!s || !(s.auto_booster_price_cents || s.auto_box_price_cents)) return null;
   return {
-    booster: item(s.auto_booster_name, s.auto_booster_price_cents, s.auto_booster_cm_cents, s.auto_booster_tcg_cents, s.auto_booster_image),
-    display: item(s.auto_box_name, s.auto_box_price_cents, s.auto_box_cm_cents, s.auto_box_tcg_cents, s.auto_box_image),
+    booster: withCatalog(setId, item(s.auto_booster_name, s.auto_booster_price_cents, s.auto_booster_cm_cents, s.auto_booster_tcg_cents, s.auto_booster_image)),
+    display: withCatalog(setId, item(s.auto_box_name, s.auto_box_price_cents, s.auto_box_cm_cents, s.auto_box_tcg_cents, s.auto_box_image)),
     updated: s.auto_prices_at,
   };
 }

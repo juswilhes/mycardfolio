@@ -46,7 +46,8 @@ const RANGE_TEXT = { "1m": "im letzten Monat", "3m": "in den letzten 3 Monaten",
 // Alles in EUR. Bevorzugte Quelle: Cardmarket (ein Wert pro Karte, nicht nach Sprache/Zustand getrennt).
 // Preise werden nur einmal täglich um 1 Uhr aktualisiert (kein Abruf beim
 // Öffnen der Seite).
-export default function PriceSection({ card, history }) {
+// sealed: dieselbe Ansicht für versiegelte Produkte (Produktseite /sealed/:id) - ohne die Karten-Erklärungen
+export default function PriceSection({ card, history, sealed = false }) {
   const [range, setRange] = useState("12m");
   const days = rangeDays(range);
   const momentum = computeMomentum(history, days);
@@ -83,8 +84,9 @@ export default function PriceSection({ card, history }) {
       })
     : null;
 
-  const sourceLabel =
-    basis === "tcgplayer"
+  const sourceLabel = sealed
+    ? (updated ? `Stand ${updated} Uhr` : "")
+    : basis === "tcgplayer"
       ? "Quelle: TCGplayer (aus USD umgerechnet – Cardmarket hat für diese Karte keinen Preis)"
       : `Quelle: Cardmarket${updated ? ` · Stand ${updated} Uhr` : ""}`;
 
@@ -131,7 +133,10 @@ export default function PriceSection({ card, history }) {
         </div>
       )}
 
-      {headline == null && (
+      {headline == null && sealed && (
+        <p className="text-subtle text-sm mt-2">Für dieses Produkt gibt es aktuell keinen Marktpreis.</p>
+      )}
+      {headline == null && !sealed && (
         <p className="text-subtle text-sm mt-2">
           Für diese Karte gibt es aktuell keinen Preis (kommt bei sehr alten
           oder brandneuen Karten vor). Du kannst beim Bearbeiten einen eigenen
@@ -159,6 +164,7 @@ export default function PriceSection({ card, history }) {
         {sourceLabel}
       </p>
 
+      {!sealed && (
       <details className="mt-3 text-xs text-subtle">
         <summary className="cursor-pointer hover:text-ink">Wie kommt der Preis zustande?</summary>
         <div className="mt-2 space-y-1.5 leading-relaxed">
@@ -203,6 +209,7 @@ export default function PriceSection({ card, history }) {
           </p>
         </div>
       </details>
+      )}
     </section>
   );
 }

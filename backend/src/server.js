@@ -16,6 +16,7 @@ import salesRouter from "./routes/sales.js";
 import achievementsRouter from "./routes/achievements.js";
 import watchlistRouter from "./routes/watchlist.js";
 import sealedProductsRouter from "./routes/sealedProducts.js";
+import sealedCatalogRouter from "./routes/sealedCatalog.js";
 import clientErrorsRouter from "./routes/clientErrors.js";
 import statsRouter from "./routes/stats.js";
 import articlesRouter from "./routes/articles.js";
@@ -129,6 +130,7 @@ app.use("/api/sales", authRequired, salesRouter);
 app.use("/api/achievements", authRequired, achievementsRouter);
 app.use("/api/watchlist", authRequired, watchlistRouter);
 app.use("/api/sealed-products", authRequired, sealedProductsRouter);
+app.use("/api/sealed-catalog", sealedCatalogRouter); // Produktseiten, öffentlich
 // stats: marktweite Routen (market-movers etc.) sind bewusst öffentlich,
 // siehe routes/stats.js - nur die Watchlist-Route braucht req.user.
 app.use("/api/stats", statsRouter);

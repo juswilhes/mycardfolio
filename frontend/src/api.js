@@ -79,6 +79,7 @@ export function getPortfolioHistory(filter = {}) {
   if (filter.set) qs.set("set", filter.set);
   if (filter.language) qs.set("language", filter.language);
   if (filter.artist) qs.set("artist", filter.artist);
+  if (filter.scope) qs.set("scope", filter.scope); // "all" = mit Sealed-Produkten
   return request(`/portfolio/history${qs.toString() ? `?${qs}` : ""}`);
 }
 export const getMovers = () => request("/portfolio/movers");
@@ -112,6 +113,7 @@ export const removeFromWatchlist = (externalId) =>
 export const getSealedProducts = () => request("/sealed-products");
 export const addSealedProduct = (payload) => request("/sealed-products", { method: "POST", body: payload });
 export const getSealedCatalog = (setId) => request(`/sets/${setId}/sealed-catalog`);
+export const getSealedCatalogItem = (id) => request(`/sealed-catalog/${id}`);
 export const updateSealedProduct = (id, payload) =>
   request(`/sealed-products/${id}`, { method: "PATCH", body: payload });
 export const deleteSealedProduct = (id) => request(`/sealed-products/${id}`, { method: "DELETE" });

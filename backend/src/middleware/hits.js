@@ -47,7 +47,7 @@ const STATIC_PATHS = new Set([
   "/verify", "/impressum", "/datenschutz", "/nutzungsbedingungen", "/abmelden", "/sets", "/add", "/import",
   "/sammlung", "/verkauft", "/analyse", "/statistik", "/konto", "/orden", "/watchlist", "/news",
 ]);
-const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/news/"];
+const DYNAMIC_PREFIXES = ["/sets/", "/database/", "/card/", "/illustrator/", "/news/", "/sealed/"];
 export const isKnownRoute = (rawPath) => {
   const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   return STATIC_PATHS.has(path) || DYNAMIC_PREFIXES.some((p) => path.startsWith(p) && path.length > p.length);
