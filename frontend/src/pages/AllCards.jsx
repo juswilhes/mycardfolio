@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { searchCards, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
+import { searchCards, searchSealed, getCardTypes, addToCollection, getSets, getSetProgress, getWatchlistIds, getMarketMovers } from "../api.js";
 import { eur } from "../lib/format.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import CollectionItemDialog from "../components/CollectionItemDialog.jsx";
@@ -27,6 +27,8 @@ export default function AllCards() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [sealed, setSealed] = useState({ total: 0, items: [] });
+  const [showAllSealed, setShowAllSealed] = useState(false);
   const [type, setType] = useState(params.get("t") ?? "");
   const [types, setTypes] = useState([]);
 
@@ -75,15 +77,23 @@ export default function AllCards() {
     const term = q.trim();
     if (term.length < 2 && !type) {
       setResults([]);
+      setSealed({ total: 0, items: [] });
       setSearched(false);
       return;
     }
     const id = ++reqId.current;
     setLoading(true);
     try {
-      const res = await searchCards(term, { type });
+      // Sealed-Produkte parallel suchen (nur ohne Kartenart-Filter - der gilt nur für Karten); ein Fehler dort
+      // darf die Kartensuche nicht stören
+      const [res, sealedRes] = await Promise.all([
+        searchCards(term, { type }),
+        type || term.length < 2 ? { total: 0, items: [] } : searchSealed(term).catch(() => ({ total: 0, items: [] })),
+      ]);
       if (id === reqId.current) {
         setResults(res);
+        setSealed(sealedRes);
+        setShowAllSealed(false);
         setSearched(true);
       }
     } finally {
@@ -150,8 +160,8 @@ export default function AllCards() {
         </Link>
       </div>
       <p className="text-subtle text-sm mb-4">
-        Karte oder Set suchen – ganz ohne Konto. Deutsche Namen gehen auch („Glurak"),
-        du kannst die Kartennummer anhängen (z. B. „Mega Absol ex 180/132")
+        Karte, Set oder Sealed-Produkt suchen – ganz ohne Konto. Deutsche Namen gehen auch („Glurak",
+        „Top-Trainer-Box", „Display"), du kannst die Kartennummer anhängen (z. B. „Mega Absol ex 180/132")
         und über „Kartenart" auch nur LV.X, VMAX, Unterstützer & Co. anzeigen.
         Ohne Suche siehst du unten alle Sets.
         {!user && " Zum Hinzufügen zu einer Sammlung meldest du dich an."}
@@ -167,7 +177,7 @@ export default function AllCards() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Karte oder Set, z. B. Glurak, Arceus oder Mega Absol ex 180/132"
+          placeholder="Karte, Set oder Sealed, z. B. Glurak, Top-Trainer-Box oder Booster Box"
           className="flex-1 rounded-full px-4 py-2.5 text-sm border border-line bg-white text-[#241c15] placeholder:text-[#8a7a63] caret-[#241c15] focus:outline-none focus:border-ink"
         />
         <button
@@ -242,9 +252,41 @@ export default function AllCards() {
               </div>
             </div>
           )}
+          {sealed.items.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xs text-subtle mb-2">
+                Sealed-Produkte{sealed.total > sealed.items.length ? ` (${sealed.total})` : ""}
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {(showAllSealed ? sealed.items : sealed.items.slice(0, 6)).map((item) => (
+                  <Link
+                    key={item.id}
+                    to={`/sealed/${item.id}`}
+                    className="border border-line rounded-2xl p-3 flex items-center gap-3 hover:border-ink shadow-sm min-w-0"
+                  >
+                    {item.image ? (
+                      <img src={item.image} alt="" loading="lazy" className="h-14 w-11 object-contain shrink-0" />
+                    ) : (
+                      <span className="h-14 w-11 shrink-0" />
+                    )}
+                    <span className="min-w-0">
+                      <span className="block font-medium text-sm line-clamp-2">{item.name}</span>
+                      <span className="block text-[11px] text-subtle truncate">{item.setName}</span>
+                      <span className="block text-xs font-mono">{item.priceCents != null ? eur(item.priceCents / 100) : "—"}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              {!showAllSealed && sealed.items.length > 6 && (
+                <button type="button" onClick={() => setShowAllSealed(true)} className="mt-2 text-xs text-subtle hover:text-ink underline">
+                  Alle {sealed.items.length} anzeigen{sealed.total > sealed.items.length ? ` (insgesamt ${sealed.total})` : ""}
+                </button>
+              )}
+            </div>
+          )}
           {loading && <p className="text-subtle text-sm">Suche läuft …</p>}
-          {!loading && searched && results.length === 0 && (
-            <p className="text-subtle text-sm">{matchingSets.length ? "Keine Karte mit diesem Namen – aber passende Sets oben." : "Keine Karte gefunden."}</p>
+          {!loading && searched && results.length === 0 && !sealed.items.length && (
+            <p className="text-subtle text-sm">{matchingSets.length ? "Keine Karte mit diesem Namen – aber passende Sets oben." : "Keine Karte und kein Sealed-Produkt gefunden."}</p>
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {results.map((card) => (

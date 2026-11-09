@@ -84,7 +84,7 @@ export const bumpCardView = (externalId) => {
 //  - "Glurak"  -> auch "Charizard"
 //  - "Glur"    -> auch "Charizard" (deutscher Name beginnt mit der Eingabe)
 //  - "Glurak ex" -> auch "Charizard" (Eingabe beginnt mit deutschem Namen)
-function expandQuery(query) {
+export function expandQuery(query) {
   const q = query.trim();
   const ql = q.toLowerCase();
   const terms = new Set([q]);
