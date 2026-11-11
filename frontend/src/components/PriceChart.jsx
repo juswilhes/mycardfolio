@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useId, useState } from "react";
+import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { glow, areaDefs, areaFill, safeId, lastIndexOf, endDot, tooltipStyle } from "../lib/chartFx.jsx";
 import { eur } from "../lib/format.js";
 import RangeSelect from "./RangeSelect.jsx";
 import { rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
@@ -24,6 +25,7 @@ function lastValue(chartData, key) {
 // Reihen liefert die kostenlose Quelle (Cardmarket über TCGdex) nicht: sie hat
 // strukturell nur zwei Preisfelder pro Karte.
 export default function PriceChart({ data, range: rangeProp, onRangeChange }) {
+  const gradId = safeId(useId());
   const [hidden, setHidden] = useState(() => new Set());
   const [ownRange, setOwnRange] = useState("12m");
   const range = rangeProp ?? ownRange;
@@ -118,11 +120,12 @@ export default function PriceChart({ data, range: rangeProp, onRangeChange }) {
   return (
     <div>
       {Legend}
-      <ResponsiveContainer width="100%" height={150}>
-        <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={170}>
+        <ComposedChart data={chartData} margin={{ top: 10, right: 14, left: 4, bottom: 0 }}>
+          {areaDefs(gradId, "var(--yellow)")}
           <XAxis dataKey="date" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />
           <YAxis
-            width={54}
+            width={66}
             stroke="var(--subtle)"
             fontSize={11}
             tickLine={false}
@@ -132,23 +135,40 @@ export default function PriceChart({ data, range: rangeProp, onRangeChange }) {
           />
           <Tooltip
             itemSorter={highestFirst}
-            contentStyle={{
-              background: "var(--surface)",
-              border: "1px solid var(--line)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--ink)",
-            }}
+            contentStyle={tooltipStyle}
+            cursor={{ stroke: "var(--subtle)", strokeDasharray: "3 4", strokeOpacity: 0.6 }}
             labelStyle={{ color: "var(--subtle)" }}
             formatter={(value, name) => [eur(value), hasSpecial ? (name === "special" ? specialLabel : baseLabel) : "Preis"]}
           />
           {!hidden.has("normal") && (
-            <Line type="monotone" dataKey="normal" name="normal" stroke="var(--yellow)" strokeWidth={2.5} dot={false} connectNulls />
+            <Area
+              type="monotone"
+              dataKey="normal"
+              name="normal"
+              stroke="var(--yellow)"
+              strokeWidth={2.5}
+              fill={areaFill(gradId)}
+              fillOpacity={1}
+              style={glow("var(--yellow)")}
+              dot={endDot("var(--yellow)", lastIndexOf(chartData, "normal"))}
+              activeDot={{ r: 4, stroke: "var(--canvas)", strokeWidth: 2 }}
+              connectNulls
+            />
           )}
           {hasSpecial && !hidden.has("special") && (
-            <Line type="monotone" dataKey="special" name="special" stroke="var(--holo)" strokeWidth={2.5} dot={false} connectNulls />
+            <Line
+              type="monotone"
+              dataKey="special"
+              name="special"
+              stroke="var(--holo)"
+              strokeWidth={2.5}
+              style={glow("var(--holo)")}
+              dot={endDot("var(--holo)", lastIndexOf(chartData, "special"))}
+              activeDot={{ r: 4, stroke: "var(--canvas)", strokeWidth: 2 }}
+              connectNulls
+            />
           )}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

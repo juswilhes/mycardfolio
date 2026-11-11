@@ -113,8 +113,8 @@ export default function Landing() {
         <Logo className="h-12 inline-block mb-8" />
         {/* Testphase: begrenzte, echte Zahl an Plätzen (TESTER_LIMIT im Backend) - nur solange Plätze frei sind */}
         {registrationOpen && testers && <TesterInvite testers={testers} />}
-        <h1 className="text-3xl sm:text-4xl font-semibold leading-tight">
-          Deine Pokémon-Sammlung. Immer im Blick, immer aktuell.
+        <h1 className="text-3xl sm:text-5xl font-bold leading-tight tracking-tight max-w-2xl mx-auto">
+          Deine Pokémon-Sammlung. <span className="text-gloss">Immer im Blick, immer aktuell.</span>
         </h1>
         <p className="text-subtle mt-4 max-w-xl mx-auto">
           mycardfolio zeigt dir den Wert deiner Sammelkarten in Euro, wie sich dein Portfolio entwickelt und was dir

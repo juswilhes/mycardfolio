@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 
 // Kartenbild, das per Klick als Großansicht (Lightbox) aufgeht - damit man
@@ -6,6 +6,29 @@ import Icon from "./Icon.jsx";
 // Klick daneben, auf das Bild, den Schließen-Button oder Escape.
 export default function ZoomableCardImage({ src, largeSrc, alt, className = "" }) {
   const [open, setOpen] = useState(false);
+  // Neigung zur Maus + Lichtreflex (Justus 11.11.2026, Glas & Glanz): nur mit Maus und ohne "weniger Bewegung".
+  // Die Werte gehen direkt als CSS-Variablen ans Element (kein React-Render je Mausbewegung).
+  const tiltRef = useRef(null);
+  const canTilt = typeof window !== "undefined" && window.matchMedia?.("(hover: hover) and (prefers-reduced-motion: no-preference)").matches;
+  function onTilt(e) {
+    const el = tiltRef.current;
+    if (!el || !canTilt) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    el.style.setProperty("--ry", `${((x - 0.5) * 14).toFixed(2)}deg`);
+    el.style.setProperty("--rx", `${((0.5 - y) * 12).toFixed(2)}deg`);
+    el.style.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
+    el.style.setProperty("--my", `${(y * 100).toFixed(1)}%`);
+    el.classList.add("is-tilting");
+  }
+  function endTilt() {
+    const el = tiltRef.current;
+    if (!el) return;
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+    el.classList.remove("is-tilting");
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -25,9 +48,14 @@ export default function ZoomableCardImage({ src, largeSrc, alt, className = "" }
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`${alt} vergrößern`}
-        className="relative shrink-0 self-start cursor-zoom-in group"
+        ref={tiltRef}
+        onPointerMove={onTilt}
+        onPointerLeave={endTilt}
+        className="relative shrink-0 self-start cursor-zoom-in group card-tilt"
       >
         <img src={src} alt={alt} className={className} />
+        <span aria-hidden="true" className="card-holo" />
+        <span aria-hidden="true" className="card-glare" />
         <span className="absolute bottom-2 right-2 bg-ink/70 text-canvas text-xs rounded-full w-7 h-7 flex items-center justify-center opacity-80 group-hover:opacity-100">
           <Icon name="search" className="w-4 h-4" />
         </span>

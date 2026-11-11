@@ -22,10 +22,27 @@
   --mint: #1fae6b;
   --rose: #d3455b;
   --holo: #7c5cff; /* zweite Linie im Preisgraphen (Holo-Variante) - bewusst nicht mint/rose, die bedeuten anderswo Gewinn/Verlust */
+
+  /* "Glas & Glanz" (Justus 11.11.2026): Flaechen mit Verlauf + Lichtkante, weiche Schatten, Farbschein im
+     Hintergrund, leuchtende Graphen. Alles hier zentral - die Seiten selbst behalten ihre Tailwind-Klassen. */
+  --surface-hi: #ffffff;                 /* Flaechen-Verlauf oben */
+  --surface-lo: #fff9ee;                 /* ... unten */
+  --edge: rgba(255, 255, 255, 0.95);     /* Lichtkante oben an Flaechen */
+  --shadow-soft: 0 18px 36px -22px rgba(110, 78, 20, 0.42), 0 2px 5px rgba(110, 78, 20, 0.06);
+  --shadow-pop: 0 30px 60px -22px rgba(70, 48, 10, 0.45), 0 8px 20px -10px rgba(70, 48, 10, 0.25);
+  --header-bg: rgba(251, 243, 230, 0.74);
+  --ambient-a: rgba(248, 201, 58, 0.42);
+  --ambient-b: rgba(124, 92, 255, 0.16);
+  --ambient-c: rgba(31, 174, 107, 0.1);
+  --glow-yellow: rgba(232, 160, 0, 0.6); /* Leuchten der Graphen-Linien (lib/chartFx.jsx) */
+  --glow-holo: rgba(124, 92, 255, 0.55);
+  --num-glow: 0 0 0 transparent;         /* grosse Zahlen leuchten nur im Dunkelmodus */
+  --hero-a: #e2a000;                     /* Verlaufstext der Startseite */
+  --hero-b: #b56a00;
 }
 
 :root.dark {
-  --canvas: #1c1712;
+  --canvas: #17120d;
   --surface: #241d16;
   --line: #35291c;
   --ink: #f6ede0;
@@ -35,11 +52,194 @@
   --mint: #35d488;
   --rose: #ff6b81;
   --holo: #a78bfa;
+
+  --surface-hi: #2b231a;
+  --surface-lo: #201a13;
+  --edge: rgba(255, 255, 255, 0.075);
+  --shadow-soft: 0 22px 44px -24px rgba(0, 0, 0, 0.85), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 34px 70px -22px rgba(0, 0, 0, 0.9), 0 10px 24px -10px rgba(0, 0, 0, 0.6);
+  --header-bg: rgba(23, 18, 13, 0.7);
+  --ambient-a: rgba(248, 201, 58, 0.13);
+  --ambient-b: rgba(124, 92, 255, 0.17);
+  --ambient-c: rgba(53, 212, 136, 0.06);
+  --glow-yellow: rgba(248, 201, 58, 0.85);
+  --glow-holo: rgba(167, 139, 250, 0.8);
+  --num-glow: 0 0 22px rgba(248, 201, 58, 0.35);
+  --hero-a: #ffe58a;
+  --hero-b: #f8c93a;
 }
 
 body {
   @apply bg-canvas text-ink font-sans;
   transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Farbschein im Hintergrund (fest, hinter allem). Kein Weichzeichner noetig - reine Verlaeufe, kostet nichts. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(620px 380px at 6% -4%, var(--ambient-a), transparent 70%),
+    radial-gradient(680px 440px at 100% 4%, var(--ambient-b), transparent 70%),
+    radial-gradient(560px 360px at 50% 108%, var(--ambient-c), transparent 70%);
+}
+
+/* --- Glas & Glanz: zentrale Regeln, wirken ueber die vorhandenen Tailwind-Klassen auf allen Seiten --------- */
+
+/* Kopfzeile: bleibt oben stehen, milchiges Glas. Der Weichzeichner liegt auf ::before - laege er auf der
+   Kopfzeile selbst, wuerden fest positionierte Kinder (Menues) relativ zu ihr statt zum Fenster stehen. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid var(--line);
+}
+.app-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--header-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  box-shadow: inset 0 -1px 0 var(--edge), 0 12px 30px -24px rgba(0, 0, 0, 0.5);
+}
+
+/* Flaechen (Kacheln, Fenster, Menues): Verlauf statt Einfarbigkeit. Deckend, damit Text immer lesbar bleibt. */
+.bg-surface,
+.border.border-line.shadow-sm:not(img) {
+  background-image: linear-gradient(180deg, var(--surface-hi), var(--surface-lo));
+}
+/* Schatten: Lichtkante oben + weicher, warmer Schatten (Tailwinds shadow-* bekommen nur neue Werte) */
+.shadow-sm,
+.shadow {
+  --tw-shadow: inset 0 1px 0 var(--edge), var(--shadow-soft);
+}
+.shadow-md,
+.shadow-lg,
+.shadow-xl {
+  --tw-shadow: inset 0 1px 0 var(--edge), var(--shadow-pop);
+}
+
+/* Gelbe Knoepfe: Verlauf, Lichtkante, gelber Schein; beim Darueberfahren laeuft ein Lichtstreifen durch
+   (ueber background-position - kein Zusatz-Element, deshalb fuer alle vorhandenen Knoepfe gefahrlos). */
+.bg-yellow {
+  background-image: linear-gradient(180deg, #ffe07a 0%, var(--yellow) 50%, #f0b000 100%);
+}
+:is(a, button).bg-yellow {
+  background-image:
+    linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.6) 50%, transparent 60%),
+    linear-gradient(180deg, #ffe07a 0%, var(--yellow) 50%, #f0b000 100%);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 170% 0, 0 0;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -2px 0 rgba(160, 100, 0, 0.2), 0 10px 20px -10px rgba(238, 172, 0, 0.8);
+  transition: background-position 0.6s ease, transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+:is(a, button).bg-yellow:hover:not(:disabled) {
+  background-position: -70% 0, 0 0;
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -2px 0 rgba(160, 100, 0, 0.2), 0 14px 26px -10px rgba(238, 172, 0, 0.95);
+}
+:is(a, button).bg-yellow:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.bg-holo {
+  background-image: linear-gradient(180deg, #a48cff 0%, var(--holo) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 20px -10px var(--glow-holo);
+}
+
+/* Zweit-Knoepfe (Rand, rund): dezentes Glas statt flach */
+:is(a, button).rounded-full.border.border-line {
+  background-image: linear-gradient(180deg, var(--surface-hi), var(--surface-lo));
+  box-shadow: inset 0 1px 0 var(--edge), 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+}
+:is(a, button).rounded-full.border.border-line:hover {
+  transform: translateY(-1px);
+}
+
+/* Karten in Rastern (Suche, Watchlist, Set): heben sich beim Darueberfahren an und bekommen einen Schein */
+a.group img.rounded-2xl,
+a > img.rounded-2xl.shadow-sm,
+.card-lift,
+.card-lift img {
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+}
+/* .card-lift = Huelle um Bild + Markierungen (Set-Seite: Haekchen/Schleier muessen mit hochgehen) */
+a.group:hover img.rounded-2xl,
+a:hover > img.rounded-2xl.shadow-sm,
+a:hover > .card-lift {
+  transform: translateY(-5px);
+}
+a.group:hover img.rounded-2xl,
+a:hover > img.rounded-2xl.shadow-sm,
+a:hover > .card-lift img {
+  box-shadow: 0 22px 32px -16px rgba(0, 0, 0, 0.5), 0 0 22px -6px var(--glow-yellow);
+}
+
+/* Grosse Karte (Kartenseite): neigt sich zur Maus, Lichtreflex + Holo-Schimmer (ZoomableCardImage.jsx) */
+.card-tilt {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.25s ease-out;
+}
+.card-tilt .card-glare,
+.card-tilt .card-holo {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.card-tilt .card-glare {
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, 0.5), transparent 52%);
+  mix-blend-mode: overlay;
+}
+.card-tilt .card-holo {
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 70, 150, 0.55) 36%, rgba(70, 220, 255, 0.55) 50%, rgba(255, 230, 70, 0.55) 64%, transparent 80%);
+  background-size: 220% 220%;
+  background-position: var(--mx, 50%) var(--my, 50%);
+  mix-blend-mode: color-dodge;
+}
+.card-tilt.is-tilting .card-glare { opacity: 1; }
+.card-tilt.is-tilting .card-holo { opacity: 0.32; }
+
+/* Grosse Zahlen (Preis, Sammlungswert): im Dunkelmodus ein leichter gelber Schein */
+.font-mono.font-semibold:is(.text-3xl, .text-4xl) {
+  text-shadow: var(--num-glow);
+}
+
+/* Verlaufstext (Startseite) */
+.text-gloss {
+  background: linear-gradient(100deg, var(--hero-a), var(--hero-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Graphen: pulsierender Endpunkt (lib/chartFx.jsx) */
+@keyframes chart-pulse {
+  0% { transform: scale(0.6); opacity: 0.75; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.chart-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chart-pulse 2.2s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-pulse { animation: none; opacity: 0; }
+  :is(a, button).bg-yellow,
+  :is(a, button).rounded-full.border.border-line,
+  a.group img.rounded-2xl,
+  .card-lift,
+  .card-tilt { transition: none; transform: none !important; }
 }
 
 /* Rechtstexte (Impressum / Datenschutz): lesbare Fließtext-Typo. */

@@ -263,7 +263,7 @@ export default function SetDetail() {
                 to={cardPath(card)}
                 className="flex flex-col"
               >
-                <div className="relative">
+                <div className="relative card-lift">
                   <img
                     src={card.image_small}
                     alt={`${card.name} (Englisch)`}

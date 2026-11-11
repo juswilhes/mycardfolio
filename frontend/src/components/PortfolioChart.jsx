@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useId, useState } from "react";
+import { ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { glow, areaDefs, areaFill, safeId, endDot, tooltipStyle } from "../lib/chartFx.jsx";
 import { eur0 as eur, eur as eur2 } from "../lib/format.js";
 import RangeSelect from "./RangeSelect.jsx";
 import { rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
@@ -7,6 +8,7 @@ import { rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
 // Wert der GESAMTEN Sammlung über die Zeit, plus (falls vorhanden) die
 // investierte Summe als zweite Linie.
 export default function PortfolioChart({ data }) {
+  const gradId = safeId(useId());
   const [range, setRange] = useState("12m");
   if (!data || data.length < 2) {
     return (
@@ -35,7 +37,8 @@ export default function PortfolioChart({ data }) {
         <p className="text-subtle text-sm py-4">Für diesen Zeitraum gibt es erst einen Datenpunkt.</p>
       ) : (
     <ResponsiveContainer width="100%" height={180}>
-      <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+      <ComposedChart data={rows} margin={{ top: 10, right: 14, left: 4, bottom: 0 }}>
+        {areaDefs(gradId, "var(--yellow)")}
         <XAxis dataKey="date" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />
         <YAxis
           width={56}
@@ -48,18 +51,23 @@ export default function PortfolioChart({ data }) {
         />
         <Tooltip
           itemSorter={highestFirst}
-          contentStyle={{
-            background: "var(--surface)",
-            border: "1px solid var(--line)",
-            borderRadius: 8,
-            fontSize: 12,
-            color: "var(--ink)",
-          }}
+          contentStyle={tooltipStyle}
+          cursor={{ stroke: "var(--subtle)", strokeDasharray: "3 4", strokeOpacity: 0.6 }}
           labelStyle={{ color: "var(--subtle)" }}
           formatter={(v, name) => [eur2(v), name]}
         />
         {hasCost && <Legend wrapperStyle={{ fontSize: 11 }} />}
-        <Line type="monotone" dataKey="Wert" stroke="var(--yellow)" strokeWidth={2.5} dot={false} />
+        <Area
+          type="monotone"
+          dataKey="Wert"
+          stroke="var(--yellow)"
+          strokeWidth={2.5}
+          fill={areaFill(gradId)}
+          fillOpacity={1}
+          style={glow("var(--yellow)")}
+          dot={endDot("var(--yellow)", rows.length - 1)}
+          activeDot={{ r: 4, stroke: "var(--canvas)", strokeWidth: 2 }}
+        />
         {hasCost && (
           <Line
             type="monotone"
@@ -70,7 +78,7 @@ export default function PortfolioChart({ data }) {
             dot={false}
           />
         )}
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
       )}
     </div>

@@ -4,16 +4,37 @@
     {
       "name": "backend",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["src/server.js"],
+      "runtimeArgs": [
+        "src/server.js"
+      ],
       "cwd": "backend",
       "port": 3001
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "frontend",
       "port": 5173
+    },
+    {
+      "name": "frontend-live",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--mode",
+        "live",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "cwd": "frontend",
+      "port": 5174
     }
   ]
 }

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { glow, tooltipStyle } from "../lib/chartFx.jsx";
 import { getSetValueAnalysis, getSets, updateSetPrices } from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { eur } from "../lib/format.js";
@@ -234,19 +235,13 @@ function ValueBars({ rows }) {
           />
           <Tooltip
             cursor={{ fill: "var(--line)", opacity: 0.4 }}
-            contentStyle={{
-              background: "var(--surface)",
-              border: "1px solid var(--line)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--ink)",
-            }}
+            contentStyle={tooltipStyle}
             labelStyle={{ color: "var(--subtle)" }}
             formatter={(v, name) => [eur(v), name]}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="box" name="Display" fill={BAR_COLORS.box} radius={[0, 4, 4, 0]} barSize={12} />
-          <Bar dataKey="top20" name="Top 20 Karten" fill={BAR_COLORS.top20} radius={[0, 4, 4, 0]} barSize={12} />
+          <Bar dataKey="box" name="Display" fill={BAR_COLORS.box} radius={[0, 4, 4, 0]} barSize={12} style={glow(BAR_COLORS.box, 4)} />
+          <Bar dataKey="top20" name="Top 20 Karten" fill={BAR_COLORS.top20} radius={[0, 4, 4, 0]} barSize={12} style={glow("var(--yellow)", 4)} />
         </BarChart>
       </ResponsiveContainer>
       {withBox.length > BARS_FIRST && (
@@ -377,13 +372,7 @@ function HistoryChart({ rows }) {
                   />
                   <Tooltip
                     itemSorter={highestFirst}
-                    contentStyle={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--line)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      color: "var(--ink)",
-                    }}
+                    contentStyle={tooltipStyle}
                     labelStyle={{ color: "var(--subtle)" }}
                     labelFormatter={monthLabel}
                     formatter={(v, _name, item) => [m.format(v), visible.find((s) => s.id === item.dataKey)?.name]}
@@ -395,6 +384,7 @@ function HistoryChart({ rows }) {
                       dataKey={s.id}
                       stroke={s.color}
                       strokeWidth={2.5}
+                      style={glow(s.color, 5)}
                       dot
                       connectNulls
                     />

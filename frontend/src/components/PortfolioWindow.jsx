@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import { getCollection, getPortfolioHistory } from "../api.js";
+import { glow } from "../lib/chartFx.jsx";
 import { eur } from "../lib/format.js";
 import { withinDays } from "../lib/chartRange.js";
 
@@ -77,7 +78,7 @@ export default function PortfolioWindow() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={spark}>
                 <YAxis hide domain={["dataMin", "dataMax"]} />
-                <Line type="monotone" dataKey="v" stroke="var(--yellow)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="v" stroke="var(--yellow)" strokeWidth={2} dot={false} isAnimationActive={false} style={glow("var(--yellow)", 5)} />
               </LineChart>
             </ResponsiveContainer>
           </div>

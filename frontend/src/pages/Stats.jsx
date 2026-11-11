@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link, useSearchParams } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { glow, tooltipStyle } from "../lib/chartFx.jsx";
 import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
@@ -202,18 +203,12 @@ function CollectionStats() {
               <PieChart>
                 <Pie data={byRarity} dataKey="value" nameKey="label" innerRadius={38} outerRadius={65} paddingAngle={2}>
                   {byRarity.map((_, i) => (
-                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} stroke="none" />
+                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} stroke="none" style={glow(PALETTE[i % PALETTE.length], 4)} />
                   ))}
                 </Pie>
                 <Tooltip
                   formatter={(v, n) => [eur(v), n]}
-                  contentStyle={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--line)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: "var(--ink)",
-                  }}
+                  contentStyle={tooltipStyle}
                 />
               </PieChart>
             </ResponsiveContainer>
