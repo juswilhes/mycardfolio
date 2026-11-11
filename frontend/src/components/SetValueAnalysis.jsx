@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -188,7 +188,11 @@ export default function SetValueAnalysis() {
 }
 
 // Farben für die übereinandergelegten Sets (wie in der Statistik).
-const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f2994a", "#56ccf2", "#b0a08a"];
+const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f2994a", "#56ccf2", "#b0a08a", "#e86bd6", "#9ad14b", "#ff9f7a", "#7f8cff"];
+// So viele Sets (die neuesten) sind im Verlauf anfangs ausgewählt - 100+ Linien auf einmal liest niemand
+const DEFAULT_SETS = 6;
+// Bis zu so vielen ausgewählten Sets stehen sie einzeln als Marken unter der Auswahl
+const MAX_CHIPS = 12;
 
 // Verlauf der Monatsstände - beliebig viele Sets übereinandergelegt, je Set
 // eine Linie in eigener Farbe; per Klick auf den Set-Namen ein-/ausblendbar.
@@ -257,17 +261,29 @@ function HistoryChart({ rows }) {
   const [range, setRange] = useState("12m");
   const withHistory = useMemo(() => rows.filter((s) => s.history.length > 0), [rows]);
   const [metric, setMetric] = useState("booster");
-  const [hidden, setHidden] = useState(() => new Set());
+  // null = noch nichts selbst gewählt -> die neuesten Sets (defaultSelected)
+  const [selected, setSelected] = useState(null);
   const m = METRICS[metric];
+  const defaultSelected = useMemo(
+    () =>
+      new Set(
+        [...withHistory]
+          .sort((a, b) => (b.release_date || "").localeCompare(a.release_date || ""))
+          .slice(0, DEFAULT_SETS)
+          .map((s) => s.id)
+      ),
+    [withHistory]
+  );
+  const sel = selected ?? defaultSelected;
 
   // Je Set die Werte der gewählten Kennzahl (Sets ohne passenden Preis, z. B.
   // ohne Boosterpreis bei "in Boostern", haben keine Werte)
   const series = useMemo(
     () =>
-      withHistory.map((s, i) => ({
+      withHistory.map((s) => ({
         id: s.id,
         name: s.name,
-        color: SET_COLORS[i % SET_COLORS.length],
+        series: s.series,
         points: withinDays(s.history, rangeDays(range), (h) => h.month)
           .map((h) => ({ month: h.month, value: m.value(h) }))
           .filter((p) => p.value != null),
@@ -275,7 +291,9 @@ function HistoryChart({ rows }) {
     [withHistory, m, range]
   );
 
-  const visible = series.filter((s) => s.points.length > 0 && !hidden.has(s.id));
+  const visible = series.filter((s) => s.points.length > 0 && sel.has(s.id));
+  // Farben nach Reihenfolge der AUSGEWÄHLTEN Sets: so sind die ersten 12 Linien immer unterscheidbar
+  const colorOf = new Map(visible.map((s, i) => [s.id, SET_COLORS[i % SET_COLORS.length]]));
 
   const data = useMemo(() => {
     const byMonth = new Map();
@@ -288,10 +306,11 @@ function HistoryChart({ rows }) {
     return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
   }, [visible]);
 
-  const toggle = (id) =>
-    setHidden((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+  // Mehrere Sets auf einmal an- oder abwählen (einzelnes Set, ganze Serie, alle)
+  const setMany = (ids, on) =>
+    setSelected((prev) => {
+      const next = new Set(prev ?? defaultSelected);
+      for (const id of ids) on ? next.add(id) : next.delete(id);
       return next;
     });
 
@@ -321,31 +340,7 @@ function HistoryChart({ rows }) {
             <RangeSelect value={range} onChange={setRange} options={HISTORY_RANGES} />
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-3">
-            {series.map((s) => {
-              const hasData = s.points.length > 0;
-              const on = hasData && !hidden.has(s.id);
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  disabled={!hasData}
-                  onClick={() => toggle(s.id)}
-                  aria-pressed={on}
-                  title={hasData ? "" : "Für diese Kennzahl ist bei diesem Set kein Preis hinterlegt"}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition ${
-                    on ? "border-ink text-ink" : "border-line text-subtle"
-                  } ${hasData ? "hover:border-ink" : "opacity-40 cursor-not-allowed"}`}
-                >
-                  <span
-                    className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ background: on ? s.color : "transparent", border: `1.5px solid ${s.color}` }}
-                  />
-                  {s.name}
-                </button>
-              );
-            })}
-          </div>
+          <SetPicker series={series} selected={sel} colorOf={colorOf} onSetMany={setMany} />
 
           {visible.length === 0 ? (
             <p className="text-subtle text-sm">Kein Set ausgewählt bzw. für diese Kennzahl liegt noch kein Preis vor.</p>
@@ -382,9 +377,9 @@ function HistoryChart({ rows }) {
                       key={s.id}
                       type="monotone"
                       dataKey={s.id}
-                      stroke={s.color}
+                      stroke={colorOf.get(s.id)}
                       strokeWidth={2.5}
-                      style={glow(s.color, 5)}
+                      style={glow(colorOf.get(s.id), 5)}
                       dot
                       connectNulls
                     />
@@ -399,6 +394,160 @@ function HistoryChart({ rows }) {
             </>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// Auswahl der Sets für den Verlauf (Justus 11.11.2026: "alle an-/abwählen, übersichtlicher, ggf. Dropdown"):
+// statt 100+ Knöpfen ein Aufklapp-Fenster mit Suche, "Alle auswählen/abwählen" und den Sets nach Serie gruppiert
+// (Klick auf die Serie wählt sie ganz). Darunter stehen die ausgewählten Sets als Marken mit ihrer Linienfarbe.
+// Sets ohne Preis für die gewählte Kennzahl sind ausgegraut.
+function SetPicker({ series, selected, colorOf, onSetMany }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const hasData = (s) => s.points.length > 0;
+  const selectable = series.filter(hasData);
+  const chosen = selectable.filter((s) => selected.has(s.id));
+  const q = query.trim().toLowerCase();
+  const listed = series.filter((s) => !q || s.name.toLowerCase().includes(q) || (s.series ?? "").toLowerCase().includes(q));
+  const listedIds = listed.filter(hasData).map((s) => s.id);
+  const groups = [];
+  for (const s of listed) {
+    const key = s.series || "Weitere";
+    let g = groups.find((x) => x.key === key);
+    if (!g) groups.push((g = { key, items: [] }));
+    g.items.push(s);
+  }
+  const linkCls = "text-xs text-subtle underline hover:text-ink disabled:opacity-40 disabled:no-underline";
+
+  return (
+    <div className="mb-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="relative" ref={ref}>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="flex items-center gap-2 border border-line rounded-full px-4 py-1.5 text-xs hover:border-ink"
+          >
+            Sets auswählen
+            <span className="font-mono text-subtle">
+              {chosen.length} von {selectable.length}
+            </span>
+            <span aria-hidden="true" className={`inline-block transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+          </button>
+
+          {open && (
+            <div className="absolute left-0 z-20 mt-2 w-[min(22rem,calc(100vw-3rem))] bg-surface border border-line rounded-2xl shadow-lg">
+              <div className="p-3 border-b border-line">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Set oder Serie suchen"
+                  autoFocus
+                  className="w-full border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <button type="button" className={linkCls} disabled={!listedIds.length} onClick={() => onSetMany(listedIds, true)}>
+                    {q ? "Treffer auswählen" : "Alle auswählen"}
+                  </button>
+                  <button type="button" className={linkCls} disabled={!listedIds.length} onClick={() => onSetMany(listedIds, false)}>
+                    {q ? "Treffer abwählen" : "Alle abwählen"}
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto py-1">
+                {groups.length === 0 && <p className="text-xs text-subtle px-3 py-2">Kein Set gefunden.</p>}
+                {groups.map((g) => {
+                  const ids = g.items.filter(hasData).map((s) => s.id);
+                  const allOn = ids.length > 0 && ids.every((id) => selected.has(id));
+                  return (
+                    <div key={g.key}>
+                      <button
+                        type="button"
+                        disabled={!ids.length}
+                        onClick={() => onSetMany(ids, !allOn)}
+                        title={allOn ? "Ganze Serie abwählen" : "Ganze Serie auswählen"}
+                        className="w-full flex items-center justify-between px-3 pt-2.5 pb-1 text-[11px] font-medium text-subtle hover:text-ink"
+                      >
+                        <span className="truncate">{g.key}</span>
+                        <span className="shrink-0 ml-2 underline">{allOn ? "abwählen" : "alle"}</span>
+                      </button>
+                      {g.items.map((s) => {
+                        const ok = hasData(s);
+                        const on = ok && selected.has(s.id);
+                        return (
+                          <label
+                            key={s.id}
+                            title={ok ? "" : "Für diese Kennzahl ist bei diesem Set kein Preis hinterlegt"}
+                            className={`flex items-center gap-2 px-3 py-1.5 text-xs ${ok ? "cursor-pointer hover:bg-canvas" : "opacity-40 cursor-not-allowed"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              disabled={!ok}
+                              onChange={() => onSetMany([s.id], !on)}
+                              className="accent-[var(--yellow)] shrink-0"
+                            />
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ background: on ? colorOf.get(s.id) : "transparent", border: `1.5px solid ${on ? colorOf.get(s.id) : "var(--subtle)"}` }}
+                            />
+                            <span className="truncate">{s.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button type="button" className={linkCls} disabled={chosen.length === selectable.length} onClick={() => onSetMany(selectable.map((s) => s.id), true)}>
+          Alle auswählen
+        </button>
+        <button type="button" className={linkCls} disabled={chosen.length === 0} onClick={() => onSetMany(selectable.map((s) => s.id), false)}>
+          Alle abwählen
+        </button>
+      </div>
+
+      {chosen.length > 0 && chosen.length <= MAX_CHIPS && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {chosen.map((s) => (
+            <span key={s.id} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-xs border border-line bg-surface">
+              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colorOf.get(s.id) }} />
+              {s.name}
+              <button
+                type="button"
+                onClick={() => onSetMany([s.id], false)}
+                aria-label={`${s.name} abwählen`}
+                className="w-5 h-5 rounded-full text-subtle hover:text-ink hover:bg-line leading-none"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {chosen.length > MAX_CHIPS && (
+        <p className="text-xs text-subtle mt-2">{chosen.length} Sets ausgewählt. Bei so vielen Linien hilft die Auswahl einzelner Serien.</p>
       )}
     </div>
   );
