@@ -1,10 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { cardPath } from "../lib/paths.js";
 import { Link } from "react-router-dom";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { glow, tooltipStyle } from "../lib/chartFx.jsx";
-import { getSetValueAnalysis, getSets, updateSetPrices } from "../api.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { getSetValueAnalysis } from "../api.js";
 import { eur } from "../lib/format.js";
 import RangeSelect from "./RangeSelect.jsx";
 import { RANGES, rangeDays, withinDays, highestFirst } from "../lib/chartRange.js";
@@ -34,18 +33,37 @@ const monthLabel = (m) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
 
 // Analyse "Booster vs. Top-Karten": lohnt sich der Kauf eines Displays/Boosters im
-// Verhältnis zu dem, was die 20 teuersten Karten des Sets wert sind? Preise
-// für Box/Booster pflegt der Betreiber von Hand hier in der Analyse (keine
-// freie API-Quelle) - Sondersets ohne Display haben nur einen Boosterpreis.
-// Der Verlauf kommt aus den Monatsständen (jeweils am 1., siehe
-// backend/services/setValueSnapshots.js).
+// Verhältnis zu dem, was die 20 teuersten Karten des Sets wert sind? Die Box-/Boosterpreise
+// kommen automatisch (Nachtlauf, backend/services/sealedPrices.js) - die Preispflege von Hand
+// gibt es hier nicht mehr (Justus 13.11.2026). Sondersets ohne Display haben nur einen Boosterpreis.
+// Aufbau: oben der Verlauf-Graph mit der Set-Auswahl, darunter die Tabelle NUR der ausgewählten Sets.
+// Der Verlauf kommt aus den Monatsständen (backend/services/setValueSnapshots.js).
 export default function SetValueAnalysis() {
-  const { user } = useAuth();
-  const canEdit = !!user?.is_operator;
   const [rows, setRows] = useState(null);
   const [sort, setSort] = useState("new");
   const [open, setOpen] = useState(null);
-  const [editing, setEditing] = useState(false);
+  // Auswahl der Sets, gilt für Graph UND Tabelle (Justus 11.11.2026). null = noch nichts selbst gewählt ->
+  // die neuesten Sets mit Verlauf (defaultSelected)
+  const [selected, setSelected] = useState(null);
+  const defaultSelected = useMemo(
+    () =>
+      new Set(
+        [...(rows ?? [])]
+          .filter((s) => s.history.length > 0)
+          .sort((a, b) => (b.release_date || "").localeCompare(a.release_date || ""))
+          .slice(0, DEFAULT_SETS)
+          .map((s) => s.id)
+      ),
+    [rows]
+  );
+  const sel = selected ?? defaultSelected;
+  // Mehrere Sets auf einmal an- oder abwählen (einzelnes Set, ganze Serie, alle)
+  const setMany = (ids, on) =>
+    setSelected((prev) => {
+      const next = new Set(prev ?? defaultSelected);
+      for (const id of ids) on ? next.add(id) : next.delete(id);
+      return next;
+    });
 
   const load = () => getSetValueAnalysis().then(setRows).catch(() => setRows([]));
   useEffect(() => {
@@ -71,116 +89,46 @@ export default function SetValueAnalysis() {
 
   if (rows === null) return <p className="text-subtle text-sm">Lade Auswertung …</p>;
 
-  const editorToggle = canEdit && (
-    <div className="mb-4">
-      <button
-        onClick={() => setEditing((v) => !v)}
-        className="text-xs border border-line rounded-full px-3 py-1.5 hover:border-ink"
-      >
-        {editing ? "Pflege schließen" : "Preise pflegen"}
-      </button>
-    </div>
-  );
-
   return (
     <div className="mb-10">
-      {editorToggle}
-      {editing && <PriceEditor onSaved={load} />}
-
       <h2 className="text-sm font-medium mb-1">Booster vs. Top-Karten</h2>
       <p className="text-xs text-subtle mb-3">
         Wie viel sind die 20 teuersten Karten eines Sets wert – im Verhältnis zum Preis eines Displays
-        bzw. eines einzelnen Boosters? Alle Preise sind aktuell (jede Nacht neu). Sondersets ohne Display (z. B. 30th Celebration) haben nur einen Boosterpreis. Klick auf
-        ein Set zeigt die 20 Karten.
+        bzw. eines einzelnen Boosters? Alle Preise sind aktuell (jede Nacht neu). Sondersets ohne Display (z. B. 30th Celebration) haben nur einen Boosterpreis. Die
+        Auswahl der Sets gilt für Graph und Tabelle; Klick auf ein Set in der Tabelle zeigt die 20 Karten.
       </p>
 
       {rows.length === 0 ? (
         <p className="text-subtle text-sm">Noch keine Preise hinterlegt.</p>
       ) : (
         <>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink mb-3"
-          >
-            {Object.entries(SORTS).map(([v, { label }]) => (
-              <option key={v} value={v}>Sortieren: {label}</option>
-            ))}
-          </select>
-
-          <ValueBars rows={shown} />
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-subtle border-b border-line">
-                  <th className="py-2 pr-3 font-normal">Set</th>
-                  <th className="py-2 pr-3 font-normal text-right">Box</th>
-                  <th className="py-2 pr-3 font-normal text-right">Booster</th>
-                  <th className="py-2 pr-3 font-normal text-right">Top 20</th>
-                  <th className="py-2 pr-3 font-normal text-right">% der Box</th>
-                  <th className="py-2 pr-3 font-normal text-right">= Booster</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((s) => (
-                  <Fragment key={s.id}>
-                    <tr
-                      onClick={() => setOpen(open === s.id ? null : s.id)}
-                      className="border-b border-line hover:bg-surface/60 cursor-pointer"
+          <HistoryChart rows={shown} sel={sel} onSetMany={setMany}>
+            {({ ids, colorOf }) => {
+              // ids = im Graphen angehakte Sets (null, solange es noch keinen Verlauf gibt: dann alle)
+              const tableRows = ids ? shown.filter((s) => ids.has(s.id)) : shown;
+              return (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-8 mb-2">
+                    <h3 className="text-sm font-medium">{ids ? `Ausgewählte Sets (${tableRows.length})` : "Alle Sets"}</h3>
+                    <select
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value)}
+                      className="border border-line rounded-full px-3 py-1.5 text-xs bg-canvas text-ink focus:outline-none focus:border-ink"
                     >
-                      <td className="py-2 pr-3">
-                        <span className="text-subtle text-xs">{open === s.id ? "▾" : "▸"} </span>
-                        <span className="font-medium">{s.name}</span>
-                        <span className="text-subtle text-xs"> · {s.release_date ? s.release_date.slice(0, 4) : "–"}</span>
-                      </td>
-                      <td className="py-2 pr-3 text-right font-mono">{s.box != null ? eur(s.box) : <span className="text-subtle">–</span>}</td>
-                      <td className="py-2 pr-3 text-right font-mono">{s.booster != null ? eur(s.booster) : <span className="text-subtle">–</span>}</td>
-                      <td className="py-2 pr-3 text-right font-mono">
-                        {s.top20Count ? eur(s.top20Value) : <span className="text-subtle">–</span>}
-                        {s.top20Count > 0 && s.top20Count < 20 && (
-                          <span className="text-subtle text-xs" title="Erst für so viele Karten liegt ein Preis vor"> ({s.top20Count})</span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-3 text-right font-mono">
-                        {s.boxRatio != null ? `${s.boxRatio.toFixed(0)} %` : <span className="text-subtle">–</span>}
-                      </td>
-                      <td className="py-2 pr-3 text-right font-mono">
-                        {s.boosterRatio != null ? s.boosterRatio.toFixed(1) : <span className="text-subtle">–</span>}
-                      </td>
-                    </tr>
-                    {open === s.id && (
-                      <tr className="border-b border-line">
-                        <td colSpan={6} className="py-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs text-subtle">Die {s.topCards.length} teuersten Karten</p>
-                            <Link to={`/sets/${s.slug ?? s.id}`} className="text-xs text-subtle underline hover:text-ink">
-                              zum Set →
-                            </Link>
-                          </div>
-                          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-3">
-                            {s.topCards.map((c) => (
-                              <Link key={c.external_id} to={cardPath(c)} className="flex flex-col">
-                                <img
-                                  src={c.image_small}
-                                  alt={`${c.name} (Englisch)`}
-                                  className="rounded-xl border border-line mb-1 shadow-sm"
-                                />
-                                <p className="text-[11px] font-medium truncate">{c.name}</p>
-                                <p className="text-[11px] font-mono text-subtle">{eur(c.price)}</p>
-                              </Link>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <HistoryChart rows={shown} />
+                      {Object.entries(SORTS).map(([v, { label }]) => (
+                        <option key={v} value={v}>Sortieren: {label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {tableRows.length === 0 ? (
+                    <p className="text-subtle text-sm">Kein Set ausgewählt. Wähle oben unter „Sets auswählen“ die Sets, die du vergleichen willst.</p>
+                  ) : (
+                    <SetTable rows={tableRows} colorOf={colorOf} open={open} setOpen={setOpen} />
+                  )}
+                </>
+              );
+            }}
+          </HistoryChart>
         </>
       )}
     </div>
@@ -194,87 +142,100 @@ const DEFAULT_SETS = 6;
 // Bis zu so vielen ausgewählten Sets stehen sie einzeln als Marken unter der Auswahl
 const MAX_CHIPS = 12;
 
-// Verlauf der Monatsstände - beliebig viele Sets übereinandergelegt, je Set
-// eine Linie in eigener Farbe; per Klick auf den Set-Namen ein-/ausblendbar.
+// Verlauf der Monatsstände - steht OBEN (Justus 11.11.2026: kein Balkendiagramm mehr), beliebig viele Sets
+// übereinandergelegt, je Set eine Linie in eigener Farbe; Auswahl über SetPicker.
 // Der erste Stand entsteht beim ersten Aufruf nach dem Deploy bzw. sobald
 // Preise eingetragen sind, danach automatisch am 1. jedes Monats.
 const HISTORY_RANGES = RANGES.filter((r) => ["3m", "6m", "12m"].includes(r.id));
 
-// Balkendiagramm (Justus 30.10.2026): je Set Displaypreis neben dem Wert der 20 teuersten Karten, in der
-// Reihenfolge der Tabelle. Nur Sets mit Display - ohne Display gibt es nichts Vergleichbares.
-const BAR_COLORS = { box: "#5a9bff", top20: "#f8c93a" };
-const BARS_FIRST = 12;
-const ROW_HEIGHT = 44;
-
-function ValueBars({ rows }) {
-  const [all, setAll] = useState(false);
-  const withBox = rows.filter((s) => s.box != null && s.top20Count);
-  if (!withBox.length) return null;
-  const data = (all ? withBox : withBox.slice(0, BARS_FIRST)).map((s) => ({
-    name: s.name,
-    box: s.box,
-    top20: Math.round(s.top20Value * 100) / 100,
-  }));
+// Tabelle der Sets (nur die im Graphen ausgewählten, mit ihrer Linienfarbe); Klick auf ein Set zeigt seine 20 Karten
+function SetTable({ rows, colorOf, open, setOpen }) {
   return (
-    <div className="mb-6">
-      <ResponsiveContainer width="100%" height={data.length * ROW_HEIGHT + 40}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 12, left: 4, bottom: 0 }} barGap={2}>
-          <XAxis
-            type="number"
-            stroke="var(--subtle)"
-            fontSize={11}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v) => eur(v).replace(",00", "")}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={130}
-            stroke="var(--subtle)"
-            fontSize={11}
-            tickLine={false}
-            axisLine={false}
-            interval={0}
-          />
-          <Tooltip
-            cursor={{ fill: "var(--line)", opacity: 0.4 }}
-            contentStyle={tooltipStyle}
-            labelStyle={{ color: "var(--subtle)" }}
-            formatter={(v, name) => [eur(v), name]}
-          />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="box" name="Display" fill={BAR_COLORS.box} radius={[0, 4, 4, 0]} barSize={12} style={glow(BAR_COLORS.box, 4)} />
-          <Bar dataKey="top20" name="Top 20 Karten" fill={BAR_COLORS.top20} radius={[0, 4, 4, 0]} barSize={12} style={glow("var(--yellow)", 4)} />
-        </BarChart>
-      </ResponsiveContainer>
-      {withBox.length > BARS_FIRST && (
-        <button onClick={() => setAll((v) => !v)} className="text-xs text-subtle underline hover:text-ink mt-1">
-          {all ? "Weniger anzeigen" : `Alle ${withBox.length} Sets anzeigen`}
-        </button>
-      )}
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-subtle border-b border-line">
+            <th className="py-2 pr-3 font-normal">Set</th>
+            <th className="py-2 pr-3 font-normal text-right">Box</th>
+            <th className="py-2 pr-3 font-normal text-right">Booster</th>
+            <th className="py-2 pr-3 font-normal text-right">Top 20</th>
+            <th className="py-2 pr-3 font-normal text-right">% der Box</th>
+            <th className="py-2 pr-3 font-normal text-right">= Booster</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((s) => (
+            <Fragment key={s.id}>
+              <tr
+                onClick={() => setOpen(open === s.id ? null : s.id)}
+                className="border-b border-line hover:bg-surface/60 cursor-pointer"
+              >
+                <td className="py-2 pr-3">
+                  <span className="text-subtle text-xs">{open === s.id ? "▾" : "▸"} </span>
+                  {colorOf?.get(s.id) && (
+                    <span
+                      aria-hidden="true"
+                      className="inline-block w-2.5 h-2.5 rounded-full mr-1.5 align-middle"
+                      style={{ background: colorOf.get(s.id) }}
+                    />
+                  )}
+                  <span className="font-medium">{s.name}</span>
+                  <span className="text-subtle text-xs"> · {s.release_date ? s.release_date.slice(0, 4) : "–"}</span>
+                </td>
+                <td className="py-2 pr-3 text-right font-mono">{s.box != null ? eur(s.box) : <span className="text-subtle">–</span>}</td>
+                <td className="py-2 pr-3 text-right font-mono">{s.booster != null ? eur(s.booster) : <span className="text-subtle">–</span>}</td>
+                <td className="py-2 pr-3 text-right font-mono">
+                  {s.top20Count ? eur(s.top20Value) : <span className="text-subtle">–</span>}
+                  {s.top20Count > 0 && s.top20Count < 20 && (
+                    <span className="text-subtle text-xs" title="Erst für so viele Karten liegt ein Preis vor"> ({s.top20Count})</span>
+                  )}
+                </td>
+                <td className="py-2 pr-3 text-right font-mono">
+                  {s.boxRatio != null ? `${s.boxRatio.toFixed(0)} %` : <span className="text-subtle">–</span>}
+                </td>
+                <td className="py-2 pr-3 text-right font-mono">
+                  {s.boosterRatio != null ? s.boosterRatio.toFixed(1) : <span className="text-subtle">–</span>}
+                </td>
+              </tr>
+              {open === s.id && (
+                <tr className="border-b border-line">
+                  <td colSpan={6} className="py-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-subtle">Die {s.topCards.length} teuersten Karten</p>
+                      <Link to={`/sets/${s.slug ?? s.id}`} className="text-xs text-subtle underline hover:text-ink">
+                        zum Set →
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-3">
+                      {s.topCards.map((c) => (
+                        <Link key={c.external_id} to={cardPath(c)} className="flex flex-col">
+                          <img
+                            src={c.image_small}
+                            alt={`${c.name} (Englisch)`}
+                            className="rounded-xl border border-line mb-1 shadow-sm"
+                          />
+                          <p className="text-[11px] font-medium truncate">{c.name}</p>
+                          <p className="text-[11px] font-mono text-subtle">{eur(c.price)}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function HistoryChart({ rows }) {
+// children({ ids, colorOf }): rendert unter dem Graphen die Tabelle der angehakten Sets
+function HistoryChart({ rows, sel, onSetMany, children }) {
   const [range, setRange] = useState("12m");
   const withHistory = useMemo(() => rows.filter((s) => s.history.length > 0), [rows]);
   const [metric, setMetric] = useState("booster");
-  // null = noch nichts selbst gewählt -> die neuesten Sets (defaultSelected)
-  const [selected, setSelected] = useState(null);
   const m = METRICS[metric];
-  const defaultSelected = useMemo(
-    () =>
-      new Set(
-        [...withHistory]
-          .sort((a, b) => (b.release_date || "").localeCompare(a.release_date || ""))
-          .slice(0, DEFAULT_SETS)
-          .map((s) => s.id)
-      ),
-    [withHistory]
-  );
-  const sel = selected ?? defaultSelected;
 
   // Je Set die Werte der gewählten Kennzahl (Sets ohne passenden Preis, z. B.
   // ohne Boosterpreis bei "in Boostern", haben keine Werte)
@@ -306,16 +267,8 @@ function HistoryChart({ rows }) {
     return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month));
   }, [visible]);
 
-  // Mehrere Sets auf einmal an- oder abwählen (einzelnes Set, ganze Serie, alle)
-  const setMany = (ids, on) =>
-    setSelected((prev) => {
-      const next = new Set(prev ?? defaultSelected);
-      for (const id of ids) on ? next.add(id) : next.delete(id);
-      return next;
-    });
-
   return (
-    <div className="mt-10">
+    <div>
       <h2 className="text-sm font-medium mb-1">Verlauf</h2>
       <p className="text-xs text-subtle mb-3">
         Ein Stand je Monat (der laufende Monat wird jede Nacht aktualisiert) – so siehst du, ob sich ein Set im
@@ -340,7 +293,7 @@ function HistoryChart({ rows }) {
             <RangeSelect value={range} onChange={setRange} options={HISTORY_RANGES} />
           </div>
 
-          <SetPicker series={series} selected={sel} colorOf={colorOf} onSetMany={setMany} />
+          <SetPicker series={series} selected={sel} colorOf={colorOf} onSetMany={onSetMany} />
 
           {visible.length === 0 ? (
             <p className="text-subtle text-sm">Kein Set ausgewählt bzw. für diese Kennzahl liegt noch kein Preis vor.</p>
@@ -395,6 +348,8 @@ function HistoryChart({ rows }) {
           )}
         </>
       )}
+
+      {children({ ids: withHistory.length ? new Set(visible.map((s) => s.id)) : null, colorOf })}
     </div>
   );
 }
@@ -549,88 +504,6 @@ function SetPicker({ series, selected, colorOf, onSetMany }) {
       {chosen.length > MAX_CHIPS && (
         <p className="text-xs text-subtle mt-2">{chosen.length} Sets ausgewählt. Bei so vielen Linien hilft die Auswahl einzelner Serien.</p>
       )}
-    </div>
-  );
-}
-
-// Box-/Boosterpreise pflegen (nur Betreiber, keine freie API-Quelle). Zeigt
-// zuerst die neuesten Sets; Boxpreis leer lassen bei Sets ohne Display.
-function PriceEditor({ onSaved }) {
-  const [sets, setSets] = useState(null);
-  const [all, setAll] = useState(false);
-
-  useEffect(() => {
-    getSets().then(setSets).catch(() => setSets([]));
-  }, []);
-
-  if (sets === null) return <p className="text-subtle text-xs mb-4">Lade Sets …</p>;
-  const list = all ? sets : sets.slice(0, 15);
-
-  return (
-    <div className="bg-surface border border-line rounded-2xl px-5 py-4 shadow-sm mb-6">
-      <p className="text-sm font-medium mb-1">Preise pflegen</p>
-      <p className="text-xs text-subtle mb-3">
-        Die Preise kommen jede Nacht automatisch (grau im Feld). Ein eigener Wert geht vor; beide Felder
-        leeren und speichern = wieder automatisch.
-      </p>
-      <div className="space-y-2">
-        {list.map((s) => (
-          <PriceRow key={s.id} set={s} onSaved={onSaved} />
-        ))}
-      </div>
-      {!all && sets.length > list.length && (
-        <button onClick={() => setAll(true)} className="text-xs text-subtle underline hover:text-ink mt-3">
-          Alle {sets.length} Sets anzeigen
-        </button>
-      )}
-    </div>
-  );
-}
-
-function PriceRow({ set, onSaved }) {
-  const toInput = (c) => (c != null ? (c / 100).toFixed(2) : "");
-  // Eigene Werte nur zeigen, wenn sie gelten (alte Handwerte ohne Vorrang wären irreführend)
-  const own = set.manual_prices_override;
-  const [box, setBox] = useState(own ? toInput(set.box_price_cents) : "");
-  const [booster, setBooster] = useState(own ? toInput(set.booster_price_cents) : "");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  async function save() {
-    setSaving(true);
-    try {
-      await updateSetPrices(set.id, { boxEur: box.trim() || null, boosterEur: booster.trim() || null });
-      setSaved(true);
-      onSaved?.();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const input = "border border-line rounded-full px-2 py-1 text-xs bg-canvas w-24 focus:outline-none focus:border-ink";
-  const edit = (setter) => (e) => {
-    setSaved(false);
-    setter(e.target.value);
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs w-44 shrink-0 truncate" title={set.name}>
-        {set.name}
-      </span>
-      <span className="text-xs text-subtle">Box</span>
-      <input type="number" step="0.01" min="0" value={box} onChange={edit(setBox)} placeholder={toInput(set.auto_box_price_cents)} className={input} />
-      <span className="text-xs text-subtle">Booster</span>
-      <input type="number" step="0.01" min="0" value={booster} onChange={edit(setBooster)} placeholder={toInput(set.auto_booster_price_cents)} className={input} />
-      <span className="text-xs text-subtle">€</span>
-      <button
-        onClick={save}
-        disabled={saving}
-        className="text-xs bg-yellow text-yellowInk px-3 py-1 rounded-full disabled:opacity-60"
-      >
-        {saving ? "…" : "Speichern"}
-      </button>
-      {saved && <span className="text-mint text-xs">✓</span>}
     </div>
   );
 }
