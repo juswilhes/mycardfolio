@@ -130,6 +130,7 @@ export const getPackValueAnalysis = () => request("/stats/pack-value");
 export const getPullOrBuy = () => request("/stats/pull-or-buy");
 export const getSetRanking = () => request("/stats/set-ranking");
 export const getPricePerBooster = () => request("/stats/price-per-booster");
+export const getSetTotalValue = () => request("/stats/set-total-value");
 
 // --- News & Artikel ----------------------------------------------------
 export const getLanding = () => request("/stats/landing");

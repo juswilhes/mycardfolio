@@ -136,7 +136,7 @@ export default function SetValueAnalysis() {
 }
 
 // Farben für die übereinandergelegten Sets (wie in der Statistik).
-const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f2994a", "#56ccf2", "#b0a08a", "#e86bd6", "#9ad14b", "#ff9f7a", "#7f8cff"];
+export const SET_COLORS = ["#f8c93a", "#5a9bff", "#35d488", "#ff6b81", "#c98bff", "#f2994a", "#56ccf2", "#b0a08a", "#e86bd6", "#9ad14b", "#ff9f7a", "#7f8cff"];
 // So viele Sets (die neuesten) sind im Verlauf anfangs ausgewählt - 100+ Linien auf einmal liest niemand
 const DEFAULT_SETS = 6;
 // Bis zu so vielen ausgewählten Sets stehen sie einzeln als Marken unter der Auswahl
@@ -358,7 +358,7 @@ function HistoryChart({ rows, sel, onSetMany, children }) {
 // statt 100+ Knöpfen ein Aufklapp-Fenster mit Suche, "Alle auswählen/abwählen" und den Sets nach Serie gruppiert
 // (Klick auf die Serie wählt sie ganz). Darunter stehen die ausgewählten Sets als Marken mit ihrer Linienfarbe.
 // Sets ohne Preis für die gewählte Kennzahl sind ausgegraut.
-function SetPicker({ series, selected, colorOf, onSetMany }) {
+export function SetPicker({ series, selected, colorOf, onSetMany }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef(null);

@@ -6,6 +6,7 @@ import { glow, tooltipStyle } from "../lib/chartFx.jsx";
 import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
+import SetTotalValue from "../components/SetTotalValue.jsx";
 import PricePerBooster from "../components/PricePerBooster.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
 import PackValueAnalysis from "../components/PackValueAnalysis.jsx";
@@ -67,6 +68,7 @@ const ANALYSES = [
   { id: "sammlung", label: "Meine Sammlung", render: () => <CollectionStats /> },
   { id: "booster", label: "Booster vs. Top-Karten", render: () => <SetValueAnalysis /> },
   { id: "proboster", label: "Preis pro Booster", render: () => <PricePerBooster /> },
+  { id: "setwert", label: "Set-Gesamtwert", render: () => <SetTotalValue /> },
   { id: "pullrates", label: "Pull Rates", render: () => <PullRatesAnalysis /> },
   { id: "packwert", label: "Wert pro Pack", render: () => <PackValueAnalysis /> },
   { id: "ziehenkaufen", label: "Ziehen oder kaufen", render: () => <PullOrBuyAnalysis /> },

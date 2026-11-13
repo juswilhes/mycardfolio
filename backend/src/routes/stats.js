@@ -24,6 +24,11 @@ router.get("/price-per-booster", (_req, res) => {
   res.json(analysis("pricePerBooster"));
 });
 
+// GET /api/stats/set-total-value -> je Set Summe aller Kartenpreise, Verlauf und wertvollste Karte
+router.get("/set-total-value", (_req, res) => {
+  res.json(analysis("setTotalValue"));
+});
+
 // GET /api/stats/pull-rates -> Pull Rates aller Sets, bei denen welche hinterlegt sind
 router.get("/pull-rates", (_req, res) => {
   res.json(analysis("pullRates"));
