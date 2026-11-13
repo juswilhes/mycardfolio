@@ -2,7 +2,8 @@ import db from "../db/index.js";
 import { loadGuide } from "./cardmarketGuide.js";
 import { robustPrice, usdToEur } from "./priceProvider.js";
 import { sealedExpansions, groupKey, tcgJson, TCG_GROUP_ALIAS, searchLink } from "./sealedPrices.js";
-import { setsFor, promosFor, seriesOfSet, resetContentsContext } from "./sealedContents.js";
+import { setsFor, promosFor, promoValue, boosterCount, seriesOfSet, resetContentsContext } from "./sealedContents.js";
+import { latestTrendByExternal } from "./cardService.js";
 import { slugOfSet } from "./setSlugs.js";
 import { slugOfCard } from "./cardSlugs.js";
 
@@ -19,6 +20,14 @@ const EXCLUDE = /\bcase\b|code card/i;
 // Einzelkarten-Gruppen) sind keine Sealed-Produkte im Sinn der Sammlung.
 const EXTRA_GROUPS = /miscellaneous|battle academy|my first battle|first partner|trick or trade|deck exclusives|trainer kit|battle stadium/i;
 const descOf = (p) => (p.extendedData ?? []).find((e) => e.name === "CardText")?.value ?? "";
+
+// Booster-Anzahl und Promo-Wert je Produkt (Analyse "Preis pro Booster")
+const contentsStmt = db.prepare(`UPDATE sealed_catalog SET booster_count = ?, promo_value_cents = ? WHERE id = ?`);
+const promoPrice = (externalId) => latestTrendByExternal(externalId)?.price ?? 0;
+function saveContents(catalogId, name, desc, series) {
+  const promoCents = Math.round(promoValue(desc, series, promoPrice) * 100);
+  contentsStmt.run(boosterCount(name, desc), promoCents > 0 ? promoCents : null, catalogId);
+}
 
 const delSetsStmt = db.prepare(`DELETE FROM sealed_catalog_sets WHERE catalog_id = ?`);
 const insSetStmt = db.prepare(`INSERT OR IGNORE INTO sealed_catalog_sets (catalog_id, set_id) VALUES (?, ?)`);
@@ -135,6 +144,7 @@ export async function refreshSealedCatalog() {
         const links = setsFor(p.name, desc, s.id);
         const promos = promosFor(desc, seriesOfSet(s.id));
         saveLinks(catalogId, links.sets, promos);
+        saveContents(catalogId, p.name, desc, seriesOfSet(s.id));
         stats.produkte++;
         if (links.sets.length) stats.mehrereSets++;
         if (promos.length) stats.mitPromos++;
@@ -178,6 +188,7 @@ export async function refreshSealedCatalog() {
           if (tcgCents) upsertPriceStmt.run(catalogId, now.slice(0, 10), tcgCents, null, tcgCents);
           const promos = promosFor(desc, links.primary ? seriesOfSet(links.primary) : null);
           saveLinks(catalogId, links.sets, promos);
+          saveContents(catalogId, p.name, desc, links.primary ? seriesOfSet(links.primary) : null);
           stats.sammelgruppen++;
           if (promos.length) stats.mitPromos++;
           if (tcgCents) stats.mitPreis++;
@@ -275,13 +286,15 @@ export function catalogItem(id) {
 }
 
 // Einmal nach dem Deploy (Marker), damit die Auswahl nicht erst nach dem nächsten Nachtlauf da ist
-export function catchUpSealedCatalog() {
-  // v2 (09.11.2026): Sammelgruppen, weitere Sets und Promo-Karten kamen dazu - einmal sofort nach dem Deploy
-  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_catalog_v2'`).get()) return;
+export function catchUpSealedCatalog(after) {
+  // v3 (13.11.2026): Booster-Anzahl und Promo-Wert kamen dazu (v2: Sammelgruppen, weitere Sets, Promo-Karten) -
+  // einmal sofort nach dem Deploy; danach rechnet `after` die Auswertungen neu ("Preis pro Booster")
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_catalog_v3'`).get()) return;
   setTimeout(async () => {
     try {
       await refreshSealedCatalog();
-      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_catalog_v2', '1')`).run();
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_catalog_v3', '1')`).run();
+      after?.();
     } catch (e) {
       console.error("[sealed-katalog] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);
     }

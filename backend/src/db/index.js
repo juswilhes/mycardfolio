@@ -360,6 +360,13 @@ CREATE TABLE IF NOT EXISTS sealed_catalog_prices (
 INSERT OR IGNORE INTO sealed_catalog_prices (catalog_id, day, price_cents, cm_cents, tcg_cents)
   SELECT id, substr(updated_at, 1, 10), price_cents, cm_cents, tcg_cents FROM sealed_catalog WHERE price_cents IS NOT NULL AND updated_at IS NOT NULL;
 `);
+// Analyse "Preis pro Booster" (Justus 13.11.2026): Anzahl der Booster im Produkt und Wert der beiliegenden Promo-Karten
+// (beides aus der Beschreibung, sealedContents.js; jede Nacht im Schritt "Sealed-Katalog" neu geschrieben)
+{
+  const scColumns = new Set(db.prepare(`PRAGMA table_info(sealed_catalog)`).all().map((c) => c.name));
+  if (!scColumns.has("booster_count")) db.exec(`ALTER TABLE sealed_catalog ADD COLUMN booster_count INTEGER`);
+  if (!scColumns.has("promo_value_cents")) db.exec(`ALTER TABLE sealed_catalog ADD COLUMN promo_value_cents INTEGER`);
+}
 // Inhalt der Sealed-Produkte aus der TCGplayer-Beschreibung (services/sealedContents.js, Nachtlauf "Sealed-Katalog"):
 // weitere Sets, aus denen Booster im Produkt stecken (sealed_catalog.set_id ist das Haupt-Set; das Produkt steht
 // dann auch auf den Set-Seiten dieser Sets) und die Promo-Karten, die beiliegen (Justus 09.11.2026)

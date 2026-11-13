@@ -19,6 +19,11 @@ router.get("/sealed-movers", (req, res) => {
   res.json(analysis("sealedMovers")[req.query.days === "7" ? 7 : 30]);
 });
 
+// GET /api/stats/price-per-booster -> je Set die Sealed-Produkte nach Preis je Booster, dazu Booster-/Displaypreis
+router.get("/price-per-booster", (_req, res) => {
+  res.json(analysis("pricePerBooster"));
+});
+
 // GET /api/stats/pull-rates -> Pull Rates aller Sets, bei denen welche hinterlegt sind
 router.get("/pull-rates", (_req, res) => {
   res.json(analysis("pullRates"));

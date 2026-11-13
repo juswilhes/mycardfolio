@@ -208,7 +208,7 @@ app.listen(PORT, () => {
   catchUpMissingPrices();
   catchUpGuidePrices();
   catchUpNumberPairs();
-  catchUpSealedCatalog();
+  catchUpSealedCatalog(() => rebuildAnalysisCache());
   catchUpGermanSetNames();
   catchUpNewSets(); // neue Sets, die TCGdex noch nicht hat (Delta Reign), gleich nach dem Deploy
   try {
