@@ -9,12 +9,14 @@ import { slugOfCard } from "./cardSlugs.js";
 
 // Katalog der versiegelten Produkte je Set (Justus 08.11.2026: "Sealed-Produkte über die Cardmarket- und
 // TCGplayer-Infos hinzufügen"): Auswahl mit Bild beim Hinzufügen statt Handeingabe, Wert automatisch jede Nacht.
-// Produktliste und Bilder von TCGplayer (tcgcsv.com, alles außer Einzelkarten, Cases und Code Cards), Cardmarket-
+// Produktliste und Bilder von TCGplayer (tcgcsv.com, alles außer Einzelkarten und Code Cards), Cardmarket-
 // Gegenstück über den gleichen Namen in der Erweiterung des Sets (nur eindeutig). Wert wie bei Booster/Display
 // (sealedPrices.js): Mittelwert aus Cardmarket und TCGplayer, wenn beide da sind und höchstens 2,5x auseinander;
 // sonst Cardmarket, ohne Cardmarket-Gegenstück TCGplayer allein.
 const MAX_FACTOR = 2.5;
-const EXCLUDE = /\bcase\b|code card/i;
+// Cases gehören dazu (Justus 14.11.2026: "wo ist die Ascended Heroes ETB Case?" - Bundle-Displays waren schon drin,
+// Cases nicht). Bei "Preis pro Booster" fehlen sie trotzdem (Sammelpackung, boosterCount in sealedContents.js).
+const EXCLUDE = /code card/i;
 // TCGplayer-Gruppen ohne eigenes Set, in denen trotzdem versiegelte Produkte liegen (Kollektionen, Tins, Händler-
 // Bundles ...; Justus 09.11.2026). Bewusst eine Positivliste: andere Gruppen (World-Championship-Decks, Promo-/
 // Einzelkarten-Gruppen) sind keine Sealed-Produkte im Sinn der Sammlung.
@@ -287,13 +289,13 @@ export function catalogItem(id) {
 
 // Einmal nach dem Deploy (Marker), damit die Auswahl nicht erst nach dem nächsten Nachtlauf da ist
 export function catchUpSealedCatalog(after) {
-  // v3 (13.11.2026): Booster-Anzahl und Promo-Wert kamen dazu (v2: Sammelgruppen, weitere Sets, Promo-Karten) -
+  // v4 (14.11.2026): Cases aufgenommen. v3 (13.11.2026): Booster-Anzahl und Promo-Wert kamen dazu (v2: Sammelgruppen, weitere Sets, Promo-Karten) -
   // einmal sofort nach dem Deploy; danach rechnet `after` die Auswertungen neu ("Preis pro Booster")
-  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_catalog_v3'`).get()) return;
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_catalog_v4'`).get()) return;
   setTimeout(async () => {
     try {
       await refreshSealedCatalog();
-      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_catalog_v3', '1')`).run();
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_catalog_v4', '1')`).run();
       after?.();
     } catch (e) {
       console.error("[sealed-katalog] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);
