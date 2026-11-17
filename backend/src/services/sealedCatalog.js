@@ -2,7 +2,16 @@ import db from "../db/index.js";
 import { loadGuide } from "./cardmarketGuide.js";
 import { robustPrice, usdToEur } from "./priceProvider.js";
 import { sealedExpansions, groupKey, tcgJson, TCG_GROUP_ALIAS, searchLink } from "./sealedPrices.js";
-import { setsFor, promosFor, promoValue, boosterCount, seriesOfSet, resetContentsContext } from "./sealedContents.js";
+import {
+  setsFor,
+  promosFor,
+  promoValue,
+  boosterCount,
+  seriesOfSet,
+  resetContentsContext,
+  setPromoListings,
+  promoNumberKey,
+} from "./sealedContents.js";
 import { latestTrendByExternal } from "./cardService.js";
 import { slugOfSet } from "./setSlugs.js";
 import { slugOfCard } from "./cardSlugs.js";
@@ -26,8 +35,8 @@ const descOf = (p) => (p.extendedData ?? []).find((e) => e.name === "CardText")?
 // Booster-Anzahl und Promo-Wert je Produkt (Analyse "Preis pro Booster")
 const contentsStmt = db.prepare(`UPDATE sealed_catalog SET booster_count = ?, promo_value_cents = ? WHERE id = ?`);
 const promoPrice = (externalId) => latestTrendByExternal(externalId)?.price ?? 0;
-function saveContents(catalogId, name, desc, series) {
-  const promoCents = Math.round(promoValue(desc, series, promoPrice) * 100);
+function saveContents(catalogId, name, desc, series, productId) {
+  const promoCents = Math.round(promoValue(desc, series, promoPrice, productId) * 100);
   contentsStmt.run(boosterCount(name, desc), promoCents > 0 ? promoCents : null, catalogId);
 }
 
@@ -80,6 +89,43 @@ function blend(cmCents, tcgCents) {
   return cmCents ?? tcgCents ?? null;
 }
 
+// Wann TCGplayer jede Promo-Karte gelistet hat (früheste Produktnummer je Kartennummer) - für die Zeitprüfung der
+// beiliegenden Promo-Karten in sealedContents.js. Fehlt eine Gruppe, wird für deren Karten nur nicht geprüft.
+const PROMO_GROUPS = {
+  mep: "ME: Mega Evolution Promo",
+  svp: "SV: Scarlet & Violet Promo Cards",
+  swshp: "SWSH: Sword & Shield Promo Cards",
+  smp: "SM Promos",
+  xyp: "XY Promos",
+  bwp: "Black and White Promos",
+  hsp: "HGSS Promos",
+  dpp: "Diamond and Pearl Promos",
+};
+const promoCardsOfSetStmt = db.prepare(`SELECT external_id, number FROM cards WHERE set_id = ?`);
+async function loadPromoListings(groups) {
+  const out = new Map();
+  for (const [setId, groupName] of Object.entries(PROMO_GROUPS)) {
+    const g = groups.find((x) => x.name === groupName);
+    if (!g) continue;
+    try {
+      const first = new Map(); // Kartennummer -> früheste Produktnummer
+      for (const p of await tcgJson(`/${g.groupId}/products`)) {
+        const num = (p.extendedData ?? []).find((e) => e.name === "Number")?.value;
+        if (!num) continue;
+        const k = promoNumberKey(num);
+        if (!first.has(k) || p.productId < first.get(k)) first.set(k, p.productId);
+      }
+      for (const c of promoCardsOfSetStmt.all(setId)) {
+        const id = first.get(promoNumberKey(c.number));
+        if (id) out.set(c.external_id, id);
+      }
+    } catch (e) {
+      console.error(`[sealed-katalog] Promo-Liste ${groupName} nicht geladen:`, e.message);
+    }
+  }
+  return out;
+}
+
 export async function refreshSealedCatalog() {
   const guide = await loadGuide();
   const expansions = sealedExpansions(guide);
@@ -88,6 +134,7 @@ export async function refreshSealedCatalog() {
   const now = new Date().toISOString();
   const stats = { sets: 0, produkte: 0, mitCardmarket: 0, mitPreis: 0, sammelgruppen: 0, mehrereSets: 0, mitPromos: 0 };
   resetContentsContext(); // neue Sets/Promo-Karten seit dem letzten Lauf berücksichtigen
+  setPromoListings(await loadPromoListings(groups));
   const setGroupIds = new Set();
 
   for (const s of setsStmt.all()) {
@@ -144,9 +191,9 @@ export async function refreshSealedCatalog() {
         // weitere Sets (Booster aus mehreren Sets) und beiliegende Promo-Karten aus der Beschreibung
         const desc = descOf(p);
         const links = setsFor(p.name, desc, s.id);
-        const promos = promosFor(desc, seriesOfSet(s.id));
+        const promos = promosFor(desc, seriesOfSet(s.id), p.productId);
         saveLinks(catalogId, links.sets, promos);
-        saveContents(catalogId, p.name, desc, seriesOfSet(s.id));
+        saveContents(catalogId, p.name, desc, seriesOfSet(s.id), p.productId);
         stats.produkte++;
         if (links.sets.length) stats.mehrereSets++;
         if (promos.length) stats.mitPromos++;
@@ -188,9 +235,9 @@ export async function refreshSealedCatalog() {
           });
           const catalogId = idByTcgStmt.get(p.productId).id;
           if (tcgCents) upsertPriceStmt.run(catalogId, now.slice(0, 10), tcgCents, null, tcgCents);
-          const promos = promosFor(desc, links.primary ? seriesOfSet(links.primary) : null);
+          const promos = promosFor(desc, links.primary ? seriesOfSet(links.primary) : null, p.productId);
           saveLinks(catalogId, links.sets, promos);
-          saveContents(catalogId, p.name, desc, links.primary ? seriesOfSet(links.primary) : null);
+          saveContents(catalogId, p.name, desc, links.primary ? seriesOfSet(links.primary) : null, p.productId);
           stats.sammelgruppen++;
           if (promos.length) stats.mitPromos++;
           if (tcgCents) stats.mitPreis++;
@@ -289,13 +336,13 @@ export function catalogItem(id) {
 
 // Einmal nach dem Deploy (Marker), damit die Auswahl nicht erst nach dem nächsten Nachtlauf da ist
 export function catchUpSealedCatalog(after) {
-  // v4 (14.11.2026): Cases aufgenommen. v3 (13.11.2026): Booster-Anzahl und Promo-Wert kamen dazu (v2: Sammelgruppen, weitere Sets, Promo-Karten) -
+  // v5 (17.11.2026): strengere Promo-Zuordnung. v4 (14.11.2026): Cases aufgenommen. v3 (13.11.2026): Booster-Anzahl und Promo-Wert kamen dazu (v2: Sammelgruppen, weitere Sets, Promo-Karten) -
   // einmal sofort nach dem Deploy; danach rechnet `after` die Auswertungen neu ("Preis pro Booster")
-  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_catalog_v4'`).get()) return;
+  if (db.prepare(`SELECT value FROM app_meta WHERE key = 'sealed_catalog_v5'`).get()) return;
   setTimeout(async () => {
     try {
       await refreshSealedCatalog();
-      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_catalog_v4', '1')`).run();
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('sealed_catalog_v5', '1')`).run();
       after?.();
     } catch (e) {
       console.error("[sealed-katalog] Nachholen fehlgeschlagen (wird nachts erneut versucht):", e.message);

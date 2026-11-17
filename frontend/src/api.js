@@ -110,6 +110,11 @@ export const addToWatchlist = (externalId) =>
   request("/watchlist", { method: "POST", body: { externalId } });
 export const removeFromWatchlist = (externalId) =>
   request(`/watchlist/${externalId}`, { method: "DELETE" });
+// Sealed-Produkte auf der Watchlist (Katalog-ID)
+export const getSealedWatchlist = () => request("/watchlist/sealed");
+export const getSealedWatchIds = () => request("/watchlist/sealed/ids");
+export const addSealedToWatchlist = (catalogId) => request("/watchlist/sealed", { method: "POST", body: { catalogId } });
+export const removeSealedFromWatchlist = (catalogId) => request(`/watchlist/sealed/${catalogId}`, { method: "DELETE" });
 
 // --- Sealed Produkte -------------------------------------------------
 export const getSealedProducts = () => request("/sealed-products");

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { eur, formatDate } from "../lib/format.js";
-import { getSealedCatalog } from "../api.js";
+import { getSealedCatalog, getSealedWatchIds } from "../api.js";
+import WatchlistHeart from "./WatchlistHeart.jsx";
 
 // Booster- und Displaypreis eines Sets, oben auf der Set-Seite (Justus 29.10.2026; Berechnung siehe
 // backend/src/services/sealedPrices.js). Nur die Zahlen, keine Erklärung der Berechnung (Justus: Fakten liefern).
@@ -11,6 +12,7 @@ import { getSealedCatalog } from "../api.js";
 export default function SealedPrices({ sealed, setId, setName, catalogCount = 0, onAdd }) {
   const [open, setOpen] = useState(false);
   const [catalog, setCatalog] = useState(null);
+  const [watched, setWatched] = useState(null); // Set der gemerkten Katalog-IDs (nur angemeldet = onAdd)
   if (!sealed && !catalogCount) return null;
 
   function toggle() {
@@ -18,6 +20,10 @@ export default function SealedPrices({ sealed, setId, setName, catalogCount = 0,
       getSealedCatalog(setId)
         .then(setCatalog)
         .catch(() => setCatalog([]));
+      if (onAdd)
+        getSealedWatchIds()
+          .then((ids) => setWatched(new Set(ids)))
+          .catch(() => setWatched(new Set()));
     }
     setOpen(!open);
   }
@@ -73,6 +79,20 @@ export default function SealedPrices({ sealed, setId, setName, catalogCount = 0,
                     </span>
                     <span className="text-sm font-mono shrink-0">{item.priceCents != null ? eur(item.priceCents / 100) : "—"}</span>
                   </Link>
+                  {onAdd && watched && (
+                    <WatchlistHeart
+                      catalogId={item.id}
+                      watched={watched.has(item.id)}
+                      onChange={(on) =>
+                        setWatched((prev) => {
+                          const next = new Set(prev);
+                          on ? next.add(item.id) : next.delete(item.id);
+                          return next;
+                        })
+                      }
+                      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full border border-line hover:border-ink bg-canvas"
+                    />
+                  )}
                   {onAdd && (
                     <button
                       type="button"

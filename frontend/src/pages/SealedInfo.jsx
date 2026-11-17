@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { getSealedCatalogItem, addSealedProduct } from "../api.js";
+import { getSealedCatalogItem, addSealedProduct, getSealedWatchIds } from "../api.js";
+import WatchlistHeart from "../components/WatchlistHeart.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import PriceSection from "../components/PriceSection.jsx";
 import SealedProductDialog from "../components/SealedProductDialog.jsx";
@@ -23,6 +24,7 @@ export default function SealedInfo() {
   const [addError, setAddError] = useState(null);
   const [added, setAdded] = useState(false);
   const [celebrate, setCelebrate] = useState(null);
+  const [watched, setWatched] = useState(false);
   usePageTitle(item ? `${item.name} – Wert & Preis | mycardfolio` : null);
 
   useEffect(() => {
@@ -32,6 +34,13 @@ export default function SealedInfo() {
       .then(setItem)
       .catch(() => setError(true));
   }, [id]);
+
+  useEffect(() => {
+    if (!user) return setWatched(false);
+    getSealedWatchIds()
+      .then((ids) => setWatched(ids.includes(Number(id))))
+      .catch(() => {});
+  }, [id, user]);
 
   async function confirmAdd(values, meta) {
     setBusy(true);
@@ -91,13 +100,21 @@ export default function SealedInfo() {
               {" · Sealed"}
             </p>
           )}
-          <div className="mt-4">
+          <div className="mt-4 flex items-center gap-2">
             <button
               onClick={() => (user ? setDialogOpen(true) : navigate(registrationOpen ? "/register" : "/login"))}
               className="bg-yellow text-yellowInk font-medium px-4 py-2 rounded-full text-sm"
             >
               {user ? "+ Zur Sammlung hinzufügen" : "Anmelden zum Hinzufügen"}
             </button>
+            {user && (
+              <WatchlistHeart
+                catalogId={item.id}
+                watched={watched}
+                onChange={setWatched}
+                className="w-10 h-10 flex items-center justify-center rounded-full border border-line text-xl hover:border-ink"
+              />
+            )}
           </div>
           {added && (
             <p className="text-mint text-xs mt-2">

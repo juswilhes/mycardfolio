@@ -35,7 +35,7 @@ db.transaction(() => {
   // in der Datenschutzerklärung. Läuft bei jedem Start, also nach jedem Deploy.
   db.prepare(`DELETE FROM client_errors WHERE created_at < datetime('now', '-30 days')`).run();
   // Reste früher gelöschter Konten (die Löschung erfasste diese Tabellen anfangs nicht)
-  for (const t of ["watchlist_items", "sealed_products", "user_achievements"]) {
+  for (const t of ["watchlist_items", "watchlist_sealed", "sealed_products", "user_achievements"]) {
     db.prepare(`DELETE FROM ${t} WHERE user_id NOT IN (SELECT id FROM users)`).run();
   }
 })();
@@ -341,7 +341,7 @@ export function setUsername(userId, name) {
 export function deleteAccount(userId) {
   const email = sUserById.get(userId)?.email;
   const tx = db.transaction(() => {
-    for (const t of ["watchlist_items", "sealed_products", "user_achievements"]) {
+    for (const t of ["watchlist_items", "watchlist_sealed", "sealed_products", "user_achievements"]) {
       db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(userId);
     }
     if (email) db.prepare(`DELETE FROM client_errors WHERE user_email = ?`).run(email);
@@ -383,6 +383,11 @@ export function exportUserData(userId) {
       .prepare(
         `SELECT w.*, c.external_id, c.name, c.set_name, c.number
          FROM watchlist_items w JOIN cards c ON c.id = w.card_id WHERE w.user_id = ?`
+      )
+      .all(userId),
+    watchlist_sealed: db
+      .prepare(
+        `SELECT w.*, s.name, s.set_id FROM watchlist_sealed w LEFT JOIN sealed_catalog s ON s.id = w.catalog_id WHERE w.user_id = ?`
       )
       .all(userId),
     achievements: db.prepare(`SELECT achievement_id, earned_at FROM user_achievements WHERE user_id = ?`).all(userId),

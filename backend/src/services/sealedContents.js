@@ -19,6 +19,7 @@ const NOT_A_SET = new Set(["evolutions"]);
 const strip = (html) => String(html ?? "").replace(/<br\s*\/?>/gi, "\n").replace(/&nbsp;/g, " ").replace(/<[^>]+>/g, " ");
 
 let ctx = null;
+const promoSetOf = new Map(); // external_id einer Promo-Karte -> ihr Set
 function context() {
   if (ctx) return ctx;
   const sets = db.prepare(`SELECT id, name, series FROM card_sets`).all();
@@ -30,10 +31,11 @@ function context() {
   const promoCards = new Map(); // normalisierter Kartenname -> [{ external_id, number, series }]
   const rows = db
     .prepare(
-      `SELECT c.external_id, c.name, c.number, s.series FROM cards c JOIN card_sets s ON s.id = c.set_id WHERE s.name LIKE '%Promo%'`
+      `SELECT c.external_id, c.name, c.number, c.set_id, s.series FROM cards c JOIN card_sets s ON s.id = c.set_id WHERE s.name LIKE '%Promo%'`
     )
     .all();
   for (const r of rows) {
+    promoSetOf.set(r.external_id, r.set_id);
     const k = norm(r.name);
     if (!promoCards.has(k)) promoCards.set(k, []);
     promoCards.get(k).push(r);
@@ -83,44 +85,85 @@ export function setsFor(name, desc, ownSetId = null) {
   return { primary: all[0] ?? null, sets: all.slice(1) };
 }
 
+// --- Promo-Karten (Justus 17.11.2026: "die Promo bei Mega Evolution Enhanced Booster Box ist falsch, bitte alle
+// prüfen"). Fehlerquellen der reinen Namenssuche und die Regeln dagegen:
+//  - "stamped ... promo card featuring Bulbasaur" = abgestempelte Set-Karte, keine Karte aus dem Promo-Set (gefunden
+//    wurde die spätere 30-Jahre-Promo Bulbasaur mep-037) -> Zeilen mit "stamped" zählen nicht.
+//  - "ex" (ab 2023) ist nicht "-EX" (2012-2016): "Black Kyurem ex" traf Black Kyurem-EX -> Endung muss passen.
+//  - "A or B" (eine von beiden): fehlt eine davon bei uns, ist die gefundene oft die falsche (Mega Charizard Tin X
+//    bekam Mega Charizard Y ex) -> nur, wenn ALLE Namen der Zeile eindeutig gefunden werden.
+//  - Gleicher Name Jahre später neu als Promo (Mimikyu ex svp-4 von 2023 im Produkt von 2025): die Promo-Karte muss
+//    bei TCGplayer ungefähr gleichzeitig gelistet worden sein (Produktnummern steigen mit der Zeit; Promo höchstens
+//    PROMO_MAX_EARLIER Nummern vor dem Produkt, ca. 10 Monate). Spät nachgetragene alte Produkte fallen so auch
+//    heraus - gewollt, lieber keine Promo als eine falsche.
+//  - Produkte ohne Set: alle Promo-Karten aus derselben Serie, sonst gar keine (Melmetal ex Box bekam die
+//    Sun-&-Moon-Promo Meltan).
+const PROMO_MAX_EARLIER = 60000;
+let promoListings = new Map(); // external_id -> früheste TCGplayer-Produktnummer dieser Promo-Karte
+export function setPromoListings(map) {
+  promoListings = map;
+}
+// "037" -> "37", "SM05" -> "SM5", "BW004" -> "BW4"
+export const promoNumberKey = (n) => String(n ?? "").toUpperCase().replace(/^([A-Z]*)0*(\d+)$/, "$1$2");
+
+const EX_NEW = /\bex$/; // "Black Kyurem ex" (klein geschrieben)
+const EX_OLD = /(?:-|\s)EX$/; // "Black Kyurem-EX"
+const suffixClash = (wanted, cardName) =>
+  (EX_NEW.test(wanted) && EX_OLD.test(cardName)) || (EX_OLD.test(wanted) && EX_NEW.test(cardName));
+
 // "1 foil promo card featuring Mega Emboar ex" -> je Zeile { count, ids }: wie viele Promo-Karten die Zeile nennt
 // ("1 ... featuring A or B" = eine von zwei) und welche Karten (external_id) in Promo-Sets der Serie dazu passen.
 // Aufzählungszeilen zuerst: sie tragen die Stückzahl, der Fließtext wiederholt dieselben Karten nur.
-function promoGroups(desc, seriesHint = null) {
+// productId = TCGplayer-Produktnummer des Sealed-Produkts (für die Zeitprüfung, siehe oben)
+function promoGroups(desc, seriesHint = null, productId = null) {
   const { promoCards } = context();
-  const lines = strip(desc).split("\n").filter((l) => /promo/i.test(l));
+  const lines = strip(desc).split("\n").filter((l) => /promo/i.test(l) && !/stamped/i.test(l));
   const isBullet = (l) => /^\s*[•*-]/.test(l);
   const groups = [];
   for (const line of [...lines.filter(isBullet), ...lines.filter((l) => !isBullet(l))]) {
     const m = line.match(/featuring\s+(.+)$/i);
     if (!m) continue;
     // "Mega Emboar ex, oversize lenticular ..." -> beim ersten Gedankenstrich/Punkt/Zusatz abschneiden
-    const list = m[1].split(/\s+(?:along with|plus|with)\s+|[.;•]/i)[0];
+    const list = m[1].split(/\s+(?:along with|plus|with)\s+|[.;:•]/i)[0];
+    const oneOf = /\bor\b|\beither\b/i.test(list);
     const ids = [];
-    for (const part of list.split(/\s*,\s*(?:or\s+|and\s+)?|\s+or\s+|\s+and\s+|\s*&\s*/i)) {
+    let missing = false;
+    for (const part of list.replace(/^\s*either\s+/i, "").split(/\s*,\s*(?:or\s+|and\s+)?|\s+or\s+|\s+and\s+|\s*&\s*/i)) {
       const number = part.match(/\(([A-Za-z]{0,6}\d+[A-Za-z]?)\)/)?.[1] ?? null;
       const n = part.replace(/\(.*?\)/g, "").replace(/^(?:a |an |the |shiny )/i, "").trim();
       if (n.length < 3) continue;
-      let cands = promoCards.get(norm(n)) ?? [];
+      let cands = (promoCards.get(norm(n)) ?? []).filter((c) => !suffixClash(n, c.name));
       if (number) cands = cands.filter((c) => norm(c.number) === norm(number));
       if (seriesHint) cands = cands.filter((c) => !c.series || c.series === seriesHint);
-      if (cands.length === 1 && !ids.includes(cands[0].external_id)) ids.push(cands[0].external_id);
+      if (productId) cands = cands.filter((c) => !(promoListings.get(c.external_id) < productId - PROMO_MAX_EARLIER));
+      if (cands.length === 1) {
+        if (!ids.includes(cands[0].external_id)) ids.push(cands[0].external_id);
+      } else missing = true;
     }
+    if (oneOf && missing) continue;
     const lead = line.match(/^\s*[•*-]?\s*(\d{1,2}|one|two|three|four|five|six)\b/i);
     if (ids.length) groups.push({ count: lead ? toNum(lead[1]) : 1, ids });
+  }
+  // Ohne Set-Angabe: Karten aus verschiedenen Serien = mindestens eine ist falsch zugeordnet -> keine
+  if (!seriesHint) {
+    const { seriesOf } = context();
+    const series = new Set(groups.flatMap((g) => g.ids).map((id) => seriesOf.get(promoSetOf.get(id))));
+    if (series.size > 1) return [];
   }
   return groups;
 }
 
-export const promosFor = (desc, seriesHint = null) => [...new Set(promoGroups(desc, seriesHint).flatMap((g) => g.ids))];
+export const promosFor = (desc, seriesHint = null, productId = null) => [
+  ...new Set(promoGroups(desc, seriesHint, productId).flatMap((g) => g.ids)),
+];
 
 // Wert der beiliegenden Promo-Karten (priceOf: external_id -> aktueller Preis oder 0), VORSICHTIG gerechnet:
 // je Zeile höchstens so viele Karten, wie sie nennt, und zwar die günstigsten ("A or B" = die billigere);
 // jede Karte zählt nur einmal. Lieber zu wenig abziehen als ein Produkt schönrechnen.
-export function promoValue(desc, seriesHint, priceOf) {
+export function promoValue(desc, seriesHint, priceOf, productId = null) {
   const seen = new Set();
   let total = 0;
-  for (const g of promoGroups(desc, seriesHint)) {
+  for (const g of promoGroups(desc, seriesHint, productId)) {
     const fresh = g.ids.filter((id) => !seen.has(id));
     fresh.forEach((id) => seen.add(id));
     const prices = fresh.map(priceOf).filter((p) => p > 0).sort((x, y) => x - y);

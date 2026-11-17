@@ -167,6 +167,14 @@ CREATE TABLE IF NOT EXISTS watchlist_items (
   PRIMARY KEY (user_id, card_id)
 );
 
+-- Sealed-Produkte auf der Watchlist (Justus 17.11.2026) - Katalog-ID aus sealed_catalog
+CREATE TABLE IF NOT EXISTS watchlist_sealed (
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  catalog_id  INTEGER NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, catalog_id)
+);
+
 -- Client-seitige JS-Fehler (unbehandelte Exceptions/Promise-Rejections im
 -- Browser) - damit ein Fehler, den nur eine Nutzerin sieht, nicht nur über
 -- eine mündliche Beschreibung diagnostizierbar ist.

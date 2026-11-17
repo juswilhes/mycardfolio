@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { addToWatchlist, removeFromWatchlist } from "../api.js";
+import { addToWatchlist, removeFromWatchlist, addSealedToWatchlist, removeSealedFromWatchlist } from "../api.js";
 
 // Herzchen zum Merken einer Karte, unabhängig von der eigenen Sammlung.
 // Steuert seinen "watched"-Zustand über die Eltern-Komponente (onChange),
 // damit Listen mit vielen Karten nicht jede ihren eigenen Fetch machen.
-export default function WatchlistHeart({ externalId, watched, onChange, className = "" }) {
+// catalogId statt externalId = Sealed-Produkt (Justus 17.11.2026)
+export default function WatchlistHeart({ externalId, catalogId, watched, onChange, className = "" }) {
   const [busy, setBusy] = useState(false);
 
   async function toggle(e) {
@@ -14,10 +15,10 @@ export default function WatchlistHeart({ externalId, watched, onChange, classNam
     setBusy(true);
     try {
       if (watched) {
-        await removeFromWatchlist(externalId);
+        await (catalogId ? removeSealedFromWatchlist(catalogId) : removeFromWatchlist(externalId));
         onChange(false);
       } else {
-        await addToWatchlist(externalId);
+        await (catalogId ? addSealedToWatchlist(catalogId) : addToWatchlist(externalId));
         onChange(true);
       }
     } finally {

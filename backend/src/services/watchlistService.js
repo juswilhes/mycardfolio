@@ -48,3 +48,27 @@ export function watchedExternalIds(userId) {
   return watchedExternalIdsStmt.all(userId).map((r) => r.external_id);
 }
 
+
+// --- Sealed-Produkte (Justus 17.11.2026: "auch Sealed-Produkte auf die Watchlist") ---------------------------
+const insertSealed = db.prepare(`INSERT OR IGNORE INTO watchlist_sealed (user_id, catalog_id) VALUES (?, ?)`);
+const deleteSealed = db.prepare(`DELETE FROM watchlist_sealed WHERE user_id = ? AND catalog_id = ?`);
+const catalogExists = db.prepare(`SELECT 1 FROM sealed_catalog WHERE id = ?`);
+const listSealedStmt = db.prepare(`
+  SELECT s.id AS catalog_id, s.name, s.image, s.price_cents, s.set_id, cs.name AS set_name, w.created_at
+  FROM watchlist_sealed w
+  JOIN sealed_catalog s ON s.id = w.catalog_id
+  LEFT JOIN card_sets cs ON cs.id = s.set_id
+  WHERE w.user_id = ?
+  ORDER BY w.created_at DESC
+`);
+const sealedIdsStmt = db.prepare(`SELECT catalog_id FROM watchlist_sealed WHERE user_id = ?`);
+
+// false, wenn es das Produkt im Katalog nicht gibt
+export function addSealedToWatchlist(userId, catalogId) {
+  if (!catalogExists.get(catalogId)) return false;
+  insertSealed.run(userId, catalogId);
+  return true;
+}
+export const removeSealedFromWatchlist = (userId, catalogId) => deleteSealed.run(userId, catalogId).changes > 0;
+export const listSealedWatchlist = (userId) => listSealedStmt.all(userId);
+export const watchedSealedIds = (userId) => sealedIdsStmt.all(userId).map((r) => r.catalog_id);
