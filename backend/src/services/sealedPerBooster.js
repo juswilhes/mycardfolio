@@ -21,6 +21,17 @@ const productsStmt = db.prepare(`
   WHERE c.set_id != '' AND c.booster_count > 0 AND c.price_cents > 0 AND c.updated_at >= date('now', '-3 day')
 `);
 const setsStmt = db.prepare(`SELECT id, name, series, release_date FROM card_sets`);
+// Tagesverlauf eines Katalog-Produkts (seit 09.11.2026 gespeichert) - für den Graphen über der Tabelle
+// (Justus 18.11.2026: "Graph zu den Boosterpreisen, umstellbar auf Booster Bundle und Display")
+const historyStmt = db.prepare(`SELECT day, price_cents AS cents FROM sealed_catalog_prices WHERE catalog_id = ? ORDER BY day`);
+const historyOf = (catalogId) => (catalogId ? historyStmt.all(catalogId) : []);
+// Booster Bundle (6 Booster): der kürzeste Name auf "Booster Bundle" (ohne Display/Case/Händler-Zusätze)
+function pickBundle(list) {
+  const hits = list
+    .filter((p) => p.booster_count === 6 && /booster bundle$/i.test(p.name.replace(/\s*[[(].*$/, "").trim()))
+    .sort((a, b) => a.name.length - b.name.length);
+  return hits[0] ?? null;
+}
 
 export function buildPricePerBooster() {
   const bySet = new Map();
@@ -36,6 +47,9 @@ export function buildPricePerBooster() {
     // Einzelbooster: der Preis der Set-Seite, sonst das günstigste Ein-Booster-Produkt mit "Booster Pack" im Namen
     const singles = list.filter((p) => p.booster_count === 1 && /booster pack/i.test(p.name) && !/sleeved/i.test(p.name));
     const boosterCents = sealed?.booster?.priceCents ?? (singles.length ? Math.min(...singles.map((p) => p.price_cents)) : null);
+    const cheapestSingle = singles.length ? singles.reduce((a, b) => (b.price_cents < a.price_cents ? b : a)) : null;
+    const boosterCatalogId = sealed?.booster?.catalogId ?? cheapestSingle?.id ?? null;
+    const bundle = pickBundle(list);
 
     const products = list
       .map((p) => {
@@ -73,6 +87,15 @@ export function buildPricePerBooster() {
       displayBoosters: displayCents ? displayBoosters : null,
       displayPerBoosterCents: displayCents ? Math.round(displayCents / displayBoosters) : null,
       displayCatalogId: display?.catalogId ?? null,
+      bundleCents: bundle?.price_cents ?? null,
+      bundleCatalogId: bundle?.id ?? null,
+      boosterCatalogId,
+      // Tagesverläufe (nur über /price-per-booster/history ausgeliefert, nicht in der Übersicht)
+      history: {
+        booster: historyOf(boosterCatalogId),
+        bundle: historyOf(bundle?.id),
+        display: historyOf(display?.catalogId),
+      },
       products,
     });
   }

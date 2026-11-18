@@ -21,8 +21,16 @@ router.get("/sealed-movers", (req, res) => {
 });
 
 // GET /api/stats/price-per-booster -> je Set die Sealed-Produkte nach Preis je Booster, dazu Booster-/Displaypreis
+// (ohne Tagesverläufe; die kommen über /price-per-booster/history?sets=a,b nur für die im Graphen gewählten Sets)
+let ppbSummary = { src: null, data: null };
 router.get("/price-per-booster", (_req, res) => {
-  res.json(analysis("pricePerBooster"));
+  const rows = analysis("pricePerBooster");
+  if (ppbSummary.src !== rows) ppbSummary = { src: rows, data: rows.map(({ history, ...s }) => s) };
+  res.json(ppbSummary.data);
+});
+router.get("/price-per-booster/history", (req, res) => {
+  const ids = new Set(String(req.query.sets ?? "").split(",").filter(Boolean).slice(0, 60));
+  res.json(analysis("pricePerBooster").filter((s) => ids.has(s.id)).map((s) => ({ id: s.id, history: s.history })));
 });
 
 // GET /api/stats/top-cards -> je Set Wert der Top 5/10/20 Karten, Monatsveränderung, Veränderung 30/90/180/365 Tage

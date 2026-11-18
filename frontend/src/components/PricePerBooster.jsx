@@ -1,7 +1,12 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getPricePerBooster } from "../api.js";
-import { eur } from "../lib/format.js";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { getPricePerBooster, getPricePerBoosterHistory } from "../api.js";
+import { eur, formatDate } from "../lib/format.js";
+import { glow, tooltipStyle } from "../lib/chartFx.jsx";
+import RangeSelect from "./RangeSelect.jsx";
+import { rangeDays, highestFirst } from "../lib/chartRange.js";
+import { SetPicker, SET_COLORS } from "./SetValueAnalysis.jsx";
 
 const dash = <span className="text-subtle">–</span>;
 const cents = (c) => (c != null ? eur(c / 100) : dash);
@@ -69,6 +74,9 @@ export default function PricePerBooster() {
         </p>
       ) : (
         <>
+          <PriceChart rows={rows} />
+
+          <h3 className="text-sm font-medium mt-8 mb-2">Alle Sets</h3>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
             <input
               value={query}
@@ -200,6 +208,116 @@ function ProductTable({ set }) {
         </table>
       </div>
       {anyMixed && <p className="text-[11px] text-subtle mt-2">* enthält Booster aus mehreren Sets.</p>}
+    </div>
+  );
+}
+
+// Graph über der Tabelle (Justus 18.11.2026): Preisverlauf von Einzelbooster, Booster Bundle oder Display der
+// gewählten Sets. Tageswerte gibt es seit 09.11.2026 (sealed_catalog_prices); der Verlauf wird nur für die
+// gewählten Sets geladen.
+const KINDS = [
+  { id: "booster", label: "Booster", key: "boosterCatalogId" },
+  { id: "bundle", label: "Booster Bundle", key: "bundleCatalogId" },
+  { id: "display", label: "Display", key: "displayCatalogId" },
+];
+const DEFAULT_SETS = 6;
+const dayLabel = (d) => new Date(`${d}T00:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "short" });
+
+function PriceChart({ rows }) {
+  const [kind, setKind] = useState("booster");
+  const [range, setRange] = useState("3m");
+  const [selected, setSelected] = useState(null);
+  const [hist, setHist] = useState({}); // setId -> { booster, bundle, display }
+  const k = KINDS.find((x) => x.id === kind);
+
+  const series = useMemo(
+    () => rows.map((s) => ({ id: s.id, name: s.name, series: s.series, release_date: s.release_date, points: s[k.key] ? [1] : [] })),
+    [rows, k]
+  );
+  const defaultSelected = useMemo(
+    () =>
+      new Set(
+        [...rows]
+          .filter((s) => s.boosterCatalogId)
+          .sort((a, b) => (b.release_date || "").localeCompare(a.release_date || ""))
+          .slice(0, DEFAULT_SETS)
+          .map((s) => s.id)
+      ),
+    [rows]
+  );
+  const sel = selected ?? defaultSelected;
+  const setMany = (ids, on) =>
+    setSelected((prev) => {
+      const next = new Set(prev ?? defaultSelected);
+      for (const id of ids) on ? next.add(id) : next.delete(id);
+      return next;
+    });
+
+  const missing = [...sel].filter((id) => !hist[id]);
+  useEffect(() => {
+    if (!missing.length) return;
+    getPricePerBoosterHistory(missing)
+      .then((list) =>
+        setHist((prev) => {
+          const next = { ...prev };
+          for (const d of list) next[d.id] = d.history;
+          for (const id of missing) next[id] ??= {};
+          return next;
+        })
+      )
+      .catch(() => {});
+  }, [missing.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visible = series.filter((s) => sel.has(s.id) && s.points.length);
+  const colorOf = new Map(visible.map((s, i) => [s.id, SET_COLORS[i % SET_COLORS.length]]));
+  const data = useMemo(() => {
+    const from = new Date(Date.now() - rangeDays(range) * 86400000).toISOString().slice(0, 10);
+    const byDay = new Map();
+    for (const s of visible) {
+      for (const p of hist[s.id]?.[kind] ?? []) {
+        if (p.day < from) continue;
+        if (!byDay.has(p.day)) byDay.set(p.day, { day: p.day });
+        byDay.get(p.day)[s.id] = p.cents / 100;
+      }
+    }
+    return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+  }, [visible, hist, kind, range]);
+  const firstDay = data[0]?.day;
+
+  return (
+    <div className="mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <RangeSelect value={kind} onChange={setKind} options={KINDS} />
+        <RangeSelect value={range} onChange={setRange} />
+      </div>
+      <SetPicker series={series} selected={sel} colorOf={colorOf} onSetMany={setMany} />
+      {visible.length === 0 ? (
+        <p className="text-subtle text-sm">Kein Set ausgewählt bzw. für die gewählten Sets gibt es kein {k.label}.</p>
+      ) : data.length === 0 ? (
+        <p className="text-subtle text-sm h-[240px]">Lade Verlauf …</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+            <XAxis dataKey="day" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={dayLabel} minTickGap={24} />
+            <YAxis width={72} stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={(v) => eur(v)} />
+            <Tooltip
+              itemSorter={highestFirst}
+              contentStyle={tooltipStyle}
+              labelStyle={{ color: "var(--subtle)" }}
+              labelFormatter={(d) => formatDate(d)}
+              formatter={(v, _n, item) => [eur(v), visible.find((s) => s.id === item.dataKey)?.name]}
+            />
+            {visible.map((s) => (
+              <Line key={s.id} type="monotone" dataKey={s.id} stroke={colorOf.get(s.id)} strokeWidth={2.5} style={glow(colorOf.get(s.id), 5)} dot={data.length < 15} connectNulls />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+      {firstDay && (
+        <p className="text-[11px] text-subtle mt-1">
+          {k.label}-Preise je Tag seit {formatDate(firstDay)} – der Verlauf wird mit jeder Nacht länger. Sets ohne {k.label} sind in der Auswahl ausgegraut.
+        </p>
+      )}
     </div>
   );
 }
