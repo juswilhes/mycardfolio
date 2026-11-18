@@ -245,6 +245,7 @@ function HistoryChart({ rows, sel, onSetMany, children }) {
         id: s.id,
         name: s.name,
         series: s.series,
+        release_date: s.release_date,
         points: withinDays(s.history, rangeDays(range), (h) => h.month)
           .map((h) => ({ month: h.month, value: m.value(h) }))
           .filter((p) => p.value != null),
@@ -376,10 +377,13 @@ export function SetPicker({ series, selected, colorOf, onSetMany }) {
   }, [open]);
 
   const hasData = (s) => s.points.length > 0;
-  const selectable = series.filter(hasData);
+  // Neueste Sets zuerst (Justus 18.11.2026: "nach Erscheinungsdatum wie bei Preis pro Booster"), egal wie die Analyse
+  // ihre Zeilen sortiert - die Serien-Gruppen und die Marken folgen damit auch dem neuesten Set
+  const byDate = [...series].sort((a, b) => (b.release_date || "").localeCompare(a.release_date || ""));
+  const selectable = byDate.filter(hasData);
   const chosen = selectable.filter((s) => selected.has(s.id));
   const q = query.trim().toLowerCase();
-  const listed = series.filter((s) => !q || s.name.toLowerCase().includes(q) || (s.series ?? "").toLowerCase().includes(q));
+  const listed = byDate.filter((s) => !q || s.name.toLowerCase().includes(q) || (s.series ?? "").toLowerCase().includes(q));
   const listedIds = listed.filter(hasData).map((s) => s.id);
   const groups = [];
   for (const s of listed) {
