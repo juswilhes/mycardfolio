@@ -137,7 +137,7 @@ export default function SetTotalValue() {
       {visible.length === 0 ? (
         <p className="text-subtle text-sm">Kein Set ausgewählt. Wähle oben unter „Sets auswählen“ oder unten in der Tabelle.</p>
       ) : (
-        <div className="h-72 sm:h-[420px]"><ResponsiveContainer width="100%" height="100%">
+        <div className="h-80 sm:h-[560px]"><ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
             <XAxis dataKey="day" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={dayLabel} minTickGap={24} />
             <YAxis

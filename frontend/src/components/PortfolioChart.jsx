@@ -36,7 +36,7 @@ export default function PortfolioChart({ data }) {
       {rows.length < 2 ? (
         <p className="text-subtle text-sm py-4">Für diesen Zeitraum gibt es erst einen Datenpunkt.</p>
       ) : (
-    <div className="h-64 sm:h-80"><ResponsiveContainer width="100%" height="100%">
+    <div className="h-72 sm:h-[440px]"><ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={rows} margin={{ top: 10, right: 14, left: 4, bottom: 0 }}>
         {areaDefs(gradId, "var(--yellow)")}
         <XAxis dataKey="date" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />

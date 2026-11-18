@@ -166,9 +166,9 @@ export default function TopCardsAnalysis() {
         <>
           <h3 className="text-xs text-subtle mb-1">Wert der Top {n} im Verlauf</h3>
           {loading && lineData.length === 0 ? (
-            <p className="text-subtle text-sm h-72 sm:h-[420px]">Lade Verlauf …</p>
+            <p className="text-subtle text-sm h-80 sm:h-[560px]">Lade Verlauf …</p>
           ) : (
-            <div className="h-72 sm:h-[420px]"><ResponsiveContainer width="100%" height="100%">
+            <div className="h-80 sm:h-[560px]"><ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                 <XAxis dataKey="day" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={dayLabel} minTickGap={24} />
                 <YAxis width={mode === "pct" ? 56 : 72} stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={fmt} />
@@ -190,7 +190,7 @@ export default function TopCardsAnalysis() {
           {monthData.length === 0 ? (
             <p className="text-subtle text-sm">Noch kein Monat mit Werten.</p>
           ) : (
-            <div className="h-64 sm:h-80"><ResponsiveContainer width="100%" height="100%">
+            <div className="h-72 sm:h-[440px]"><ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                 <XAxis
                   dataKey="month"
