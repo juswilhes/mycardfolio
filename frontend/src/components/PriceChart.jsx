@@ -120,7 +120,7 @@ export default function PriceChart({ data, range: rangeProp, onRangeChange }) {
   return (
     <div>
       {Legend}
-      <ResponsiveContainer width="100%" height={170}>
+      <div className="h-72 sm:h-[480px]"><ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 10, right: 14, left: 4, bottom: 0 }}>
           {areaDefs(gradId, "var(--yellow)")}
           <XAxis dataKey="date" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} />
@@ -169,7 +169,7 @@ export default function PriceChart({ data, range: rangeProp, onRangeChange }) {
             />
           )}
         </ComposedChart>
-      </ResponsiveContainer>
+      </ResponsiveContainer></div>
     </div>
   );
 }
