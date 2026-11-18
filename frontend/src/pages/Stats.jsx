@@ -7,6 +7,7 @@ import { getCollection, getMovers, getSets, getSetProgress } from "../api.js";
 import Movers from "../components/Movers.jsx";
 import SetValueAnalysis from "../components/SetValueAnalysis.jsx";
 import SetTotalValue from "../components/SetTotalValue.jsx";
+import TopCardsAnalysis from "../components/TopCardsAnalysis.jsx";
 import PricePerBooster from "../components/PricePerBooster.jsx";
 import PullRatesAnalysis from "../components/PullRatesAnalysis.jsx";
 import PackValueAnalysis from "../components/PackValueAnalysis.jsx";
@@ -66,6 +67,7 @@ function BarList({ rows, total }) {
 // oben und die Anzeige darunter richten sich nach dieser Liste.
 const ANALYSES = [
   { id: "sammlung", label: "Meine Sammlung", render: () => <CollectionStats /> },
+  { id: "topkarten", label: "Top-Karten", render: () => <TopCardsAnalysis /> },
   { id: "booster", label: "Booster vs. Top-Karten", render: () => <SetValueAnalysis /> },
   { id: "proboster", label: "Preis pro Booster", render: () => <PricePerBooster /> },
   { id: "setwert", label: "Set-Gesamtwert", render: () => <SetTotalValue /> },

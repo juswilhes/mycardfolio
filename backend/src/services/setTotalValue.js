@@ -18,77 +18,101 @@ const MIN_COMMON_SHARE = 0.5;
 const DAILY_DAYS = 92;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const setsStmt = db.prepare(`SELECT id, name, series, release_date FROM card_sets`);
+export const setsStmt = db.prepare(`SELECT id, name, series, release_date FROM card_sets`);
 const cardsStmt = db.prepare(`SELECT id, external_id, name, image_small FROM cards WHERE set_id = ?`);
 const firstDayStmt = db.prepare(`SELECT MIN(fetched_at) AS d FROM price_snapshots WHERE price_type = 'trend'`);
 
 const dayOf = (iso) => iso.slice(0, 10);
 
-export function buildSetTotalValue() {
+// Tage von der ersten gespeicherten Preiszeile bis heute (UTC-Datum)
+export function dayGrid() {
   const first = firstDayStmt.get()?.d;
-  if (!first) return [];
-  const start = Date.parse(`${dayOf(first)}T00:00:00Z`);
+  if (!first) return null;
+  const startMs = Date.parse(`${dayOf(first)}T00:00:00Z`);
   const today = Date.parse(`${dayOf(new Date().toISOString())}T00:00:00Z`);
   const days = [];
-  for (let t = start; t <= today; t += DAY_MS) days.push(new Date(t).toISOString().slice(0, 10));
-  const index = new Map(days.map((d, i) => [d, i]));
+  for (let t = startMs; t <= today; t += DAY_MS) days.push(new Date(t).toISOString().slice(0, 10));
+  return { days, index: new Map(days.map((d, i) => [d, i])) };
+}
+
+// Je Karte eines Sets ihre Tageswerte (NaN = kein Preis, Lücken bis CARRY_DAYS fortgeschrieben).
+// end = letzter Tag mit echtem Wert und Summe > 0 (-1 = keine Preise).
+export function setCardValues(setId, grid) {
+  const L = grid.days.length;
+  const cards = cardsStmt.all(setId);
+  const values = [];
+  const priced = [];
+  let lastReal = -1; // letzter Tag mit echtem Wert (nicht übernommen) - danach wird nichts fortgeschrieben
+  for (const c of cards) {
+    const pts = variantSeries(c.id, "normal");
+    if (!pts.length) continue;
+    const v = new Float64Array(L).fill(NaN);
+    for (const p of pts) {
+      const i = grid.index.get(dayOf(p.fetched_at));
+      if (i == null) continue;
+      v[i] = p.price; // mehrere Punkte am Tag: der letzte gilt
+      if (i > lastReal) lastReal = i;
+    }
+    let last = NaN;
+    let age = 0;
+    for (let i = 0; i < L; i++) {
+      if (!Number.isNaN(v[i])) {
+        last = v[i];
+        age = 0;
+      } else if (!Number.isNaN(last) && ++age <= CARRY_DAYS) v[i] = last;
+    }
+    values.push(v);
+    priced.push(c);
+  }
+  // Letzter Tag mit Preisen (vor dem Nachtlauf ist das gestern; fiel der Nachtlauf aus, der letzte echte Tag)
+  let end = lastReal;
+  while (end >= 0 && sumOn(values, end) <= 0) end--;
+  return { cards, values, priced, end };
+}
+
+const sumOn = (values, i) => values.reduce((a, v) => a + (Number.isNaN(v[i]) ? 0 : v[i]), 0);
+
+// Kettenindex (siehe oben): Summe je Tag bis einschließlich end, null = kein belastbarer Wert
+export function chainTotals(values, end, L) {
+  const totals = new Array(L).fill(null);
+  totals[end] = sumOn(values, end);
+  for (let i = end - 1; i >= 0; i--) {
+    let a = 0;
+    let b = 0;
+    for (const v of values) {
+      if (Number.isNaN(v[i]) || Number.isNaN(v[i + 1])) continue;
+      a += v[i];
+      b += v[i + 1];
+    }
+    if (a <= 0 || b <= 0 || b < sumOn(values, i + 1) * MIN_COMMON_SHARE) break;
+    totals[i] = totals[i + 1] * (a / b);
+  }
+  return totals;
+}
+
+// Punkte für den Graphen: täglich, ältere als DAILY_DAYS nur wöchentlich
+export function thinHistory(totals, end, days) {
+  const history = [];
+  for (let i = 0; i <= end; i++) {
+    if (totals[i] == null) continue;
+    if (end - i > DAILY_DAYS && (end - i) % 7 !== 0) continue;
+    history.push({ day: days[i], value: Math.round(totals[i] * 100) / 100 });
+  }
+  return history;
+}
+
+export function buildSetTotalValue() {
+  const grid = dayGrid();
+  if (!grid) return [];
+  const { days } = grid;
   const L = days.length;
 
   const out = [];
   for (const s of setsStmt.all()) {
-    const cards = cardsStmt.all(s.id);
-    if (!cards.length) continue;
-    const values = []; // je Karte: Wert je Tag (NaN = kein Preis)
-    const priced = [];
-    let lastReal = -1; // letzter Tag mit echtem Wert (nicht übernommen) - danach wird nichts fortgeschrieben
-    for (const c of cards) {
-      const pts = variantSeries(c.id, "normal");
-      if (!pts.length) continue;
-      const v = new Float64Array(L).fill(NaN);
-      for (const p of pts) {
-        const i = index.get(dayOf(p.fetched_at));
-        if (i == null) continue;
-        v[i] = p.price; // mehrere Punkte am Tag: der letzte gilt
-        if (i > lastReal) lastReal = i;
-      }
-      let last = NaN;
-      let age = 0;
-      for (let i = 0; i < L; i++) {
-        if (!Number.isNaN(v[i])) {
-          last = v[i];
-          age = 0;
-        } else if (!Number.isNaN(last) && ++age <= CARRY_DAYS) v[i] = last;
-      }
-      values.push(v);
-      priced.push(c);
-    }
-
-    // Letzter Tag mit Preisen (vor dem Nachtlauf ist das gestern; fiel der Nachtlauf aus, der letzte echte Tag)
-    let end = lastReal;
-    const sumOn = (i) => values.reduce((a, v) => a + (Number.isNaN(v[i]) ? 0 : v[i]), 0);
-    while (end >= 0 && sumOn(end) <= 0) end--;
-    if (end < 0) continue;
-
-    const totals = new Array(L).fill(null);
-    totals[end] = sumOn(end);
-    for (let i = end - 1; i >= 0; i--) {
-      let a = 0;
-      let b = 0;
-      for (const v of values) {
-        if (Number.isNaN(v[i]) || Number.isNaN(v[i + 1])) continue;
-        a += v[i];
-        b += v[i + 1];
-      }
-      if (a <= 0 || b <= 0 || b < sumOn(i + 1) * MIN_COMMON_SHARE) break;
-      totals[i] = totals[i + 1] * (a / b);
-    }
-
-    const history = [];
-    for (let i = 0; i <= end; i++) {
-      if (totals[i] == null) continue;
-      if (end - i > DAILY_DAYS && (end - i) % 7 !== 0) continue;
-      history.push({ day: days[i], value: Math.round(totals[i] * 100) / 100 });
-    }
+    const { cards, values, priced, end } = setCardValues(s.id, grid);
+    if (!cards.length || end < 0) continue;
+    const totals = chainTotals(values, end, L);
+    const history = thinHistory(totals, end, days);
     const value = totals[end];
     let top = null;
     let pricedNow = 0;

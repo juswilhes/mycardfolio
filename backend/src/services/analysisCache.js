@@ -13,6 +13,7 @@ import { listCardTypes } from "./cardRepository.js";
 import { buildSealedMarketMovers } from "./sealedMovers.js";
 import { buildPricePerBooster } from "./sealedPerBooster.js";
 import { buildSetTotalValue } from "./setTotalValue.js";
+import { buildSetTopValue } from "./setTopValue.js";
 
 // Die Auswertungen der Analyse werden nicht bei jedem Seitenaufruf neu
 // gerechnet, sondern einmal im Nachtlauf um 1 Uhr (nach den neuen Preisen,
@@ -31,6 +32,7 @@ const BUILDERS = {
   sealedMovers: buildSealedMarketMovers, // Preisbewegungen der Sealed-Produkte (7/30 Tage)
   pricePerBooster: buildPricePerBooster, // je Set: Sealed-Produkte nach Preis je Booster
   setTotalValue: buildSetTotalValue, // je Set: Summe aller Kartenpreise + Verlauf
+  setTopValue: buildSetTopValue, // je Set: Wert der Top 5/10/20 Karten + Verlauf + Monatsveränderung
 };
 // Setzt sich aus den Auswertungen oben zusammen (wird danach gerechnet).
 const DERIVED = {

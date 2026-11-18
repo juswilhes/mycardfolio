@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getMarketMovers } from "../services/marketStats.js";
 import { analysis } from "../services/analysisCache.js";
+import { topValueSummary } from "../services/setTopValue.js";
 
 const router = Router();
 
@@ -22,6 +23,23 @@ router.get("/sealed-movers", (req, res) => {
 // GET /api/stats/price-per-booster -> je Set die Sealed-Produkte nach Preis je Booster, dazu Booster-/Displaypreis
 router.get("/price-per-booster", (_req, res) => {
   res.json(analysis("pricePerBooster"));
+});
+
+// GET /api/stats/top-cards -> je Set Wert der Top 5/10/20 Karten, Monatsveränderung, Veränderung 30/90/180/365 Tage
+// (ohne Tagesverlauf und Kartenliste; beides kommt über /top-cards/history?sets=a,b,c nur für die gewählten Sets)
+let topSummary = { src: null, data: null };
+router.get("/top-cards", (_req, res) => {
+  const rows = analysis("setTopValue");
+  if (topSummary.src !== rows) topSummary = { src: rows, data: topValueSummary(rows) };
+  res.json(topSummary.data);
+});
+router.get("/top-cards/history", (req, res) => {
+  const ids = new Set(String(req.query.sets ?? "").split(",").filter(Boolean).slice(0, 60));
+  res.json(
+    analysis("setTopValue")
+      .filter((s) => ids.has(s.id))
+      .map((s) => ({ id: s.id, cards: s.cards, history: Object.fromEntries(Object.entries(s.tops).map(([n, t]) => [n, t.history])) }))
+  );
 });
 
 // GET /api/stats/set-total-value -> je Set Summe aller Kartenpreise, Verlauf und wertvollste Karte

@@ -136,6 +136,8 @@ export const getPullOrBuy = () => request("/stats/pull-or-buy");
 export const getSetRanking = () => request("/stats/set-ranking");
 export const getPricePerBooster = () => request("/stats/price-per-booster");
 export const getSetTotalValue = () => request("/stats/set-total-value");
+export const getTopCards = () => request("/stats/top-cards");
+export const getTopCardsHistory = (ids) => request(`/stats/top-cards/history?sets=${encodeURIComponent(ids.join(","))}`);
 
 // --- News & Artikel ----------------------------------------------------
 export const getLanding = () => request("/stats/landing");
