@@ -299,7 +299,7 @@ function HistoryChart({ rows, sel, onSetMany, children }) {
             <p className="text-subtle text-sm">Kein Set ausgewählt bzw. für diese Kennzahl liegt noch kein Preis vor.</p>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={240}>
+              <div className="h-72 sm:h-[420px]"><ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                   <XAxis
                     dataKey="month"
@@ -338,7 +338,7 @@ function HistoryChart({ rows, sel, onSetMany, children }) {
                     />
                   ))}
                 </LineChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer></div>
               {data.length < 2 && (
                 <p className="text-subtle text-xs mt-1">
                   Erst ein Stand – die Linien entstehen, sobald im nächsten Monat der zweite dazukommt.

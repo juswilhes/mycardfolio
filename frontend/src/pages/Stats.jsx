@@ -205,9 +205,9 @@ function CollectionStats() {
         <section>
           <h2 className="text-sm text-subtle mb-3">Wert nach Seltenheit</h2>
           <div className="flex items-center gap-4">
-            <ResponsiveContainer width={140} height={140}>
+            <ResponsiveContainer width={200} height={200}>
               <PieChart>
-                <Pie data={byRarity} dataKey="value" nameKey="label" innerRadius={38} outerRadius={65} paddingAngle={2}>
+                <Pie data={byRarity} dataKey="value" nameKey="label" innerRadius={55} outerRadius={95} paddingAngle={2}>
                   {byRarity.map((_, i) => (
                     <Cell key={i} fill={PALETTE[i % PALETTE.length]} stroke="none" style={glow(PALETTE[i % PALETTE.length], 4)} />
                   ))}

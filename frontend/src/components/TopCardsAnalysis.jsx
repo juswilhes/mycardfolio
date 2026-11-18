@@ -166,9 +166,9 @@ export default function TopCardsAnalysis() {
         <>
           <h3 className="text-xs text-subtle mb-1">Wert der Top {n} im Verlauf</h3>
           {loading && lineData.length === 0 ? (
-            <p className="text-subtle text-sm h-[240px]">Lade Verlauf …</p>
+            <p className="text-subtle text-sm h-72 sm:h-[420px]">Lade Verlauf …</p>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
+            <div className="h-72 sm:h-[420px]"><ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                 <XAxis dataKey="day" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={dayLabel} minTickGap={24} />
                 <YAxis width={mode === "pct" ? 56 : 72} stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={fmt} />
@@ -183,14 +183,14 @@ export default function TopCardsAnalysis() {
                   <Line key={s.id} type="monotone" dataKey={s.id} stroke={colorOf.get(s.id)} strokeWidth={2.5} style={glow(colorOf.get(s.id), 5)} dot={false} connectNulls />
                 ))}
               </LineChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer></div>
           )}
 
           <h3 className="text-xs text-subtle mt-6 mb-1">Monatliche Veränderung der Top {n} in %</h3>
           {monthData.length === 0 ? (
             <p className="text-subtle text-sm">Noch kein Monat mit Werten.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
+            <div className="h-64 sm:h-80"><ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                 <XAxis
                   dataKey="month"
@@ -213,7 +213,7 @@ export default function TopCardsAnalysis() {
                   <Bar key={s.id} dataKey={s.id} fill={colorOf.get(s.id)} radius={[3, 3, 3, 3]} style={glow(colorOf.get(s.id), 4)} maxBarSize={28} />
                 ))}
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer></div>
           )}
         </>
       )}

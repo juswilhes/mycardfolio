@@ -137,7 +137,7 @@ export default function SetTotalValue() {
       {visible.length === 0 ? (
         <p className="text-subtle text-sm">Kein Set ausgewählt. Wähle oben unter „Sets auswählen“ oder unten in der Tabelle.</p>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
+        <div className="h-72 sm:h-[420px]"><ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
             <XAxis dataKey="day" stroke="var(--subtle)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={dayLabel} minTickGap={24} />
             <YAxis
@@ -169,7 +169,7 @@ export default function SetTotalValue() {
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer></div>
       )}
       {shortHistory && (
         <p className="text-[11px] text-subtle mt-1">Preise liegen erst seit {formatDate(firstDay)} vor – der Verlauf wird mit jeder Nacht länger.</p>
